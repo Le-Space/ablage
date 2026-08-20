@@ -6,9 +6,9 @@ added, changed and deleted — with **no account and nothing in the middle**.
 Two devices pair once by scanning a QR code off each other's screen. After that
 they are peers: the bytes travel directly, and no server ever holds them.
 
-> **Stage 1 works, and has an interface.** Drop a file in, show a code, and it
-> is on the other device — a deletion crosses too. Asserted end to end in
-> Chromium and Firefox.
+> **Stages 1 and 2 work.** Drop a file in, show a code, and it is on the other
+> device. Edits update, deletions cross, and a change made on both sides at once
+> keeps both copies. Asserted end to end in Chromium and Firefox.
 >
 > The reasoning is in
 > [NiKrause/libp2p-webrtc-qr#56](https://github.com/NiKrause/libp2p-webrtc-qr/issues/56),
@@ -17,7 +17,7 @@ they are peers: the bytes travel directly, and no server ever holds them.
 ```bash
 npm install
 npm run dev       # the app
-npm test          # 24 unit tests, then 28 in Chromium and Firefox
+npm test          # 34 unit tests, then 30 in Chromium and Firefox
 ```
 
 ## The one rule
@@ -144,10 +144,33 @@ says nothing about how far apart the devices holding it are.
 - [x] ~~**Does gossipsub form a mesh over exactly one direct QR connection?**~~
   No. Measured, and the sync runs over a direct stream instead — see above and
   [libp2p-webrtc-qr#98](https://github.com/NiKrause/libp2p-webrtc-qr/issues/98).
-- [ ] **Two devices change the same file.** Dropbox keeps both and names one
-  `file (conflicted copy)`. Last-writer-wins destroys somebody's work silently,
-  and clocks on two devices are not comparable. Copy Dropbox: keep both, never
-  lose bytes.
+- [x] ~~**Two devices change the same file.**~~ Both copies are kept, Dropbox's
+  way and for Dropbox's reason. The rescued name is derived from the **content
+  address**, not from a device name or a timestamp, so two devices that diverged
+  to the same bytes converge on one entry rather than two.
+
+  Telling that apart from an ordinary edit needs a third value: what this device
+  last agreed with the other one about. Without it, "I changed this" and "we
+  both changed it" are the same observation. That is `sync/baseline.js`, and it
+  is **local on purpose** — two devices legitimately remember different things,
+  so putting it in the shared document would let one overwrite the other.
+
+  **The rule is a parameter, and when it becomes a setting it belongs in the
+  shared document rather than on a device.** A resolution writes into the shared
+  index, so it replicates: if one side kept both copies and the other overwrote,
+  the winner would be whoever reacted first rather than whoever configured what.
+  A setting that works depending on timing is worse than none.
+- [ ] **History.** Neither Yjs nor OrbitDB would give us file history by
+  itself — both log what happened to the *index*, and the bytes live in Helia
+  behind their addresses. **The addresses are the history**: keeping every CID a
+  path ever had makes every version retrievable, provided the blocks still
+  exist. So this is two decisions, not one: keep old addresses in the entry
+  (nearly free), and keep the blocks (unbounded growth on a folder of edited
+  videos). Worth settling before the entry shape hardens.
+
+  Yjs can also replay its own log, but only with `gc: false` — it collects
+  deleted content by default, and `Y.snapshot()` needs it kept.
+
 - [ ] **Deletion versus a device that was away.** A tombstone that expires can be
   resurrected by a device that returns after it expired; one that never expires
   grows forever. Pick one and write down which.

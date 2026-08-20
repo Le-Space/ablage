@@ -88,6 +88,40 @@ test('a file added on one device arrives on the other', async ({ browser }) => {
   }
 })
 
+test('an edit on one side updates the other, without a conflict', async ({ browser }) => {
+  test.setTimeout(120000)
+
+  const a = await startSide(browser, 'edit-a')
+  const b = await startSide(browser, 'edit-b')
+
+  try {
+    const offer = await a.page.evaluate(() => window.__ablage.createOffer())
+    const answer = await b.page.evaluate(o => window.__ablage.acceptOffer(o), offer)
+    await a.page.evaluate(ans => window.__ablage.acceptAnswer(ans), answer)
+
+    await a.page.evaluate(() => window.__ablage.write('draft.txt', 'erste fassung'))
+    expect(await eventually(b.page, 'draft.txt')).toBe('erste fassung')
+
+    // Now A edits it. Both sides have agreed once, so this is an update and
+    // not two versions - which is the whole point of remembering the baseline.
+    await a.page.evaluate(() => window.__ablage.write('draft.txt', 'zweite fassung'))
+
+    const until = Date.now() + 20000
+    let text = null
+    while (Date.now() < until && text !== 'zweite fassung') {
+      text = await b.page.evaluate(() => window.__ablage.read('draft.txt'))
+      await b.page.waitForTimeout(250)
+    }
+
+    expect(text).toBe('zweite fassung')
+    // One file, not a rescued copy beside it.
+    expect(await b.page.evaluate(() => window.__ablage.list())).toEqual(['draft.txt'])
+  } finally {
+    await a.context.close()
+    await b.context.close()
+  }
+})
+
 test('it works the other way too, and a deletion crosses', async ({ browser }) => {
   test.setTimeout(120000)
 

@@ -11,6 +11,7 @@ import * as Y from 'yjs'
 import { createContent } from './content.js'
 import { createPeer } from './peer.js'
 import { reconcile } from './reconcile.js'
+import { baseline } from './sync/baseline.js'
 import { fileIndex } from './sync/file-index.js'
 import { Provider } from './sync/provider.js'
 import { opfsStorage } from './storage/opfs.js'
@@ -51,6 +52,7 @@ window.__ablage = {
 
     const doc = new Y.Doc()
     const index = fileIndex(doc)
+    const base = baseline()
     const storage = await opfsStorage({ root: await scratch(name) })
 
     let provider = null
@@ -58,7 +60,7 @@ window.__ablage = {
 
     /** Serialised: two passes at once would both see the same disagreement. */
     const pass = () => {
-      pending = pending.then(() => reconcile({ index, storage, content }))
+      pending = pending.then(() => reconcile({ index, storage, content, base }))
       return pending
     }
 

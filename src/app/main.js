@@ -13,6 +13,7 @@ import * as Y from 'yjs'
 import { createContent } from '../content.js'
 import { createPeer } from '../peer.js'
 import { reconcile } from '../reconcile.js'
+import { baseline } from '../sync/baseline.js'
 import { fileIndex } from '../sync/file-index.js'
 import { Provider } from '../sync/provider.js'
 import { openStorage } from '../storage/index.js'
@@ -38,6 +39,9 @@ const pickEl = $('pick')
 
 const doc = new Y.Doc()
 const index = fileIndex(doc)
+// What this device last agreed with the other one about - the third value
+// that tells "I edited it" apart from "we both edited it".
+const base = baseline()
 
 let storage = null
 let content = null
@@ -50,7 +54,7 @@ let pending = Promise.resolve()
  * act on it - and the second would be acting on a world that no longer exists.
  */
 function pass () {
-  pending = pending.then(() => reconcile({ index, storage, content })).then(render, report)
+  pending = pending.then(() => reconcile({ index, storage, content, base })).then(render, report)
   return pending
 }
 

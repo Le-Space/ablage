@@ -1,13 +1,17 @@
 /**
- * The origin-private filesystem, behind four methods.
+ * A folder, behind four methods.
  *
- * Chosen over `showDirectoryPicker` for stage 1 because it works in every
- * engine, while the picker is Chromium-only - building on the picker would make
- * two of three engines untestable from the first commit. The picker arrives in
- * stage 3 as a second implementation of this same contract, which is why the
- * contract is four methods and not a handle.
+ * Not "OPFS storage", which is what this was called until stage 3 showed the
+ * name was wrong: every call below is on `FileSystemDirectoryHandle`, and that
+ * is exactly what `showDirectoryPicker()` returns as well as
+ * `navigator.storage.getDirectory()`. The picked folder needed no second
+ * implementation, only a second way to *get* a handle - see `handle.js`.
  *
- * **Nested paths work from the start**, even though stage 1 shows one flat
+ * Which means the tests written against OPFS cover the picked folder too, for
+ * everything except the picking itself. That part opens a native dialog and no
+ * browser automation can drive it, so it is verified by hand and said so.
+ *
+ * **Nested paths work from the start**, even while stage 1 showed one flat
  * directory. The index stores whole paths, so storage has to accept them; the
  * alternative is a migration the day directories appear.
  */
@@ -26,11 +30,11 @@ async function walk (root, path, { create = false } = {}) {
 }
 
 /**
- * @param {{ root?: FileSystemDirectoryHandle }} [options] a root to use instead
- *   of the origin's own - the tests hand in a subdirectory so one run cannot
- *   see another's files.
+ * @param {{ root?: FileSystemDirectoryHandle }} [options] the folder to work in.
+ *   A picked directory, or a subdirectory of the origin's own - the tests hand
+ *   in the latter so one run cannot see another's files.
  */
-export async function opfsStorage ({ root } = {}) {
+export async function directoryStorage ({ root } = {}) {
   const base = root ?? await navigator.storage.getDirectory()
 
   /** Depth-first, returning whole paths rather than a tree. */

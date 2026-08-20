@@ -14,7 +14,8 @@ import { reconcile } from './reconcile.js'
 import { baseline } from './sync/baseline.js'
 import { fileIndex } from './sync/file-index.js'
 import { Provider } from './sync/provider.js'
-import { opfsStorage } from './storage/opfs.js'
+import { directoryStorage } from './storage/directory.js'
+import { watchFolder } from './storage/watch.js'
 
 const decode = bytes => new TextDecoder().decode(bytes)
 const encode = text => new TextEncoder().encode(text)
@@ -27,7 +28,7 @@ async function scratch (name) {
 
 window.__ablage = {
   storage: async name => {
-    const store = await opfsStorage({ root: await scratch(name) })
+    const store = await directoryStorage({ root: await scratch(name) })
 
     return {
       list: () => store.list(),
@@ -35,6 +36,47 @@ window.__ablage = {
       write: (path, text) => store.write(path, encode(text)),
       remove: path => store.remove(path),
       readBytes: async path => [...await store.read(path)]
+    }
+  },
+
+  /** Handle persistence and the watcher, for the browser tests. */
+  handles: async () => {
+    const { canPickFolder, rememberFolder, restoreFolder, forgetFolder, storedFolder } =
+      await import('./storage/handle.js')
+    const root = await navigator.storage.getDirectory()
+    const folder = await root.getDirectoryHandle('watched', { create: true })
+
+    return {
+      canPick: canPickFolder(),
+      roundTrip: async () => {
+        await rememberFolder(folder)
+        const back = await restoreFolder()
+        return { name: back?.handle?.name ?? null, granted: back?.granted ?? null }
+      },
+      survivesNothingStored: async () => {
+        await forgetFolder()
+        return (await storedFolder()) ?? null
+      }
+    }
+  },
+
+  watch: async () => {
+    const { watchFolder } = await import('./storage/watch.js')
+    const { directoryStorage } = await import('./storage/directory.js')
+
+    const root = await navigator.storage.getDirectory()
+    await root.removeEntry('watched', { recursive: true }).catch(() => {})
+    const folder = await root.getDirectoryHandle('watched', { create: true })
+    const store = await directoryStorage({ root: folder })
+
+    const seen = []
+    const stop = watchFolder(folder, paths => seen.push(...paths), { every: 150 })
+
+    return {
+      write: (path, text) => store.write(path, encode(text)),
+      remove: path => store.remove(path),
+      seen: () => [...seen],
+      stop: () => stop()
     }
   },
 
@@ -52,8 +94,8 @@ window.__ablage = {
 
     const doc = new Y.Doc()
     const index = fileIndex(doc)
-    const base = baseline()
-    const storage = await opfsStorage({ root: await scratch(name) })
+    const base = baseline({ key: `ablage.baseline.${name}` })
+    const storage = await directoryStorage({ root: await scratch(name) })
 
     let provider = null
     let pending = Promise.resolve()

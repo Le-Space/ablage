@@ -11,12 +11,38 @@
  * putting it in the CRDT would make one device's memory overwrite the other's,
  * which is exactly the confusion it exists to resolve.
  *
- * Kept in memory here. Surviving a reload is stage 3's problem, along with the
- * picked folder: a baseline that is lost reads as "both sides changed", which
- * errs towards keeping bytes rather than losing them.
+ * Persisted, because losing it is not harmless: a baseline that is gone reads
+ * as "both sides changed", so every file that had been edited since the last
+ * agreement would come back as a conflicted copy after a reload. Erring towards
+ * keeping bytes is the right direction to fail in, and it is still a mess to
+ * clean up.
+ *
+ * `localStorage` rather than IndexedDB: it is a flat map of short strings, it is
+ * written on every agreement, and a synchronous write is exactly what suits
+ * that. The handle store next door needs IndexedDB because a handle is not a
+ * string.
+ *
+ * @param {{ key?: string, storage?: Storage }} [options]
  */
-export function baseline (initial = {}) {
-  const known = new Map(Object.entries(initial))
+export function baseline ({ key = 'ablage.baseline', storage = globalThis.localStorage } = {}) {
+  let known
+
+  try {
+    known = new Map(Object.entries(JSON.parse(storage?.getItem(key) ?? '{}')))
+  } catch {
+    // Unreadable or absent. Starting empty costs conflicted copies once, which
+    // is recoverable; guessing would not be.
+    known = new Map()
+  }
+
+  const save = () => {
+    try {
+      storage?.setItem(key, JSON.stringify(Object.fromEntries(known)))
+    } catch {
+      // Storage blocked or full. The baseline then holds for this session only,
+      // which is what it did before it was persisted at all.
+    }
+  }
 
   return {
     /** @param {string} path @returns {string | null} */
@@ -26,11 +52,16 @@ export function baseline (initial = {}) {
 
     /** Record that this path is now agreed at this address. */
     set (path, cid) {
+      if (known.get(path) === cid) return
+
       known.set(path, cid)
+      save()
     },
 
     forget (path) {
-      known.delete(path)
+      if (!known.delete(path)) return
+
+      save()
     },
 
     snapshot () {

@@ -22,9 +22,12 @@ src/
   sync/
     provider.js      Yjs over a channel - the channel is an argument
     file-index.js    the Y.Map of paths: the entry shape and its operations
+    baseline.js      what this device last agreed on - the third value
   storage/
-    opfs.js          list / read / write / remove, over OPFS
-    index.js         picks a backend; the picker arrives here in stage 3
+    directory.js     list / read / write / remove, over any directory handle
+    handle.js        picking a folder, keeping it, asking again for permission
+    watch.js         polling, because directory handles have no events
+    index.js         picked folder if there is one, private folder otherwise
   content.js         Helia: bytes in, CID out, and back
   reconcile.js       the state machine below
   app/               the interface

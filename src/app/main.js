@@ -17,6 +17,8 @@ import { baseline } from '../sync/baseline.js'
 import { fileIndex } from '../sync/file-index.js'
 import { Provider } from '../sync/provider.js'
 import { openStorage } from '../storage/index.js'
+import { askForFolder, canPickFolder, pickFolder } from '../storage/handle.js'
+import { watchFolder } from '../storage/watch.js'
 
 const $ = id => document.getElementById(id)
 const encode = text => new TextEncoder().encode(text)
@@ -36,6 +38,8 @@ const filesEl = $('files')
 const emptyEl = $('files-empty')
 const dropEl = $('drop')
 const pickEl = $('pick')
+const pickButton = $('pick-folder')
+const folderEl = $('folder')
 
 const doc = new Y.Doc()
 const index = fileIndex(doc)
@@ -116,7 +120,10 @@ function attach (stream) {
 }
 
 async function start () {
-  storage = await openStorage()
+  const opened = await openStorage()
+
+  storage = opened.store
+  showFolder(opened)
   peer = await createPeer({ onSyncStream: stream => attach(stream) })
   content = await createContent(peer.node)
 
@@ -128,6 +135,59 @@ async function start () {
 
   await pass()
 }
+
+// ---- which folder ----------------------------------------------------------
+
+let unwatch = null
+
+/**
+ * Say which folder this is, and offer a real one where that is possible.
+ *
+ * Three states, and the middle one is the reason this is not a single button:
+ * a handle restored from a previous visit is remembered but its **permission is
+ * not**, and asking for it again needs a user gesture. A page that demanded it
+ * on load would be asking before it had said why.
+ */
+function showFolder ({ kind, handle, pending }) {
+  unwatch?.()
+  unwatch = null
+
+  if (kind === 'picked') {
+    folderEl.textContent = `Syncing ${handle.name}`
+    pickButton.textContent = 'Choose another folder'
+
+    // Only a picked folder can change behind the app's back. Nothing outside it
+    // can write to the origin's private one.
+    unwatch = watchFolder(handle, () => pass())
+    return
+  }
+
+  folderEl.textContent = pending != null
+    ? `${pending.name} is remembered — give it back to continue there`
+    : 'Working in this browser\'s private storage'
+
+  pickButton.textContent = pending != null ? `Use ${pending.name} again` : 'Choose a folder'
+  pickButton.dataset.resume = pending != null ? 'yes' : ''
+}
+
+pickButton.hidden = !canPickFolder()
+
+pickButton.addEventListener('click', async () => {
+  try {
+    // Both paths need the gesture this handler is: picking opens a dialog, and
+    // re-granting permission on a remembered handle does too.
+    const restored = pickButton.dataset.resume === 'yes' ? (await openStorage()).pending : null
+    const handle = restored != null && await askForFolder(restored) ? restored : await pickFolder()
+
+    storage = (await openStorage()).store
+    showFolder({ kind: 'picked', handle })
+    await pass()
+  } catch (error) {
+    // The picker throws AbortError when somebody closes it, which is an answer
+    // rather than a failure.
+    if (error?.name !== 'AbortError') report(error)
+  }
+})
 
 // ---- adding files ----------------------------------------------------------
 

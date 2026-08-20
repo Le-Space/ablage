@@ -6,9 +6,11 @@ added, changed and deleted — with **no account and nothing in the middle**.
 Two devices pair once by scanning a QR code off each other's screen. After that
 they are peers: the bytes travel directly, and no server ever holds them.
 
-> **Stages 1 and 2 work.** Drop a file in, show a code, and it is on the other
+> **Stages 1 to 3 work.** Drop a file in, show a code, and it is on the other
 > device. Edits update, deletions cross, and a change made on both sides at once
-> keeps both copies. Asserted end to end in Chromium and Firefox.
+> keeps both copies. On Chromium it can sync a **real folder** you choose, and
+> notices edits made outside the app. Asserted end to end in Chromium and
+> Firefox.
 >
 > The reasoning is in
 > [NiKrause/libp2p-webrtc-qr#56](https://github.com/NiKrause/libp2p-webrtc-qr/issues/56),
@@ -17,7 +19,7 @@ they are peers: the bytes travel directly, and no server ever holds them.
 ```bash
 npm install
 npm run dev       # the app
-npm test          # 34 unit tests, then 30 in Chromium and Firefox
+npm test          # 34 unit tests, then 40 in Chromium and Firefox
 ```
 
 ## The one rule
@@ -114,19 +116,39 @@ Versions this was measured on, so a later result can be compared: libp2p 3.3.8,
 0.8.0 — each the current release at the time. The hackathon example, where
 gossipsub did work, ran libp2p ^2.7.4.
 
-### OPFS first, the real folder second
+### The private folder first, the real one second
 
 Measured, not assumed:
 
-| | `showDirectoryPicker` (host filesystem) | OPFS |
+| | `showDirectoryPicker` (host filesystem) | the origin's private folder |
 | --- | --- | --- |
 | Chromium | **yes** | yes |
 | Firefox | no | yes |
 | WebKit | no | yes |
 
-So v1 stores in OPFS and works in every browser; picking a real folder is a
-Chromium bridge on top, not the foundation. Building on `showDirectoryPicker`
-would make two of three engines untestable from day one.
+So the foundation is the private folder, which every engine has, and picking a
+real one is a Chromium bridge on top. Building on `showDirectoryPicker` would
+have made two of three engines untestable from day one.
+
+**It turned out to need no second storage at all.** Both a picked directory and
+the private one are a `FileSystemDirectoryHandle`, and every call the store
+makes is on that interface — so stage 3 added a second way to *get* a handle,
+not a second way to use one. The module was renamed from `opfs.js` to
+`directory.js`, because the old name described where the handle came from rather
+than what the code did.
+
+Which means the tests written against the private folder cover the picked one
+too, for everything except the picking. That opens a native dialog and **no
+browser automation can drive it** — unlike `<input type=file>`, which Playwright
+can fill. It is verified by hand, and everything around it is verified here.
+
+Two parts are easy to get wrong and are worth naming. A handle survives in
+IndexedDB, but its **permission does not** — and asking again needs a user
+gesture, so the app offers the remembered folder rather than demanding
+permission on load. And there are **no change events** on a directory handle, in
+any engine, so noticing an edit made in a text editor means polling. What is
+polled is each file's size and modification time, not its contents: hashing a
+folder on a timer is how a sync tool becomes the reason a laptop's fan runs.
 
 ### Being present at the same time is a stage, not the design
 

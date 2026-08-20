@@ -15,6 +15,21 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      link_domain:
+        description: >-
+          Point the custom domain at this build. Off by default so a run from a
+          branch cannot take over what people are using - the CID this publishes
+          is enough to test with.
+        type: boolean
+        required: false
+        default: false
+      domain:
+        description: >-
+          Aleph custom domain to link (e.g. ablage.le-space.de). Leave empty for
+          the default below.
+        required: false
+        default: ''
 
 jobs:
   test:
@@ -47,6 +62,9 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       cid: ${{ steps.publish.outputs.ipfs_cid }}
+      cid_v0: ${{ steps.publish.outputs.ipfs_cid_v0 }}
+      item_hash: ${{ steps.publish.outputs.item_hash }}
+      store_processed: ${{ steps.publish.outputs.store_processed }}
     steps:
       - uses: actions/checkout@v4
 
@@ -104,4 +122,58 @@ jobs:
             echo
             echo 'Invite links made there point back to the same gateway path, so the second'
             echo 'phone lands on the same build.'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # Pointing the domain at what was just published. A separate job because it is
+  # a separate decision: publishing is always safe - a new CID takes nothing
+  # away - while moving the domain replaces what people have open.
+  link-domain:
+    needs: deploy
+    # The domain follows main. A dispatch has to ask for it, so a run from a
+    # branch cannot silently replace what is live.
+    #
+    # `store_processed` is the gate that matters: Aleph accepts the store
+    # message before the content is available, and linking a domain to a CID
+    # that has not landed yet points people at nothing.
+    if: >-
+      (github.ref == 'refs/heads/main' || inputs.link_domain) &&
+      needs.deploy.outputs.item_hash != '' &&
+      needs.deploy.outputs.store_processed == 'true'
+    runs-on: ubuntu-latest
+    env:
+      ABLAGE_DOMAIN: ablage.le-space.de
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install isolated Aleph deploy tooling
+        run: npm install --prefix /tmp/le-space-deployer @le-space/node@0.6.22
+
+      - name: Link the custom domain
+        env:
+          ALEPH_VM_MODE: site-domain-link
+          ALEPH_SITE_ITEM_HASH: ${{ needs.deploy.outputs.item_hash }}
+          ALEPH_SITE_IPFS_CID: ${{ needs.deploy.outputs.cid }}
+          ALEPH_SITE_IPFS_CID_V0: ${{ needs.deploy.outputs.cid_v0 }}
+          ALEPH_SITE_DOMAIN: ${{ inputs.domain || env.ABLAGE_DOMAIN }}
+          # Every path serves index.html: an invite link carries its payload in
+          # the fragment, and the second phone opening one must not meet a 404
+          # from the gateway before the page can read it.
+          ALEPH_SITE_DOMAIN_CATCH_ALL_PATH: /index.html
+          ALEPH_PRIVATE_KEY: ${{ secrets.ALEPH_PRIVATE_KEY }}
+        run: node --input-type=module -e "import('/tmp/le-space-deployer/node_modules/@le-space/node/index.js').then((m) => m.runSiteMode())"
+
+      - name: Say where it is
+        env:
+          DOMAIN: ${{ inputs.domain || env.ABLAGE_DOMAIN }}
+          CID: ${{ needs.deploy.outputs.cid }}
+        run: |
+          {
+            echo '## Linked'
+            echo
+            echo "**Live:** https://${DOMAIN}"
+            echo
+            echo "**IPFS CID:** \`${CID}\`"
+            echo
+            echo 'A domain that has just been created can take a few minutes before its'
+            echo 'certificate is issued. Until then the gateway link above still works.'
           } >> "$GITHUB_STEP_SUMMARY"

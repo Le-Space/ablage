@@ -1,0 +1,107 @@
+# Build and publish to Aleph IPFS.
+#
+# Modelled on the workflow in libp2p-webrtc-qr, which has been publishing this
+# way for months - copied rather than reinvented, including the retry and the
+# note about which gateway to hand somebody.
+#
+# The tests gate the deploy. A folder-sync app that ships broken syncs somebody's
+# files wrongly, which is worse than not shipping.
+name: Build & Deploy to Aleph IPFS
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.61.1-noble
+    timeout-minutes: 20
+    env:
+      # Firefox refuses to start when $HOME is not owned by the current user,
+      # which is the case for the default HOME inside this container. Playwright
+      # names this fix in its own launch error.
+      HOME: /root
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run test:unit
+
+      # The container ships the browsers, so both engines run without an install.
+      - run: npx playwright test
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    outputs:
+      cid: ${{ steps.publish.outputs.ipfs_cid }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npx vite build
+
+      - name: Install isolated Aleph deploy tooling
+        run: npm install --prefix /tmp/le-space-deployer @le-space/node@0.6.22
+
+      - name: Publish to Aleph IPFS
+        id: publish
+        env:
+          ALEPH_VM_MODE: site-publish
+          ALEPH_SITE_DIRECTORY: ${{ github.workspace }}/dist
+          ALEPH_SITE_PIN: 'true'
+          ALEPH_SITE_NAME: ablage
+          ALEPH_SITE_CHANNEL: ALEPH-CLOUDSOLUTIONS
+          ALEPH_PRIVATE_KEY: ${{ secrets.ALEPH_PRIVATE_KEY }}
+        run: |
+          for attempt in 1 2 3; do
+            if node --input-type=module -e "import('/tmp/le-space-deployer/node_modules/@le-space/node/index.js').then((m) => m.runSiteMode())"; then
+              exit 0
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              exit 1
+            fi
+            echo "Aleph publish attempt $attempt failed; retrying..."
+            sleep $((attempt * 15))
+          done
+
+      - name: Say where it is
+        if: steps.publish.outputs.ipfs_cid != ''
+        env:
+          CID: ${{ steps.publish.outputs.ipfs_cid }}
+        run: |
+          {
+            echo '## Published'
+            echo
+            echo "**IPFS CID:** ${CID}"
+            echo
+            echo "**Open it here:** https://ipfs.aleph.cloud/ipfs/${CID}/"
+            echo
+            echo "Alternative: https://${CID}.ipfs.dweb.link/"
+            echo
+            echo 'Not ipfs.public.aleph.sh - it serves an incomplete certificate chain for'
+            echo 'its own name, so it fails outside a browser.'
+            echo
+            echo 'Both of the above are HTTPS, which this app needs: the camera, the origin'
+            echo 'private filesystem and the share sheet are all unavailable over plain HTTP.'
+            echo
+            echo 'Invite links made there point back to the same gateway path, so the second'
+            echo 'phone lands on the same build.'
+          } >> "$GITHUB_STEP_SUMMARY"

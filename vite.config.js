@@ -5,5 +5,6 @@ export default {
   // reproducing the transport measurement. Vite's dependency scan would
   // otherwise try to resolve its imports against this package and fail loudly
   // about a gossipsub that was never meant to be installed here.
-  optimizeDeps: { entries: ['index.html'] }
+  optimizeDeps: { entries: ['index.html', 'harness.html'] },
+  build: { rollupOptions: { input: { app: 'index.html', harness: 'harness.html' } } }
 }

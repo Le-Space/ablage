@@ -1,0 +1,87 @@
+:root {
+  --bg: #0d1117;
+  --card: #151b23;
+  --border: #2a3441;
+  --text: #e6edf3;
+  --dim: #8b949e;
+  --ok: #3fb950;
+  --accent: #58a6ff;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 2rem 1rem 4rem;
+  background: var(--bg);
+  color: var(--text);
+  font: 16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+main { max-width: 44rem; margin: 0 auto; }
+h1 { margin: 0 0 0.25rem; font-size: 1.6rem; }
+h2 { margin: 0 0 0.75rem; font-size: 1rem; }
+h3 { margin: 0; font-size: 1rem; }
+.lede { margin: 0 0 2rem; color: var(--dim); }
+
+.card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card);
+  padding: 1.1rem 1.2rem;
+  margin-bottom: 1.25rem;
+}
+
+.actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.75rem; }
+
+button {
+  font: inherit;
+  color: var(--text);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.5rem 0.9rem;
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) { border-color: var(--accent); }
+button:disabled { opacity: 0.45; cursor: default; }
+button.primary { background: var(--accent); border-color: var(--accent); color: #06121f; font-weight: 600; }
+
+/* The three states differ in weight as well as colour: a status that is only a
+   colour is no status to anyone who cannot see the difference. */
+.state { margin: 0; font-size: 0.92rem; }
+.state.is-idle { color: var(--dim); }
+.state.is-waiting { color: var(--accent); }
+.state.is-connected { color: var(--ok); font-weight: 600; }
+
+.fold { margin-top: 0.9rem; font-size: 0.9rem; }
+.fold summary { cursor: pointer; color: var(--dim); }
+.row { display: flex; gap: 0.4rem; margin-top: 0.5rem; }
+/* min-width: 0, or the input refuses to shrink and pushes the button off a
+   narrow screen - which is every screen this matters on. */
+.row input { flex: 1; min-width: 0; font-family: ui-monospace, Menlo, monospace; font-size: 0.75rem;
+  background: #0b1017; color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 0.4rem 0.6rem; }
+
+.drop {
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  padding: 1.4rem;
+  text-align: center;
+  color: var(--dim);
+}
+.drop.is-over { border-color: var(--accent); color: var(--text); }
+.drop input { display: none; }
+.drop .link { color: var(--accent); text-decoration: underline; cursor: pointer; }
+
+.files { list-style: none; margin: 1rem 0 0; padding: 0; }
+.files li { display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem 0; border-top: 1px solid var(--border); }
+.files .name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.files .size { color: var(--dim); font-size: 0.85rem; white-space: nowrap; }
+.hint { color: var(--dim); font-size: 0.9rem; }
+
+.modal { border: 1px solid var(--border); border-radius: 12px; background: var(--card); color: var(--text); max-width: 26rem; }
+.modal::backdrop { background: rgba(0, 0, 0, 0.6); }
+.modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; }
+.close { border: 0; font-size: 1.3rem; line-height: 1; padding: 0 0.3rem; }

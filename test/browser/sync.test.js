@@ -22,7 +22,7 @@ const startSide = async (browser, name) => {
   const errors = []
 
   page.on('pageerror', error => errors.push(error.message))
-  await page.goto('/')
+  await page.goto('/harness.html')
   await page.waitForFunction(() => window.__ablage != null)
   await page.evaluate(n => window.__ablage.start(n), name)
 

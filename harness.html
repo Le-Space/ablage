@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>ablage — harness</title>
+  </head>
+  <body>
+    <!--
+      The browser tests drive this, not index.html. Loading both on one page
+      would start two libp2p nodes and two stores in the same context, and the
+      app would be racing its own test rig.
+    -->
+    <p>Test harness. The application is at <a href="/">/</a>.</p>
+    <script type="module" src="./src/harness.js"></script>
+  </body>
+</html>

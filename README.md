@@ -6,9 +6,9 @@ added, changed and deleted — with **no account and nothing in the middle**.
 Two devices pair once by scanning a QR code off each other's screen. After that
 they are peers: the bytes travel directly, and no server ever holds them.
 
-> **Stage 1 works.** A file added on one device arrives on the other over a QR
-> connection, and a deletion crosses too — asserted end to end in Chromium and
-> Firefox. There is no interface yet; the parts underneath came first.
+> **Stage 1 works, and has an interface.** Drop a file in, show a code, and it
+> is on the other device — a deletion crosses too. Asserted end to end in
+> Chromium and Firefox.
 >
 > The reasoning is in
 > [NiKrause/libp2p-webrtc-qr#56](https://github.com/NiKrause/libp2p-webrtc-qr/issues/56),
@@ -16,7 +16,8 @@ they are peers: the bytes travel directly, and no server ever holds them.
 
 ```bash
 npm install
-npm test          # 24 unit tests, then 20 in Chromium and Firefox
+npm run dev       # the app
+npm test          # 24 unit tests, then 28 in Chromium and Firefox
 ```
 
 ## The one rule

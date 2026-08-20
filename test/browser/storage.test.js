@@ -10,7 +10,7 @@ import { expect, test } from '@playwright/test'
  */
 
 const open = async (page, name) => {
-  await page.goto('/')
+  await page.goto('/harness.html')
   await page.waitForFunction(() => window.__ablage != null)
   await page.evaluate(n => window.__ablage.clear(n), name)
 

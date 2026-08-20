@@ -4,10 +4,68 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>ablage</title>
+    <link rel="stylesheet" href="./src/app/style.css" />
   </head>
   <body>
-    <h1>ablage</h1>
-    <p>Nothing to see yet — the interface comes after the parts underneath it.</p>
-    <script type="module" src="./src/harness.js"></script>
+    <main>
+      <h1>ablage</h1>
+      <p class="lede">
+        A folder that stays the same on two devices. No account, nothing in the middle.
+      </p>
+
+      <section class="card">
+        <h2>This device and the other one</h2>
+
+        <!--
+          "Not connected yet" rather than "out of sync". Two devices that have
+          never met are not in disagreement, and saying so would make the first
+          question "why does it say pending".
+        -->
+        <p id="link-state" class="state is-idle">Not connected yet.</p>
+
+        <div class="actions">
+          <button id="invite" class="primary" type="button">Show my code</button>
+          <button id="scan" type="button">Scan their code</button>
+        </div>
+
+        <details class="fold">
+          <summary>Or send it as a link</summary>
+          <div class="row">
+            <input id="invite-link" type="text" readonly aria-label="Invite link" />
+            <button id="copy" type="button">Copy</button>
+          </div>
+        </details>
+
+        <qr-status id="network" rows="ipv4 ipv6 overall" hidden></qr-status>
+      </section>
+
+      <section class="card">
+        <h2>Files</h2>
+
+        <div id="drop" class="drop">
+          <label for="pick">Drop files here, or <span class="link">choose them</span></label>
+          <input id="pick" type="file" multiple />
+        </div>
+
+        <ul id="files" class="files"></ul>
+        <p id="files-empty" class="hint">Nothing here yet.</p>
+      </section>
+
+      <dialog id="invite-box" class="modal">
+        <div class="modal-head">
+          <h3>Show this to the other device</h3>
+          <button class="close" data-close type="button" aria-label="Close">&times;</button>
+        </div>
+        <qr-invite id="code"></qr-invite>
+        <p class="hint">Their camera opens the same link — or send it to them.</p>
+        <div class="actions">
+          <button id="scan-reply" class="primary" type="button">Scan their reply</button>
+        </div>
+      </dialog>
+
+      <qr-scanner id="scanner"></qr-scanner>
+    </main>
+
+    <script type="module" src="./src/app/main.js"></script>
   </body>
 </html>

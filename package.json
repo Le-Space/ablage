@@ -5,7 +5,10 @@
   "type": "module",
   "description": "A folder that stays the same on two devices. No account, nothing in the middle.",
   "scripts": {
-    "test": "node --test test/*.test.js"
+    "test": "npm run test:unit && npm run test:browser",
+    "test:unit": "node --test test/*.test.js",
+    "test:browser": "playwright test",
+    "dev": "vite --host 127.0.0.1"
   },
   "dependencies": {
     "yjs": "^13.6.32"
@@ -13,5 +16,9 @@
   "engines": {
     "node": ">=22"
   },
-  "license": "Apache-2.0 OR MIT"
+  "license": "Apache-2.0 OR MIT",
+  "devDependencies": {
+    "@playwright/test": "^1.62.1",
+    "vite": "^8.2.2"
+  }
 }

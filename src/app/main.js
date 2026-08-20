@@ -17,6 +17,8 @@ import { baseline } from '../sync/baseline.js'
 import { fileIndex } from '../sync/file-index.js'
 import { Provider } from '../sync/provider.js'
 import { openStorage } from '../storage/index.js'
+import { createIntroPolicy } from '@le-space/libp2p-webrtc-qr/elements'
+import { elementStrings, initialLocale, locale, setLocale, t, translateDocument } from './i18n.js'
 import { tree } from './tree.js'
 import { askForFolder, canPickFolder, pickFolder } from '../storage/handle.js'
 import { watchFolder } from '../storage/watch.js'
@@ -41,6 +43,8 @@ const dropEl = $('drop')
 const pickEl = $('pick')
 const pickButton = $('pick-folder')
 const folderEl = $('folder')
+const localeEl = $('locale')
+const introEl = $('intro')
 
 const doc = new Y.Doc()
 const index = fileIndex(doc)
@@ -85,9 +89,9 @@ function fileRow (node) {
   name.className = 'name'
   name.textContent = node.name
   size.className = 'size'
-  size.textContent = `${node.size ?? 0} bytes`
+  size.textContent = t('files.size', { bytes: node.size ?? 0 })
   remove.type = 'button'
-  remove.textContent = 'Remove'
+  remove.textContent = t('files.remove')
   remove.addEventListener('click', async () => {
     await storage.remove(node.path)
     index.remove(node.path)
@@ -145,7 +149,7 @@ function attach (stream) {
   const send = message => stream.send(encode(JSON.stringify(message)))
 
   provider = new Provider(doc, send)
-  setState('Connected. Changes travel directly between the two devices.', 'connected')
+  setState(t('link.connected'), 'connected')
 
   ;(async () => {
     for await (const data of stream) {
@@ -153,7 +157,7 @@ function attach (stream) {
       // A remote change is a reason to look at storage again.
       pass()
     }
-    setState('The other device went away. Show a code to reconnect.', 'idle')
+    setState(t('link.gone'), 'idle')
   })().catch(report)
 
   return provider
@@ -176,9 +180,53 @@ async function start () {
   await pass()
 }
 
+// ---- language --------------------------------------------------------------
+
+/**
+ * Put the whole page in one language.
+ *
+ * The elements are handed their tables rather than reaching for a locale
+ * themselves: `strings` is the seam the library offers, and a library that read
+ * a global would be a library with an opinion about how an app stores one.
+ */
+function applyLocale (next) {
+  setLocale(next)
+
+  const strings = elementStrings()
+  codeEl.strings = strings.invite
+  scannerEl.strings = strings.scanner
+  networkEl.strings = strings.status
+  introEl.strings = strings.intro
+
+  document.documentElement.lang = locale()
+  localeEl.value = locale()
+  translateDocument()
+
+  // Written from JavaScript rather than marked in the markup, so `data-i18n`
+  // never reaches it.
+  showFolder()
+
+  // Rows carry their own text and are not repainted by anything else.
+  render()
+}
+
+localeEl.addEventListener('change', event => applyLocale(event.target.value))
+
+// ---- the introduction ------------------------------------------------------
+
+const introPolicy = createIntroPolicy({ storageKey: 'ablage.introSeen' })
+
+introEl.addEventListener('close', event => {
+  if (event.detail.remember) introPolicy.remember()
+})
+
 // ---- which folder ----------------------------------------------------------
 
 let unwatch = null
+// The folder line carries its own text and is not repainted by anything else,
+// so a language change has to be told - the same shape as the copy button in
+// libp2p-webrtc-qr's demo, and the same trap.
+let folderState = { kind: 'private', pending: null }
 
 /**
  * Say which folder this is, and offer a real one where that is possible.
@@ -188,13 +236,16 @@ let unwatch = null
  * not**, and asking for it again needs a user gesture. A page that demanded it
  * on load would be asking before it had said why.
  */
-function showFolder ({ kind, handle, pending }) {
+function showFolder (state = folderState) {
+  const { kind, handle, pending } = state
+
+  folderState = state
   unwatch?.()
   unwatch = null
 
   if (kind === 'picked') {
-    folderEl.textContent = `Syncing ${handle.name}`
-    pickButton.textContent = 'Choose another folder'
+    folderEl.textContent = t('folder.syncing', { name: handle.name })
+    pickButton.textContent = t('folder.another')
 
     // Only a picked folder can change behind the app's back. Nothing outside it
     // can write to the origin's private one.
@@ -203,10 +254,10 @@ function showFolder ({ kind, handle, pending }) {
   }
 
   folderEl.textContent = pending != null
-    ? `${pending.name} is remembered — give it back to continue there`
-    : 'Working in this browser\'s private storage'
+    ? t('folder.remembered', { name: pending.name })
+    : t('folder.private')
 
-  pickButton.textContent = pending != null ? `Use ${pending.name} again` : 'Choose a folder'
+  pickButton.textContent = pending != null ? t('folder.resume', { name: pending.name }) : t('folder.choose')
   pickButton.dataset.resume = pending != null ? 'yes' : ''
 }
 
@@ -306,7 +357,7 @@ dropEl.addEventListener('drop', async event => {
 
 inviteButton.addEventListener('click', async () => {
   try {
-    setState('Making a code…', 'waiting')
+    setState(t('link.making'), 'waiting')
     const offer = await peer.createOffer()
 
     // The code carries the *link*, so the other device's camera app can open it
@@ -317,7 +368,7 @@ inviteButton.addEventListener('click', async () => {
     codeEl.value = url.toString()
 
     inviteBox.showModal()
-    setState('Waiting for the other device to answer.', 'waiting')
+    setState(t('link.waiting'), 'waiting')
   } catch (error) {
     report(error)
   }
@@ -345,7 +396,7 @@ scanButton.addEventListener('click', () => {
     scannerEl.close()
 
     try {
-      setState('Answering…', 'waiting')
+      setState(t('link.answering'), 'waiting')
       const answer = await peer.acceptOffer(payloadOf(event.detail.text))
       const url = new URL(window.location.href)
       url.hash = `r=${encodeURIComponent(answer)}`
@@ -354,7 +405,7 @@ scanButton.addEventListener('click', () => {
       codeEl.value = url.toString()
       inviteBox.showModal()
       scanReplyButton.hidden = true
-      setState('Show this back to the other device.', 'waiting')
+      setState(t('link.showBack'), 'waiting')
     } catch (error) {
       report(error)
     }
@@ -364,8 +415,8 @@ scanButton.addEventListener('click', () => {
 copyButton.addEventListener('click', async () => {
   try {
     await navigator.clipboard.writeText(inviteLink.value)
-    copyButton.textContent = 'Copied'
-    setTimeout(() => { copyButton.textContent = 'Copy' }, 2000)
+    copyButton.textContent = t('link.copied')
+    setTimeout(() => { copyButton.textContent = t('link.copy') }, 2000)
   } catch {
     // Refused - insecure origin, a permission policy, some mobile browsers. The
     // field beside the button is the answer, so point at it.
@@ -398,7 +449,7 @@ async function consumeLink () {
   if (invite == null) return
 
   try {
-    setState('Answering the invite you opened…', 'waiting')
+    setState(t('link.fromLink'), 'waiting')
     const answer = await peer.acceptOffer(decodeURIComponent(invite))
     const url = new URL(window.location.href)
     url.hash = `r=${encodeURIComponent(answer)}`
@@ -407,10 +458,34 @@ async function consumeLink () {
     codeEl.value = url.toString()
     scanReplyButton.hidden = true
     inviteBox.showModal()
-    setState('Show this back to the other device.', 'waiting')
+    setState(t('link.showBack'), 'waiting')
   } catch (error) {
     report(error)
   }
 }
 
-start().then(consumeLink).catch(report)
+/**
+ * Somebody who arrived by invite does not get the introduction: they came to
+ * accept something, and a dialog stands in front of the only thing they came
+ * for. They see it on their next plain visit.
+ */
+function maybeIntroduce () {
+  // `?intro=off` keeps it shut. A modal blocks every click behind it, which is
+  // right for a person and fatal for a suite: every spec that clicks anything
+  // would wait on a dialog it never asked for. It is in the URL because that is
+  // the handle every way of opening a page shares - a fixture reaches one of
+  // them. The same trap, and the same answer, as in libp2p-webrtc-qr.
+  //
+  // Not only a test flag: a screen being shared, or an embedded demo, wants it
+  // too.
+  if (new URLSearchParams(location.search).get('intro') === 'off') return
+
+  const arrivedViaInvite = window.location.hash.length > 1
+
+  if (introPolicy.shouldOpen({ arrivedViaInvite })) {
+    introEl.open().catch(() => {})
+  }
+}
+
+applyLocale(initialLocale())
+start().then(consumeLink).then(maybeIntroduce).catch(report)

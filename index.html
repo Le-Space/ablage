@@ -8,31 +8,40 @@
   </head>
   <body>
     <main>
-      <h1>ablage</h1>
-      <p class="lede">
+      <header class="top">
+        <h1 data-i18n="page.title">ablage</h1>
+        <label class="locale">
+          <span class="visually-hidden" id="locale-label">Language</span>
+          <select id="locale" aria-labelledby="locale-label">
+            <option value="en">English</option>
+            <option value="de">Deutsch</option>
+          </select>
+        </label>
+      </header>
+      <p class="lede" data-i18n="page.lede">
         A folder that stays the same on two devices. No account, nothing in the middle.
       </p>
 
       <section class="card">
-        <h2>This device and the other one</h2>
+        <h2 data-i18n="link.heading">This device and the other one</h2>
 
         <!--
           "Not connected yet" rather than "out of sync". Two devices that have
           never met are not in disagreement, and saying so would make the first
           question "why does it say pending".
         -->
-        <p id="link-state" class="state is-idle">Not connected yet.</p>
+        <p id="link-state" class="state is-idle" data-i18n="link.idle">Not connected yet.</p>
 
         <div class="actions">
-          <button id="invite" class="primary" type="button">Show my code</button>
-          <button id="scan" type="button">Scan their code</button>
+          <button id="invite" class="primary" type="button" data-i18n="link.invite">Show my code</button>
+          <button id="scan" type="button" data-i18n="link.scan">Scan their code</button>
         </div>
 
         <details class="fold">
-          <summary>Or send it as a link</summary>
+          <summary data-i18n="link.fold">Or send it as a link</summary>
           <div class="row">
             <input id="invite-link" type="text" readonly aria-label="Invite link" />
-            <button id="copy" type="button">Copy</button>
+            <button id="copy" type="button" data-i18n="link.copy">Copy</button>
           </div>
         </details>
 
@@ -40,35 +49,47 @@
       </section>
 
       <section class="card">
-        <h2>Files</h2>
+        <h2 data-i18n="files.heading">Files</h2>
 
         <p id="folder" class="hint"></p>
         <!--
           Hidden where there is no picker at all, which is Firefox and WebKit -
           a control that cannot do anything is worse than its absence.
         -->
-        <button id="pick-folder" type="button" hidden>Choose a folder</button>
+        <button id="pick-folder" type="button" hidden data-i18n="folder.choose">Choose a folder</button>
 
         <div id="drop" class="drop">
-          <label for="pick">Drop files or a folder here, or <span class="link">choose them</span></label>
+          <label for="pick"><span data-i18n="files.drop">Drop files or a folder here, or </span><span class="link" data-i18n="files.choose">choose them</span></label>
           <input id="pick" type="file" multiple />
         </div>
 
         <ul id="files" class="files tree"></ul>
-        <p id="files-empty" class="hint">Nothing here yet.</p>
+        <p id="files-empty" class="hint" data-i18n="files.empty">Nothing here yet.</p>
       </section>
 
       <dialog id="invite-box" class="modal">
         <div class="modal-head">
-          <h3>Show this to the other device</h3>
+          <h3 data-i18n="link.modalTitle">Show this to the other device</h3>
           <button class="close" data-close type="button" aria-label="Close">&times;</button>
         </div>
         <qr-invite id="code"></qr-invite>
-        <p class="hint">Their camera opens the same link — or send it to them.</p>
+        <p class="hint" data-i18n="link.cameraHint">Their camera opens the same link — or send it to them.</p>
         <div class="actions">
-          <button id="scan-reply" class="primary" type="button">Scan their reply</button>
+          <button id="scan-reply" class="primary" type="button" data-i18n="link.scanReply">Scan their reply</button>
         </div>
       </dialog>
+
+      <!--
+        Shown once, on a first visit, and never to somebody who arrived by
+        invite - that person came to accept something, and a dialog stands in
+        front of the only thing they came for. The caveats and the live network
+        verdict come from the element; the slot is this app's own story.
+      -->
+      <qr-intro id="intro">
+        <p data-i18n="intro.what"></p>
+        <p data-i18n="intro.how"></p>
+        <p data-i18n="intro.who"></p>
+      </qr-intro>
 
       <qr-scanner id="scanner"></qr-scanner>
     </main>

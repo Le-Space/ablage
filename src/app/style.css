@@ -105,3 +105,34 @@ button.primary { background: var(--accent); border-color: var(--accent); color: 
   color: var(--text);
 }
 .folder-head:hover { color: var(--accent); }
+
+/* ---------- header and language ---------- */
+
+.top { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
+
+.locale select {
+  appearance: none;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--dim);
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 0.3rem 0.7rem;
+  cursor: pointer;
+}
+/* Native pickers draw their own list and do not inherit the page's palette, so
+   the options need a background of their own or they are white on white. */
+.locale option { background: var(--card); color: var(--text); }
+
+/* A label a screen reader needs and the eye does not: the control already shows
+   which language is selected. */
+.visually-hidden {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

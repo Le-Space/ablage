@@ -1,5 +1,7 @@
 # ablage
 
+**[Deutsch](README.de.md)** · English
+
 A folder on this device that stays the same as a folder on another device — files
 added, changed and deleted — with **no account and nothing in the middle**.
 
@@ -10,7 +12,8 @@ they are peers: the bytes travel directly, and no server ever holds them.
 > is on the other device. Edits update, deletions cross, and a change made on
 > both sides at once keeps both copies. On Chromium it can sync a **real folder**
 > you choose, and notices edits made outside the app. Asserted end to end in
-> Chromium and Firefox.
+> Chromium and Firefox. In English and German, with an introduction on a first
+> visit.
 >
 > The reasoning is in
 > [NiKrause/libp2p-webrtc-qr#56](https://github.com/NiKrause/libp2p-webrtc-qr/issues/56),
@@ -19,7 +22,7 @@ they are peers: the bytes travel directly, and no server ever holds them.
 ```bash
 npm install
 npm run dev       # the app
-npm test          # 43 unit tests, then 44 in Chromium and Firefox
+npm test          # 43 unit tests, then 58 in Chromium and Firefox
 ```
 
 ## The one rule

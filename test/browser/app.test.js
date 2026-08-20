@@ -12,7 +12,9 @@ const open = async page => {
   const errors = []
 
   page.on('pageerror', error => errors.push(error.message))
-  await page.goto('/')
+  // The introduction is a modal and would swallow every click below it. These
+  // tests are about the interface behind it; the introduction has its own file.
+  await page.goto('/?intro=off')
   await page.waitForFunction(() => document.getElementById('files-empty') != null)
 
   return errors

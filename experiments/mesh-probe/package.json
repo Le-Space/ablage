@@ -1,0 +1,20 @@
+{
+  "name": "mesh-probe",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 5190 --strictPort"
+  },
+  "dependencies": {
+    "@chainsafe/libp2p-gossipsub": "^14.1.2",
+    "@le-space/libp2p-webrtc-qr": "^0.8.0",
+    "@libp2p/identify": "^4.1.11",
+    "@libp2p/peer-id": "^6.0.14",
+    "libp2p": "^3.3.7",
+    "yjs": "^13.6.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.0",
+    "vite": "^7.0.0"
+  }
+}

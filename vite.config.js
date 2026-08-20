@@ -1,4 +1,11 @@
 export default {
+  // Relative, because this is served from an IPFS gateway under a path like
+  // `/ipfs/<cid>/`. The default `/` emits `/assets/app.js`, which the gateway
+  // resolves against its own root - a 404 for every asset, and a blank page
+  // that reports nothing useful. The webrtc-qr demo has carried this line for
+  // months and it was the one thing I did not copy.
+  base: './',
+
   server: { host: '127.0.0.1' },
   preview: { host: '127.0.0.1' },
   // `experiments/` is a separate package with its own dependencies, kept for

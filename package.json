@@ -6,7 +6,7 @@
   "description": "A folder that stays the same on two devices. No account, nothing in the middle.",
   "scripts": {
     "test": "npm run test:unit && npm run test:browser",
-    "test:unit": "node --test test/*.test.js",
+    "test:unit": "vite build --logLevel error && node --test test/*.test.js",
     "test:browser": "playwright test",
     "dev": "vite --host 127.0.0.1"
   },

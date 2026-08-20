@@ -11,6 +11,13 @@
     "dev": "vite --host 127.0.0.1"
   },
   "dependencies": {
+    "@helia/bitswap": "^4.0.11",
+    "@helia/libp2p": "^1.0.8",
+    "@helia/unixfs": "^8.0.5",
+    "@le-space/libp2p-webrtc-qr": "^0.8.0",
+    "@libp2p/identify": "^4.1.12",
+    "helia": "^7.1.7",
+    "libp2p": "^3.3.8",
     "yjs": "^13.6.32"
   },
   "engines": {

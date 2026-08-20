@@ -6,12 +6,18 @@ added, changed and deleted — with **no account and nothing in the middle**.
 Two devices pair once by scanning a QR code off each other's screen. After that
 they are peers: the bytes travel directly, and no server ever holds them.
 
-> **Nothing here works yet.** This repository is the plan and the decisions. The
-> reasoning behind it is in
-> [NiKrause/libp2p-webrtc-qr#56](https://github.com/NiKrause/libp2p-webrtc-qr/issues/56).
+> **Stage 1 works.** A file added on one device arrives on the other over a QR
+> connection, and a deletion crosses too — asserted end to end in Chromium and
+> Firefox. There is no interface yet; the parts underneath came first.
 >
-> One thing is no longer a plan: the transport underneath has been measured.
-> See *How the two sides sync* below.
+> The reasoning is in
+> [NiKrause/libp2p-webrtc-qr#56](https://github.com/NiKrause/libp2p-webrtc-qr/issues/56),
+> the shape of the code in [PLAN.md](PLAN.md).
+
+```bash
+npm install
+npm test          # 24 unit tests, then 20 in Chromium and Firefox
+```
 
 ## The one rule
 

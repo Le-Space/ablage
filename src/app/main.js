@@ -17,6 +17,7 @@ import { baseline } from '../sync/baseline.js'
 import { fileIndex } from '../sync/file-index.js'
 import { Provider } from '../sync/provider.js'
 import { openStorage } from '../storage/index.js'
+import { tree } from './tree.js'
 import { askForFolder, canPickFolder, pickFolder } from '../storage/handle.js'
 import { watchFolder } from '../storage/watch.js'
 
@@ -71,33 +72,72 @@ function report (error) {
   setState(error?.message ?? String(error), 'idle')
 }
 
+/** Folders the person collapsed. Open is the default; closing is the choice. */
+const collapsed = new Set()
+
+function fileRow (node) {
+  const li = document.createElement('li')
+  const name = document.createElement('span')
+  const size = document.createElement('span')
+  const remove = document.createElement('button')
+
+  li.className = 'file'
+  name.className = 'name'
+  name.textContent = node.name
+  size.className = 'size'
+  size.textContent = `${node.size ?? 0} bytes`
+  remove.type = 'button'
+  remove.textContent = 'Remove'
+  remove.addEventListener('click', async () => {
+    await storage.remove(node.path)
+    index.remove(node.path)
+    await pass()
+  })
+
+  li.append(name, size, remove)
+  return li
+}
+
+function folderRow (node) {
+  const li = document.createElement('li')
+  const head = document.createElement('button')
+  const shut = collapsed.has(node.path)
+
+  li.className = 'folder'
+  head.type = 'button'
+  head.className = 'folder-head'
+  head.setAttribute('aria-expanded', String(!shut))
+  head.textContent = `${shut ? '▸' : '▾'} ${node.name}`
+  head.addEventListener('click', () => {
+    // Toggling is a view, not a change: no reconciliation, no network.
+    if (shut) collapsed.delete(node.path)
+    else collapsed.add(node.path)
+    render()
+  })
+
+  li.append(head)
+
+  if (!shut) {
+    li.append(list(node.children))
+  }
+
+  return li
+}
+
+function list (nodes) {
+  const ul = document.createElement('ul')
+
+  ul.className = 'files'
+  ul.append(...nodes.map(node => node.kind === 'folder' ? folderRow(node) : fileRow(node)))
+
+  return ul
+}
+
 async function render () {
-  const paths = index.paths().sort()
+  const entries = index.paths().sort().map(path => ({ path, size: index.get(path)?.size }))
 
-  filesEl.replaceChildren(...paths.map(path => {
-    const entry = index.get(path)
-    const li = document.createElement('li')
-    const name = document.createElement('span')
-    const size = document.createElement('span')
-    const remove = document.createElement('button')
-
-    name.className = 'name'
-    name.textContent = path
-    size.className = 'size'
-    size.textContent = `${entry.size} bytes`
-    remove.type = 'button'
-    remove.textContent = 'Remove'
-    remove.addEventListener('click', async () => {
-      await storage.remove(path)
-      index.remove(path)
-      await pass()
-    })
-
-    li.append(name, size, remove)
-    return li
-  }))
-
-  emptyEl.hidden = paths.length > 0
+  filesEl.replaceChildren(...list(tree(entries)).childNodes)
+  emptyEl.hidden = entries.length > 0
 }
 
 /** Both halves of a connection end here, whichever side dialled. */
@@ -193,7 +233,10 @@ pickButton.addEventListener('click', async () => {
 
 async function addFiles (fileList) {
   for (const file of fileList) {
-    await storage.write(file.name, new Uint8Array(await file.arrayBuffer()))
+    // `webkitRelativePath` is what a chosen *folder* fills in - without it a
+    // whole directory would arrive as a heap of files at the top level, and the
+    // nesting the index was built for would never occur.
+    await storage.write(file.webkitRelativePath || file.name, new Uint8Array(await file.arrayBuffer()))
   }
 
   await pass()
@@ -216,7 +259,48 @@ for (const type of ['dragleave', 'drop']) {
   })
 }
 
-dropEl.addEventListener('drop', event => addFiles(event.dataTransfer.files))
+/**
+ * A dropped folder is not in `files` - it is an entry in `items`, and walking it
+ * is the only way to reach what is inside. Without this, dragging a folder in
+ * silently does nothing at all, which reads as the app being broken.
+ */
+async function walkEntry (entry, prefix = '') {
+  if (entry.isFile) {
+    const file = await new Promise((resolve, reject) => entry.file(resolve, reject))
+    const path = prefix ? `${prefix}/${file.name}` : file.name
+
+    await storage.write(path, new Uint8Array(await file.arrayBuffer()))
+    return
+  }
+
+  const reader = entry.createReader()
+
+  // `readEntries` returns a page at a time and signals the end with an empty
+  // batch. Reading it once gives the first hundred and quietly loses the rest.
+  for (;;) {
+    const batch = await new Promise((resolve, reject) => reader.readEntries(resolve, reject))
+
+    if (batch.length === 0) break
+
+    for (const child of batch) {
+      await walkEntry(child, prefix ? `${prefix}/${entry.name}` : entry.name)
+    }
+  }
+}
+
+dropEl.addEventListener('drop', async event => {
+  const entries = [...event.dataTransfer.items]
+    .map(item => item.webkitGetAsEntry?.())
+    .filter(Boolean)
+
+  if (entries.some(entry => entry.isDirectory)) {
+    for (const entry of entries) await walkEntry(entry)
+    await pass()
+    return
+  }
+
+  await addFiles(event.dataTransfer.files)
+})
 
 // ---- pairing ---------------------------------------------------------------
 

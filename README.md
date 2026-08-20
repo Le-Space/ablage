@@ -6,11 +6,11 @@ added, changed and deleted — with **no account and nothing in the middle**.
 Two devices pair once by scanning a QR code off each other's screen. After that
 they are peers: the bytes travel directly, and no server ever holds them.
 
-> **Stages 1 to 3 work.** Drop a file in, show a code, and it is on the other
-> device. Edits update, deletions cross, and a change made on both sides at once
-> keeps both copies. On Chromium it can sync a **real folder** you choose, and
-> notices edits made outside the app. Asserted end to end in Chromium and
-> Firefox.
+> **All four stages work.** Drop files or a whole folder in, show a code, and it
+> is on the other device. Edits update, deletions cross, and a change made on
+> both sides at once keeps both copies. On Chromium it can sync a **real folder**
+> you choose, and notices edits made outside the app. Asserted end to end in
+> Chromium and Firefox.
 >
 > The reasoning is in
 > [NiKrause/libp2p-webrtc-qr#56](https://github.com/NiKrause/libp2p-webrtc-qr/issues/56),
@@ -19,7 +19,7 @@ they are peers: the bytes travel directly, and no server ever holds them.
 ```bash
 npm install
 npm run dev       # the app
-npm test          # 34 unit tests, then 40 in Chromium and Firefox
+npm test          # 43 unit tests, then 44 in Chromium and Firefox
 ```
 
 ## The one rule
@@ -211,8 +211,17 @@ says nothing about how far apart the devices holding it are.
    a test that proves nothing is lost.
 3. **The real folder (Chromium)** — `showDirectoryPicker`, the handle persisted
    in IndexedDB, and a watcher. Feature-detected; OPFS stays the store elsewhere.
-4. **Trees** — by then display and traversal, because the paths were always
-   paths.
+4. ~~**Trees**~~ — and it was display and traversal, exactly because the paths
+   were always paths. The tree builder is a pure function with nine tests and no
+   browser in sight; folders come before files the way every file manager does
+   it, and collapsing one is a view rather than a change.
+
+   Dropping a *folder* needed its own work, though. A dropped directory is not
+   in `dataTransfer.files` at all — it is an entry in `items`, and walking it is
+   the only way to reach what is inside. Without that, dragging a folder in does
+   nothing whatsoever, which reads as the app being broken. `readEntries` also
+   returns one page at a time and signals the end with an empty batch, so
+   reading it once gives the first hundred files and silently loses the rest.
 
 Not in scope until asked: encryption at rest, more than two peers, partial sync,
 and anything resembling a server.

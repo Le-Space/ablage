@@ -62,6 +62,51 @@ test.describe('the interface', () => {
     await expect(page.locator('#files-empty')).toBeVisible()
   })
 
+  test('a nested file is drawn as a tree, not as a path in a flat row', async ({ page }) => {
+    await open(page)
+
+    // Written under a nested path directly: `setInputFiles` cannot fill in a
+    // `webkitRelativePath`, and what is being tested is the drawing.
+    await page.evaluate(async () => {
+      const { directoryStorage } = await import('/src/storage/directory.js')
+      const store = await directoryStorage()
+      await store.write('notes/2026/august.md', new TextEncoder().encode('notiz'))
+    })
+
+    // Choosing a file is what triggers a pass, and that pass finds both.
+    await page.setInputFiles('#pick', {
+      name: 'top.txt',
+      mimeType: 'text/plain',
+      buffer: Buffer.from('oben')
+    })
+
+    // The promise the index made in its first commit, arriving on screen: the
+    // path was always whole, so this is drawing rather than a migration.
+    await expect(page.locator('.folder-head').first()).toContainText('notes')
+  })
+
+  test('a folder can be collapsed, and that is a view rather than a change', async ({ page }) => {
+    await open(page)
+
+    await page.evaluate(async () => {
+      const { directoryStorage } = await import('/src/storage/directory.js')
+      const store = await directoryStorage()
+      await store.write('archive/old.txt', new TextEncoder().encode('alt'))
+    })
+    await page.setInputFiles('#pick', { name: 'top.txt', mimeType: 'text/plain', buffer: Buffer.from('oben') })
+
+    const head = page.locator('.folder-head').first()
+    await expect(head).toHaveAttribute('aria-expanded', 'true')
+    await expect(page.locator('.file .name', { hasText: 'old.txt' })).toBeVisible()
+
+    await head.click()
+
+    await expect(head).toHaveAttribute('aria-expanded', 'false')
+    await expect(page.locator('.file .name', { hasText: 'old.txt' })).toHaveCount(0)
+    // The file itself is untouched - only its row is gone.
+    await expect(page.locator('.file .name', { hasText: 'top.txt' })).toBeVisible()
+  })
+
   test('the readiness panel is the library element, not a copy of one', async ({ page }) => {
     await open(page)
 

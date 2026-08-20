@@ -85,3 +85,23 @@ button.primary { background: var(--accent); border-color: var(--accent); color: 
 .modal::backdrop { background: rgba(0, 0, 0, 0.6); }
 .modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; }
 .close { border: 0; font-size: 1.3rem; line-height: 1; padding: 0 0.3rem; }
+
+/* ---------- the tree ---------- */
+
+.tree .files { margin: 0; padding-left: 1.1rem; border-left: 1px solid var(--border); }
+.tree li.folder { display: block; padding: 0; border-top: 1px solid var(--border); }
+.tree li.file { border-top: 1px solid var(--border); }
+/* The nested lists supply their own separators, so the outer one would double
+   them up on the first row of every folder. */
+.tree .files li:first-child { border-top: 0; }
+
+.folder-head {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  padding: 0.5rem 0;
+  font: inherit;
+  color: var(--text);
+}
+.folder-head:hover { color: var(--accent); }

@@ -35,7 +35,12 @@ jobs:
   test:
     runs-on: ubuntu-latest
     container:
-      image: mcr.microsoft.com/playwright:v1.61.1-noble
+      # Must match `@playwright/test` in package.json. The image ships the
+      # browsers for exactly its own version, and a mismatch does not say so:
+      # Firefox simply is not where the runner looks, and every Firefox test
+      # fails with an executable-not-found that reads like a broken container.
+      # The step below turns that into a sentence.
+      image: mcr.microsoft.com/playwright:v1.62.1-noble
     timeout-minutes: 20
     env:
       # Firefox refuses to start when $HOME is not owned by the current user,
@@ -51,6 +56,19 @@ jobs:
           cache: npm
 
       - run: npm ci
+
+      - name: The image has to match the dependency
+        shell: bash
+        run: |
+          installed="$(node -p "require('@playwright/test/package.json').version")"
+          image="$(npx playwright --version | awk '{print $2}')"
+
+          if [ "$installed" != "$image" ]; then
+            echo "::error::@playwright/test is $installed but this container ships browsers for $image. Update the image tag in this workflow to v$installed-noble."
+            exit 1
+          fi
+
+          echo "Playwright $installed, browsers to match."
 
       - run: npm run test:unit
 

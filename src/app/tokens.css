@@ -1,0 +1,150 @@
+/* Le-Space design tokens — Space theme */
+:root {
+  /* Brand — Le-Space Kernpalette (docs/le-space-brand) */
+  --ls-red: #ff6b5b;          /* Signal Coral — Primärakzent, lokaler Knoten */
+  --ls-red-bright: #ff8577;   /* helle Coral-Variante (Glow / self-node) */
+  --ls-accent: #58c7f3;       /* Sync Cyan — Links, Peers, Sync */
+  --ls-accent-2: #a78bfa;     /* Infrastruktur */
+  --ls-green: #3edc97;        /* Identität — live / connected */
+  --ls-amber: #ffc24b;        /* Daten */
+
+  /* Space background scale — Deep Space → Nebula → Horizon */
+  --ls-bg-0: #0b0e15;         /* Deep Space — Hintergrund */
+  --ls-bg-1: #10141f;
+  --ls-bg-2: #141926;         /* Nebula — Cards, Panels */
+  --ls-bg-3: #232b3d;         /* Horizon — Borders */
+
+  /* Text */
+  --ls-text: #edf1f8;         /* Starlight — Überschriften */
+  --ls-text-dim: #a8b3c7;     /* Stardust — Fließtext */
+  --ls-text-faint: #5c677a;
+
+  /* Surfaces */
+  --ls-card: rgba(255, 255, 255, 0.04);
+  --ls-card-border: rgba(255, 255, 255, 0.09);
+  --ls-card-hover: rgba(255, 255, 255, 0.08);
+
+  /* Typography */
+  --ls-font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --ls-font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+
+  /* Layout */
+  --ls-max-width: 1120px;
+  --ls-radius: 14px;
+  --ls-radius-sm: 8px;
+
+  /* Effects */
+  --ls-glow-red: 0 0 24px rgba(255, 107, 91, 0.35);
+  --ls-glow-accent: 0 0 20px rgba(88, 199, 243, 0.3);
+}
+
+/*
+ * Light theme — scaffolding only.
+ *
+ * Applied by [data-theme="light"] on <html>, which theme.js sets before paint.
+ * The brand accents keep their hue but are darkened where they would fail
+ * contrast on white: Sync Cyan and Identity Green are bright enough for dark
+ * backgrounds and unreadable on light ones.
+ *
+ * Known gaps, deliberately out of scope for the scaffolding (see the notes in
+ * the chat that accompanied this change):
+ *   - Project screenshots are captured in the demos' dark mode, so they stay
+ *     dark on a light page. They carry a frame, so they read as pictures.
+ *   - NetworkViz draws light nodes on a dark canvas and needs its own pass.
+ */
+:root[data-theme='light'] {
+  --ls-red: #d94733;
+  --ls-red-bright: #e2604c;
+  --ls-accent: #0b7fae;
+  --ls-accent-2: #6d47d9;
+  --ls-green: #12855a;
+  --ls-amber: #a86a00;
+
+  --ls-bg-0: #f7f8fb;
+  --ls-bg-1: #eef1f6;
+  --ls-bg-2: #ffffff;
+  --ls-bg-3: #d9dfe9;
+
+  --ls-text: #10141f;
+  --ls-text-dim: #47536b;
+  --ls-text-faint: #7c879b;
+
+  --ls-card: rgba(16, 20, 31, 0.025);
+  --ls-card-border: rgba(16, 20, 31, 0.12);
+  --ls-card-hover: rgba(16, 20, 31, 0.05);
+
+  --ls-glow-red: 0 0 24px rgba(217, 71, 51, 0.18);
+  --ls-glow-accent: 0 0 20px rgba(11, 127, 174, 0.16);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  color-scheme: dark;
+}
+
+html[data-theme='light'] {
+  color-scheme: light;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background: var(--ls-bg-0);
+  color: var(--ls-text);
+  font-family: var(--ls-font);
+  -webkit-font-smoothing: antialiased;
+  line-height: 1.6;
+}
+
+h1, h2, h3 {
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+a {
+  color: var(--ls-accent);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+.ls-container {
+  max-width: var(--ls-max-width);
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.ls-section {
+  padding: 96px 0;
+  position: relative;
+}
+
+.ls-section-title {
+  font-size: clamp(1.6rem, 3.5vw, 2.4rem);
+  margin: 0 0 8px;
+}
+
+.ls-section-sub {
+  color: var(--ls-text-dim);
+  max-width: 640px;
+  margin: 0 0 48px;
+}
+
+.ls-badge {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-family: var(--ls-font-mono);
+  padding: 2px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--ls-card-border);
+  color: var(--ls-text-dim);
+  white-space: nowrap;
+}

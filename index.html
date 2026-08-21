@@ -3,13 +3,48 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>ablage</title>
+    <title>ablage — a folder shared between two devices</title>
+    <meta name="description" content="A folder that stays the same on two devices. End-to-end encrypted, peer to peer, with no account and nothing in the middle." />
+    <link rel="canonical" href="https://ablage.le-space.de/" />
+
+    <!--
+      Absolute, deliberately. A crawler resolving `/og-image.png` against its own
+      host gets nothing, and the same page is served from an IPFS gateway under
+      `/ipfs/<cid>/` where a relative path points somewhere else again. The
+      assets are relative - see `base: './'` in the vite config - and only these
+      are not.
+    -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://ablage.le-space.de/" />
+    <meta property="og:title" content="ablage — a folder shared between two devices" />
+    <meta property="og:description" content="A folder that stays the same on two devices. End-to-end encrypted, peer to peer, with no account and nothing in the middle." />
+    <meta property="og:image" content="https://ablage.le-space.de/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="ablage — a folder shared between two devices" />
+    <meta name="twitter:description" content="A folder that stays the same on two devices. End-to-end encrypted, peer to peer, with no account and nothing in the middle." />
+    <meta name="twitter:image" content="https://ablage.le-space.de/og-image.png" />
+
+    <link rel="icon" href="./icon-192.png" />
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+    <meta name="theme-color" content="#0b0e15" />
     <link rel="stylesheet" href="./src/app/style.css" />
   </head>
   <body>
     <main>
       <header class="top">
-        <h1 data-i18n="page.title">ablage</h1>
+        <span class="brand">
+          <span id="mark" class="mark"></span>
+          <h1 data-i18n="page.title">ablage</h1>
+        </span>
+        <label class="locale">
+          <span class="visually-hidden" id="view-label">View</span>
+          <select id="view-mode" aria-labelledby="view-label">
+            <option value="simple">Simple</option>
+            <option value="technical">Technical</option>
+          </select>
+        </label>
         <label class="locale">
           <span class="visually-hidden" id="locale-label">Language</span>
           <select id="locale" aria-labelledby="locale-label">
@@ -44,6 +79,25 @@
             <button id="copy" type="button" data-i18n="link.copy">Copy</button>
           </div>
         </details>
+
+        <!--
+          Off by default, and behind the technical view, because it is a
+          measurement instrument rather than a feature: a connection built from
+          a reconstructed SDP goes silent under load often enough
+          (NiKrause/libp2p-webrtc-qr#83) that a quarter-size code is not worth
+          it by default. Reading is never affected - this device accepts both
+          formats whatever the box says - so ticking it only changes what it
+          hands out.
+
+          The link names QWBP rather than hiding the idea behind "short". What
+          travels here is not wire-compatible with it: the packing is QWBP's,
+          the signature over those bytes is ours, and the small print says so
+          instead of letting the link imply interop.
+        -->
+        <label class="option" data-view="technical">
+          <input id="compact-payload" type="checkbox" />
+          <span data-i18n-html="compact.label"></span>
+        </label>
 
         <qr-status id="network" rows="ipv4 ipv6 overall" hidden></qr-status>
       </section>
@@ -88,7 +142,23 @@
       <qr-intro id="intro">
         <p data-i18n="intro.what"></p>
         <p data-i18n="intro.how"></p>
+        <p data-i18n="intro.secure"></p>
         <p data-i18n="intro.who"></p>
+
+        <!--
+          The technical half of the story, behind the same switch that shows the
+          element's own caveats - so one control decides how much detail this
+          dialog carries, rather than two.
+        -->
+        <div data-view="technical" class="intro-tech">
+          <h3 data-i18n="how.heading"></h3>
+          <ul>
+            <li data-i18n="how.dtls"></li>
+            <li data-i18n="how.signed"></li>
+            <li data-i18n="how.bytes"></li>
+            <li data-i18n="how.open"></li>
+          </ul>
+        </div>
       </qr-intro>
 
       <qr-scanner id="scanner"></qr-scanner>

@@ -9,6 +9,10 @@ export default {
     title: 'ablage',
     lede: 'A folder that stays the same on two devices. No account, nothing in the middle.'
   },
+  compact: {
+    label: 'Short code (<a href="https://magarcia.github.io/qwbp/spec.html" target="_blank" rel="noreferrer">QWBP</a>-style) <small>experimental, and signed rather than bare</small>'
+  },
+  view: { label: 'View', simple: 'Simple', technical: 'Technical' },
   language: { label: 'Language' },
   link: {
     heading: 'This device and the other one',
@@ -48,6 +52,14 @@ export default {
   intro: {
     what: 'This is a folder shared between two of your devices. There is no account, and no server in the middle holding your files.',
     how: 'Show the code on this screen to the other device, or send it the link. Once the two are connected, whatever you put in the folder appears on both.',
+    secure: 'The connection is encrypted end to end. Nobody in between can read what crosses it — not a network operator, not a gateway, and not us.',
     who: 'Both devices have to be open at the same time. Delivery when they are apart is not built yet, and the folder says so rather than pretending.'
+  },
+  how: {
+    heading: 'How that holds up',
+    dtls: 'The encryption is DTLS, the same layer a browser uses for any WebRTC connection. It is not something added on top and it cannot be switched off.',
+    signed: 'What the QR code carries is signed with this device\u2019s own key, and the signature covers the certificate fingerprint of the connection. So the encrypted channel is bound to the device you scanned — swapping in another one invalidates the signature before anything is dialled.',
+    bytes: 'The file contents travel over bitswap on that same connection, addressed by their content hash. Only the list of paths and hashes is shared as a document; the bytes are never inside it.',
+    open: 'None of this is ours to be trusted about: it is libp2p, WebRTC and Helia, and the parts specific to this handshake are in the open at NiKrause/libp2p-webrtc-qr.'
   }
 }

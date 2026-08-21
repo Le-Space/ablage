@@ -22,7 +22,7 @@ they are peers: the bytes travel directly, and no server ever holds them.
 ```bash
 npm install
 npm run dev       # the app
-npm test          # 43 unit tests, then 58 in Chromium and Firefox
+npm test          # 45 unit tests, then 92 in Chromium and Firefox
 ```
 
 ## The one rule
@@ -118,6 +118,25 @@ Versions this was measured on, so a later result can be compared: libp2p 3.3.8,
 `@chainsafe/libp2p-gossipsub` 14.1.2, yjs 13.6.32, `@le-space/libp2p-webrtc-qr`
 0.8.0 — each the current release at the time. The hackathon example, where
 gossipsub did work, ran libp2p ^2.7.4.
+
+### The short code is offered, and off
+
+`@le-space/libp2p-webrtc-qr` can pack an invite the way
+[QWBP](https://magarcia.github.io/qwbp/spec.html) does — about a quarter the
+characters, so **one static code instead of an animated sequence**. It is here,
+behind the technical view, and **unticked by default**.
+
+Not because it is unfinished: a connection built from a reconstructed SDP goes
+silent under load — four of eight runs measured upstream against zero of eight on
+the long format
+([libp2p-webrtc-qr#83](https://github.com/NiKrause/libp2p-webrtc-qr/issues/83)).
+For a folder sync, where load is the normal case rather than the exception, that
+is the wrong default.
+
+*Reading* is unconditional: this app accepts either format whatever the box says,
+and answers in the format the invite arrived in. Ticking it only changes what
+this device hands out. What travels is not wire-compatible with QWBP — the
+packing is theirs, the signature over those bytes is ours.
 
 ### The private folder first, the real one second
 

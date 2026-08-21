@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96">
+  <!-- The mark on its own, for a tab and a home screen. Same grammar: coral is
+       here, cyan is the other one, dashed is the sync between them. -->
+  <path d="M8 34 h20 l6 8 h22 a4 4 0 0 1 4 4 v26 a4 4 0 0 1 -4 4 h-48 a4 4 0 0 1 -4 -4 v-34 a4 4 0 0 1 4 -4 z" fill="#FF6B5B" />
+  <path d="M56 22 h14 l4 6 h14 a3 3 0 0 1 3 3 v20 a3 3 0 0 1 -3 3 h-32 a3 3 0 0 1 -3 -3 v-26 a3 3 0 0 1 3 -3 z"
+        fill="none" stroke="#58C7F3" stroke-width="5" stroke-linejoin="round" />
+  <line x1="52" y1="60" x2="70" y2="60" stroke="#58C7F3" stroke-width="4" stroke-linecap="round" stroke-dasharray="0.1 8" />
+</svg>

@@ -19,7 +19,9 @@ import { Provider } from '../sync/provider.js'
 import { openStorage } from '../storage/index.js'
 import { createIntroPolicy } from '@le-space/libp2p-webrtc-qr/elements'
 import { elementStrings, initialLocale, locale, setLocale, t, translateDocument } from './i18n.js'
+import { fileIcon, folderIcon, mark } from './icons.js'
 import { tree } from './tree.js'
+import { applyViewMode, isSimple } from './view-mode.js'
 import { askForFolder, canPickFolder, pickFolder } from '../storage/handle.js'
 import { watchFolder } from '../storage/watch.js'
 
@@ -45,6 +47,9 @@ const pickButton = $('pick-folder')
 const folderEl = $('folder')
 const localeEl = $('locale')
 const introEl = $('intro')
+const viewModeEl = $('view-mode')
+const compactEl = $('compact-payload')
+const markEl = $('mark')
 
 const doc = new Y.Doc()
 const index = fileIndex(doc)
@@ -86,6 +91,7 @@ function fileRow (node) {
   const remove = document.createElement('button')
 
   li.className = 'file'
+  li.insertAdjacentHTML('afterbegin', fileIcon())
   name.className = 'name'
   name.textContent = node.name
   size.className = 'size'
@@ -111,7 +117,10 @@ function folderRow (node) {
   head.type = 'button'
   head.className = 'folder-head'
   head.setAttribute('aria-expanded', String(!shut))
-  head.textContent = `${shut ? '▸' : '▾'} ${node.name}`
+  // The chevron says open or shut; the folder mark says what kind of thing this
+  // is. Two different questions, so two different marks rather than one glyph
+  // doing both jobs badly.
+  head.innerHTML = `<span class="chev">${shut ? '▸' : '▾'}</span>${folderIcon()}<span>${node.name}</span>`
   head.addEventListener('click', () => {
     // Toggling is a view, not a change: no reconciliation, no network.
     if (shut) collapsed.delete(node.path)
@@ -202,6 +211,12 @@ function applyLocale (next) {
   localeEl.value = locale()
   translateDocument()
 
+  // The switch labels are the app's own words, and a <select>'s options are not
+  // reached by `data-i18n` on the element itself.
+  viewModeEl.options[0].textContent = t('view.simple')
+  viewModeEl.options[1].textContent = t('view.technical')
+  $('view-label').textContent = t('view.label')
+
   // Written from JavaScript rather than marked in the markup, so `data-i18n`
   // never reaches it.
   showFolder()
@@ -211,6 +226,23 @@ function applyLocale (next) {
 }
 
 localeEl.addEventListener('change', event => applyLocale(event.target.value))
+
+// ---- how much detail -------------------------------------------------------
+
+/**
+ * One control for two things: what this page shows, and whether the library's
+ * introduction carries its own caveats. Two switches for the same question
+ * would be one too many.
+ */
+function applyView (next) {
+  applyViewMode(next)
+  viewModeEl.value = isSimple() ? 'simple' : 'technical'
+  introEl.technical = !isSimple()
+}
+
+viewModeEl.addEventListener('change', event => applyView(event.target.value === 'simple'))
+
+markEl.innerHTML = mark()
 
 // ---- the introduction ------------------------------------------------------
 
@@ -358,7 +390,9 @@ dropEl.addEventListener('drop', async event => {
 inviteButton.addEventListener('click', async () => {
   try {
     setState(t('link.making'), 'waiting')
-    const offer = await peer.createOffer()
+    // Read per invite rather than held in a variable: the box can be ticked
+    // between two codes, and whoever ticks it means the next one.
+    const offer = await peer.createOffer({ compact: compactEl.checked })
 
     // The code carries the *link*, so the other device's camera app can open it
     // without this page being open there first.
@@ -487,5 +521,6 @@ function maybeIntroduce () {
   }
 }
 
+applyView()
 applyLocale(initialLocale())
 start().then(consumeLink).then(maybeIntroduce).catch(report)

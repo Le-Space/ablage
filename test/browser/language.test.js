@@ -246,3 +246,37 @@ test.describe('why there is music', () => {
     expect(Number(response.headers()['content-length'])).toBeGreaterThan(1_000_000)
   })
 })
+
+test.describe('the network panel while the language changes under it', () => {
+  test('the measuring line follows, instead of staying behind in English', async ({ page }) => {
+    await open(page)
+    await shut(page)
+
+    // Synchronous and inside one evaluate: a probe is a few STUN round trips
+    // and can settle before a locator poll ever runs, and then this asserts
+    // nothing at all.
+    //
+    // This is the consumer side of libp2p-webrtc-qr#100 - the element wrote its
+    // caption once when the probe started and never again, so a language change
+    // mid-probe left that one line English while the panel around it turned
+    // German. It is this app that hits it, because the switch is reachable
+    // while the check is running.
+    const seen = await page.evaluate(async () => {
+      const el = document.getElementById('network')
+      const caption = () => el.shadowRoot.querySelector('.probe-caption').textContent
+
+      const done = el.probe()
+      const before = caption()
+
+      document.getElementById('locale').value = 'de'
+      document.getElementById('locale').dispatchEvent(new Event('change'))
+      const after = caption()
+
+      await done
+      return { before, after }
+    })
+
+    expect(seen.before).toContain('Checking')
+    expect(seen.after).toBe('Prüfe, was dieses Netz zulässt…')
+  })
+})

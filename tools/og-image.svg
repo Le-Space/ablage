@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <!--
+    The social card. Deep Space behind, the ablage mark, the name, and the one
+    sentence that says what it is.
+
+    Written as SVG and rasterised by a script rather than drawn by hand, so a
+    change to the wording is an edit rather than a design session - and so the
+    palette below can be checked against tokens.css instead of remembered.
+  -->
+  <defs>
+    <radialGradient id="glow" cx="22%" cy="38%" r="55%">
+      <stop offset="0%" stop-color="#FF6B5B" stop-opacity="0.16" />
+      <stop offset="100%" stop-color="#FF6B5B" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+
+  <rect width="1200" height="630" fill="#0b0e15" />
+  <rect width="1200" height="630" fill="url(#glow)" />
+
+  <!-- The mark: this folder filled coral, the other one a cyan outline, the
+       sync between them dashed because it is not always there. -->
+  <g transform="translate(96, 214) scale(2.1)">
+    <path d="M8 34 h20 l6 8 h22 a4 4 0 0 1 4 4 v26 a4 4 0 0 1 -4 4 h-48 a4 4 0 0 1 -4 -4 v-34 a4 4 0 0 1 4 -4 z" fill="#FF6B5B" />
+    <path d="M56 22 h14 l4 6 h14 a3 3 0 0 1 3 3 v20 a3 3 0 0 1 -3 3 h-32 a3 3 0 0 1 -3 -3 v-26 a3 3 0 0 1 3 -3 z"
+          fill="none" stroke="#58C7F3" stroke-width="5" stroke-linejoin="round" />
+    <line x1="52" y1="60" x2="70" y2="60" stroke="#58C7F3" stroke-width="4" stroke-linecap="round" stroke-dasharray="0.1 8" />
+  </g>
+
+  <text x="420" y="286" font-family="Inter, system-ui, sans-serif" font-size="104" font-weight="700" fill="#edf1f8" letter-spacing="-3">ablage</text>
+  <text x="424" y="352" font-family="Inter, system-ui, sans-serif" font-size="36" fill="#a8b3c7">A folder that stays the same on two devices.</text>
+  <text x="424" y="404" font-family="Inter, system-ui, sans-serif" font-size="36" fill="#a8b3c7">No account, nothing in the middle.</text>
+
+  <text x="424" y="486" font-family="'JetBrains Mono', ui-monospace, monospace" font-size="26" fill="#58C7F3">end-to-end encrypted · peer to peer</text>
+  <text x="96" y="566" font-family="Inter, system-ui, sans-serif" font-size="28" fill="#5c677a">Le-Space</text>
+</svg>

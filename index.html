@@ -3,13 +3,95 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>ablage</title>
+    <title>ablage — a folder shared between two devices</title>
+    <meta name="description" content="A folder that stays the same on two devices. End-to-end encrypted, peer to peer, with no account and nothing in the middle." />
+    <link rel="canonical" href="https://ablage.le-space.de/" />
+
+    <!--
+      Absolute, deliberately. A crawler resolving `/og-image.png` against its own
+      host gets nothing, and the same page is served from an IPFS gateway under
+      `/ipfs/<cid>/` where a relative path points somewhere else again. The
+      assets are relative - see `base: './'` in the vite config - and only these
+      are not.
+    -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://ablage.le-space.de/" />
+    <meta property="og:title" content="ablage — a folder shared between two devices" />
+    <meta property="og:description" content="A folder that stays the same on two devices. End-to-end encrypted, peer to peer, with no account and nothing in the middle." />
+    <meta property="og:image" content="https://ablage.le-space.de/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="ablage — a folder shared between two devices" />
+    <meta name="twitter:description" content="A folder that stays the same on two devices. End-to-end encrypted, peer to peer, with no account and nothing in the middle." />
+    <meta name="twitter:image" content="https://ablage.le-space.de/og-image.png" />
+
+    <link rel="icon" href="./icon-192.png" />
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+    <meta name="theme-color" content="#0b0e15" />
+
+    <!--
+      The same document in two languages at one address, so the German version
+      is an alternate rather than a second page. `?lang=de` is honoured on load
+      and the pair below is what tells a crawler the two are the same thing
+      rather than duplicates competing with each other.
+    -->
+    <meta property="og:site_name" content="Le-Space" />
+    <meta property="og:locale" content="en" />
+    <meta property="og:locale:alternate" content="de" />
+    <link rel="alternate" hreflang="en" href="https://ablage.le-space.de/" />
+    <link rel="alternate" hreflang="de" href="https://ablage.le-space.de/?lang=de" />
+    <link rel="alternate" hreflang="x-default" href="https://ablage.le-space.de/" />
+
+    <!--
+      What this is, in the vocabulary a search engine already has. Written by
+      hand rather than generated, because it is short and because a wrong
+      `applicationCategory` is worse than none.
+
+      `price: 0` with no `offers.url` is the honest shape here: there is nothing
+      to buy and nothing to sign up for, and saying so is the one claim about
+      this app that no crawler could work out on its own.
+    -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "ablage",
+        "url": "https://ablage.le-space.de/",
+        "applicationCategory": "UtilitiesApplication",
+        "operatingSystem": "Any browser with WebRTC",
+        "browserRequirements": "Requires WebRTC. Choosing a real folder requires a Chromium-based browser.",
+        "inLanguage": ["en", "de"],
+        "description": "A folder that stays the same on two devices. End-to-end encrypted, peer to peer, with no account and nothing in the middle.",
+        "isAccessibleForFree": true,
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" },
+        "license": "https://opensource.org/licenses/MIT",
+        "author": { "@type": "Organization", "name": "Le-Space", "url": "https://le-space.de" },
+        "codeRepository": "https://github.com/Le-Space/ablage",
+        "featureList": [
+          "Direct device-to-device sync over WebRTC",
+          "Pairing by QR code, with no signalling server",
+          "End-to-end encryption via DTLS, bound to a libp2p peer identity",
+          "Conflicting edits keep both copies"
+        ]
+      }
+    </script>
     <link rel="stylesheet" href="./src/app/style.css" />
   </head>
   <body>
     <main>
       <header class="top">
-        <h1 data-i18n="page.title">ablage</h1>
+        <span class="brand">
+          <span id="mark" class="mark"></span>
+          <h1 data-i18n="page.title">ablage</h1>
+        </span>
+        <label class="locale">
+          <span class="visually-hidden" id="view-label">View</span>
+          <select id="view-mode" aria-labelledby="view-label">
+            <option value="simple">Simple</option>
+            <option value="technical">Technical</option>
+          </select>
+        </label>
         <label class="locale">
           <span class="visually-hidden" id="locale-label">Language</span>
           <select id="locale" aria-labelledby="locale-label">
@@ -44,6 +126,35 @@
             <button id="copy" type="button" data-i18n="link.copy">Copy</button>
           </div>
         </details>
+
+        <!--
+          Off by default, and behind the technical view, because it is a
+          measurement instrument rather than a feature: a connection built from
+          a reconstructed SDP goes silent under load often enough
+          (NiKrause/libp2p-webrtc-qr#83) that a quarter-size code is not worth
+          it by default. Reading is never affected - this device accepts both
+          formats whatever the box says - so ticking it only changes what it
+          hands out.
+
+          The link names QWBP rather than hiding the idea behind "short". What
+          travels here is not wire-compatible with it: the packing is QWBP's,
+          the signature over those bytes is ours, and the small print says so
+          instead of letting the link imply interop.
+        -->
+        <label class="option">
+          <input id="compact-payload" type="checkbox" />
+          <span>
+            <span data-i18n="compact.label">Short code — one code instead of a sequence. Experimental.</span>
+            <!--
+              "Experimental" stays above, in every view: somebody who ticks this
+              and then watches a transfer stall needs to have been told, and
+              that is a warning rather than a detail. What follows it is the
+              detail - which packing, and how it differs from the thing it is
+              named after - and that is what the switch is for.
+            -->
+            <small data-view="technical" data-i18n-html="compact.detail"></small>
+          </span>
+        </label>
 
         <qr-status id="network" rows="ipv4 ipv6 overall" hidden></qr-status>
       </section>
@@ -88,7 +199,23 @@
       <qr-intro id="intro">
         <p data-i18n="intro.what"></p>
         <p data-i18n="intro.how"></p>
+        <p data-i18n="intro.secure"></p>
         <p data-i18n="intro.who"></p>
+
+        <!--
+          The technical half of the story, behind the same switch that shows the
+          element's own caveats - so one control decides how much detail this
+          dialog carries, rather than two.
+        -->
+        <div data-view="technical" class="intro-tech">
+          <h3 data-i18n="how.heading"></h3>
+          <ul>
+            <li data-i18n="how.dtls"></li>
+            <li data-i18n="how.signed"></li>
+            <li data-i18n="how.bytes"></li>
+            <li data-i18n="how.open"></li>
+          </ul>
+        </div>
       </qr-intro>
 
       <qr-scanner id="scanner"></qr-scanner>

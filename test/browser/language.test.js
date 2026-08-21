@@ -70,7 +70,64 @@ test.describe('language', () => {
   })
 })
 
+test.describe('how much detail', () => {
+  test('one switch drives this page and the library element alike', async ({ page }) => {
+    await open(page)
+
+    // Simple by default: whoever needs the detail goes looking, and whoever
+    // does not would never have learnt what DTLS was.
+    await expect(page.locator('.intro-tech')).toBeHidden()
+    await expect(page.locator('qr-intro .tech')).toBeHidden()
+
+    await page.locator('#view-mode').selectOption('technical')
+
+    // Both halves, from one control. Two switches for "how much detail" would
+    // be one too many.
+    await expect(page.locator('.intro-tech')).toBeVisible()
+    await expect(page.locator('qr-intro .tech')).toBeVisible()
+  })
+
+  test('the technical half names the technology rather than gesturing at it', async ({ page }) => {
+    await open(page)
+    await page.locator('#view-mode').selectOption('technical')
+
+    // "Encrypted" on its own is a claim. These are the things somebody could
+    // check: which layer, what binds it, and where the code is.
+    await expect(page.locator('[data-i18n="how.dtls"]')).toContainText('DTLS')
+    await expect(page.locator('[data-i18n="how.signed"]')).toContainText('fingerprint')
+    await expect(page.locator('[data-i18n="how.open"]')).toContainText('libp2p-webrtc-qr')
+  })
+
+  test('the choice survives a reload', async ({ page }) => {
+    await open(page)
+    await page.locator('#view-mode').selectOption('technical')
+
+    await page.reload()
+    await page.waitForFunction(() => document.getElementById('view-mode') != null)
+
+    await expect(page.locator('#view-mode')).toHaveValue('technical')
+  })
+
+  test('the switch speaks the chosen language', async ({ page }) => {
+    await open(page)
+    await page.locator('#locale').selectOption('de')
+
+    await expect(page.locator('#view-mode option').first()).toHaveText('Einfach')
+  })
+})
+
 test.describe('the introduction', () => {
+  test('says the connection is encrypted, in both languages', async ({ page }) => {
+    await open(page)
+
+    // The thing a person most wants to know before putting files somewhere, and
+    // the thing this app can actually claim.
+    await expect(page.locator('qr-intro > [data-i18n="intro.secure"]')).toContainText('encrypted end to end')
+
+    await page.locator('#locale').selectOption('de')
+    await expect(page.locator('qr-intro > [data-i18n="intro.secure"]')).toContainText('Ende zu Ende verschlüsselt')
+  })
+
   test('greets a first visit with this app\'s own words', async ({ page }) => {
     await open(page)
 

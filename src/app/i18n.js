@@ -44,6 +44,17 @@ let current = 'en'
  * speakers of German.
  */
 export function initialLocale () {
+  // The URL wins over everything: a German link handed to somebody has to open
+  // in German even on a browser that chose English here last week. It is also
+  // what makes `hreflang="de"` point at something real rather than at a page
+  // that decides for itself.
+  try {
+    const asked = new URLSearchParams(window.location.search).get('lang')
+    if (SUPPORTED.includes(asked)) return asked
+  } catch {
+    // No URL to read; carry on with the stored choice.
+  }
+
   try {
     const stored = localStorage.getItem(STORAGE_KEY)
     if (SUPPORTED.includes(stored)) return stored

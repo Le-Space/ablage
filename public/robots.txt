@@ -1,0 +1,6 @@
+# Everything here is public and static. Nothing is behind a login, and the only
+# state a crawler could reach is its own.
+User-agent: *
+Allow: /
+
+Sitemap: https://ablage.le-space.de/sitemap.xml

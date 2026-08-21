@@ -21,6 +21,32 @@ const open = async page => {
 }
 
 test.describe('the interface', () => {
+  test('carries the Le-Space mark, drawn from the family grammar', async ({ page }) => {
+    await open(page)
+
+    // Coral for the local node, cyan for the peer, dashed for the sync between
+    // them - the same grammar as every other project in the family, applied to
+    // folders instead of nodes.
+    const svg = page.locator('#mark svg')
+    await expect(svg).toBeVisible()
+    await expect(svg).toHaveAttribute('aria-label', 'ablage')
+  })
+
+  test('a row shows what kind of thing it is', async ({ page }) => {
+    await open(page)
+
+    await page.evaluate(async () => {
+      const { directoryStorage } = await import('/src/storage/directory.js')
+      const store = await directoryStorage()
+      await store.write('box/inner.txt', new TextEncoder().encode('drin'))
+    })
+    await page.setInputFiles('#pick', { name: 'flat.txt', mimeType: 'text/plain', buffer: Buffer.from('oben') })
+
+    // A folder mark and a file mark, not one glyph doing both jobs.
+    await expect(page.locator('.folder-head svg')).toBeVisible()
+    await expect(page.locator('.file svg').first()).toBeVisible()
+  })
+
   test('starts up with nothing, and says so without blaming anyone', async ({ page }) => {
     const errors = await open(page)
 
@@ -116,5 +142,72 @@ test.describe('the interface', () => {
     // elements existing: this app writes no network judgement of its own.
     await expect(page.locator('qr-status')).toBeVisible()
     await expect(page.locator('qr-status')).toContainText(/Result|Checking/)
+  })
+})
+
+test.describe('the short code', () => {
+  const technical = async page => {
+    await page.goto('/?intro=off')
+    await page.locator('#view-mode').selectOption('technical')
+  }
+
+  test('is offered to everybody, not only to the technical view', async ({ page }) => {
+    // One code instead of a sequence of flashing ones is the plainest possible
+    // improvement, and holding it back from whoever picked the simple view
+    // would keep it from exactly the person it helps most.
+    await page.goto('/?intro=off')
+
+    await expect(page.locator('#compact-payload')).toBeVisible()
+    await expect(page.locator('.option')).toContainText('Experimental')
+  })
+
+  test('warns in every view, and explains itself only in the technical one', async ({ page }) => {
+    await page.goto('/?intro=off')
+
+    // A warning is not a detail: somebody who ticks this and then watches a
+    // transfer stall needs to have been told either way. Which packing it uses
+    // and how it differs from the thing it is named after is the detail.
+    await expect(page.locator('.option small')).toBeHidden()
+
+    await page.locator('#view-mode').selectOption('technical')
+
+    await expect(page.locator('.option small')).toBeVisible()
+    await expect(page.locator('.option small')).toContainText('QWBP')
+  })
+
+  test('is off until it is ticked, because v3 goes silent under load', async ({ page }) => {
+    await page.goto('/?intro=off')
+
+    // The default is the decision, not an oversight: libp2p-webrtc-qr#83.
+    await expect(page.locator('#compact-payload')).not.toBeChecked()
+  })
+
+  test('changes the code this device hands out, and nothing about what it reads', async ({ page }) => {
+    await page.goto('/?intro=off')
+    await page.locator('#compact-payload').check()
+    await page.locator('#invite').click()
+
+    // `q3:` is the compact prefix. A v2 payload is base64 of a deflated JSON
+    // object and never begins with it - so this asserts the format changed,
+    // which is the only thing the box is allowed to do.
+    await expect(page.locator('#invite-link')).toHaveValue(/#i=q3(%3A|:)/i, { timeout: 30_000 })
+  })
+
+  test('hands out the long code when it is not ticked', async ({ page }) => {
+    // The control against the test above: without it, a link that never
+    // contained `q3:` would pass for the wrong reason.
+    await page.goto('/?intro=off')
+    await page.locator('#invite').click()
+
+    await expect(page.locator('#invite-link')).toHaveValue(/#i=/, { timeout: 30_000 })
+    await expect(page.locator('#invite-link')).not.toHaveValue(/#i=q3(%3A|:)/i)
+  })
+
+  test('says it in German too', async ({ page }) => {
+    await technical(page)
+    await page.locator('#locale').selectOption('de')
+
+    await expect(page.locator('.option')).toContainText('Kurzcode')
+    await expect(page.locator('.option small')).toContainText('signiert statt blank')
   })
 })

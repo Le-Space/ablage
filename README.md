@@ -143,6 +143,19 @@ and answers in the format the invite arrived in. Ticking it only changes what
 this device hands out. What travels is not wire-compatible with QWBP — the
 packing is theirs, the signature over those bytes is ours.
 
+### The camera is the one part nothing here covers
+
+Every automated test hands a payload over as text, through the field in the
+invite dialog. `getUserMedia` and the scanner element are exercised by hand
+only — the container these tests run in has no camera, and answers
+`Requested device not found` to anything that asks for one.
+
+That is worth stating because the machine they are *written* on does have one.
+A test that opens a camera passes on a laptop and fails every run on CI, which
+happened twice before it was written down. `test/browser/handover.test.js` now
+takes `getUserMedia` away in its own setup, so a local run asks the same
+question the container does.
+
 ### The private folder first, the real one second
 
 Measured, not assumed:

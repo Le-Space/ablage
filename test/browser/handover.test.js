@@ -24,6 +24,16 @@ const openSide = async browser => {
   const errors = []
 
   page.on('pageerror', error => errors.push(error.message))
+
+  // The machine these tests are written on has a camera; the container they run
+  // in does not. Taking it away here means a laptop run and a CI run put the
+  // same question, instead of the laptop answering an easier one - which is how
+  // the first version of this file passed locally and failed every run on CI.
+  await page.addInitScript(() => {
+    navigator.mediaDevices.getUserMedia = () =>
+      Promise.reject(new DOMException('Requested device not found', 'NotFoundError'))
+  })
+
   await page.goto('/?intro=off')
   await expect(page.locator('#invite')).toBeEnabled()
 
@@ -32,10 +42,22 @@ const openSide = async browser => {
 
 const isOpen = page => page.evaluate(() => document.getElementById('invite-box').open)
 
-const scan = (page, text) => page.evaluate(payload => {
-  document.getElementById('scanner')
-    .dispatchEvent(new CustomEvent('scan', { detail: { text: payload } }))
-}, text)
+/**
+ * Hand a reply over the way somebody without a camera would.
+ *
+ * Not the camera. `getUserMedia` in a CI container answers "Requested device
+ * not found", and the first version of this file pressed the scan button and
+ * then asserted the page threw nothing - two conditions that cannot both hold
+ * where there is no camera. It passed on a laptop and failed every run on CI.
+ *
+ * None of these tests is *about* the camera, so none of them opens one. The
+ * lens stays the one part nothing here covers, which the README says.
+ */
+const handReply = async (page, reply) => {
+  await page.locator('#paste-fold summary').click()
+  await page.locator('#reply-text').fill(reply)
+  await page.locator('#use-reply').click()
+}
 
 test('both codes leave the screen once the two are connected', async () => {
   const browser = await chromium.launch()
@@ -55,12 +77,10 @@ test('both codes leave the screen once the two are connected', async () => {
 
     expect(reply).toMatch(/#r=/)
 
-    // Alice scans it. The listener is attached by the button rather than at
-    // load, so the press is part of the scenario and not ceremony.
-    await alice.page.locator('#scan-reply').click()
-    await scan(alice.page, reply)
+    // Alice takes it in.
+    await handReply(alice.page, reply)
 
-    // Alice's box closes when she scans, and always did.
+    // Alice's box closes when she accepts a reply, and always did.
     await expect.poll(() => isOpen(alice.page), { timeout: 60_000 }).toBe(false)
 
     // Bob's is the one that used to stay. He has no moment of his own: nobody
@@ -98,11 +118,7 @@ test('a reply that arrived as text finishes the pairing too', async () => {
     await expect.poll(() => isOpen(bob.page), { timeout: 60_000 }).toBe(true)
     const reply = await bob.page.locator('#invite-link').inputValue()
 
-    // Folded, because the camera is the ordinary path - so a person opens it
-    // first, and so does this.
-    await alice.page.locator('#paste-fold summary').click()
-    await alice.page.locator('#reply-text').fill(reply)
-    await alice.page.locator('#use-reply').click()
+    await handReply(alice.page, reply)
 
     await expect(alice.page.locator('#link-state')).toHaveClass(/is-connected/, { timeout: 60_000 })
     await expect.poll(() => isOpen(alice.page), { timeout: 60_000 }).toBe(false)
@@ -128,9 +144,7 @@ test('pasting the invite back says which of the two links it wanted', async () =
 
     // The easy mistake: two links are on screen during a handover and they look
     // alike. Left to `acceptAnswer`, the error would be about a payload.
-    await alice.page.locator('#paste-fold summary').click()
-    await alice.page.locator('#reply-text').fill(invite)
-    await alice.page.locator('#use-reply').click()
+    await handReply(alice.page, invite)
 
     await expect(alice.page.locator('#link-state')).toContainText('#r=')
     // And the invite is still up, because nothing was accepted.

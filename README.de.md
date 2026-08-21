@@ -123,6 +123,19 @@ Kästchen sagt, und antwortet in dem Format, in dem die Einladung kam. Das Häkc
 ändert nur, was dieses Gerät ausgibt. Was übertragen wird, ist nicht
 wire-kompatibel mit QWBP — die Packung ist ihre, die Signatur darüber unsere.
 
+### Die Kamera ist der eine Teil, den hier nichts abdeckt
+
+Jeder automatische Test übergibt die Nutzlast als Text, über das Feld im
+Einladungsdialog. `getUserMedia` und das Scanner-Element werden nur von Hand
+ausgeführt — der Container, in dem diese Tests laufen, hat keine Kamera und
+antwortet jedem, der danach fragt, mit `Requested device not found`.
+
+Das gehört gesagt, weil die Maschine, auf der sie *geschrieben* werden, eine
+hat. Ein Test, der eine Kamera öffnet, besteht auf dem Laptop und fällt in
+jedem CI-Lauf durch — zweimal passiert, bevor es hier stand.
+`test/browser/handover.test.js` nimmt `getUserMedia` inzwischen im eigenen
+Aufbau weg, damit ein lokaler Lauf dieselbe Frage stellt wie der Container.
+
 ### Der private Ordner zuerst, der echte danach
 
 Gemessen, nicht vermutet:

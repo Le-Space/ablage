@@ -22,7 +22,7 @@ they are peers: the bytes travel directly, and no server ever holds them.
 ```bash
 npm install
 npm run dev       # the app
-npm test          # 47 unit tests, then 128 in Chromium and Firefox
+npm test          # 49 unit tests, then 138 in Chromium and Firefox
 ```
 
 ## The one rule
@@ -142,6 +142,41 @@ named after, follows the technical switch.
 and answers in the format the invite arrived in. Ticking it only changes what
 this device hands out. What travels is not wire-compatible with QWBP — the
 packing is theirs, the signature over those bytes is ours.
+
+### Offline, and installable
+
+The data half never needed a network: the files are in OPFS or in the folder you
+picked, and both are ordinary persistent storage. What was missing was the
+**shell** — every load fetched the HTML and JS over HTTP, so a browser with no
+connection had nothing to run and the local files were unreachable. A folder that
+only opens when the internet is up is not a folder.
+
+A service worker precaches the shell, generated at build time so it carries the
+real hashed filenames — a hand-written list would be wrong the first time an
+asset was renamed, and wrong *silently*, because the page would still load from
+the network. Its version is a hash of what it caches rather than a timestamp:
+a timestamp would change the worker on every build, which changes the site's
+IPFS CID, and then a rebuild that altered nothing would look like a deployment.
+
+**Two things about it are easy to get wrong and both were.**
+
+Every path is relative, including the manifest link and the worker's own
+registration. This site is served from `ablage.le-space.de` *and* from a gateway
+under `/ipfs/<cid>/`, where a leading slash is the gateway's root — the same
+mistake as `base: './'`, one layer down.
+
+And the cache is read with `ignoreVary`. The precache is filled by the worker's
+own requests, which carry no `Origin`; the page's request for the same module
+carries one. Both vite preview and the Aleph gateway answer assets with
+`Vary: Origin`, so a default match compares those headers, finds them different,
+and reports a miss with the file sitting right there. Offline that is not a slow
+path — it is a blank page: the shell loads from the navigation fallback and every
+script fails. It cost a false-positive test to find, because every visible string
+on the page is an English default in the markup, so a page whose JavaScript never
+ran looks exactly like a working one.
+
+Installable as well — manifest, a maskable icon, and the tags iOS wants because
+it reads none of the manifest for them.
 
 ### The camera is the one part nothing here covers
 

@@ -642,6 +642,30 @@ function maybeIntroduce () {
   }
 }
 
+/**
+ * Serve the app itself without a network.
+ *
+ * Registered on a built site always, and on the dev server only when asked.
+ * The worker calls `skipWaiting()` and `clients.claim()`, so leaving it on in
+ * development would put it in control partway through any run - and a reload
+ * served from a cache of unhashed dev modules is a stale app that looks like a
+ * failing test. `?sw=on` is how the offline spec turns it on deliberately.
+ *
+ * Relative, and it matters: this page is also served from an IPFS gateway under
+ * `/ipfs/<cid>/`, where `/sw.js` is the gateway's root and not ours.
+ */
+if ('serviceWorker' in navigator) {
+  const asked = new URLSearchParams(window.location.search).get('sw')
+
+  if (import.meta.env.PROD || asked === 'on') {
+    navigator.serviceWorker.register('./sw.js').catch(() => {
+      // No offline shell, and nothing else changes. Not worth a message: this
+      // fails on an insecure origin, which is a way of running the app rather
+      // than a fault in it.
+    })
+  }
+}
+
 applyView()
 applyLocale(initialLocale())
 start().then(consumeLink).then(maybeIntroduce).catch(report)

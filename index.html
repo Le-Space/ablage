@@ -26,6 +26,17 @@
     <meta name="twitter:description" content="A folder that stays the same on two devices. End-to-end encrypted, peer to peer, with no account and nothing in the middle." />
     <meta name="twitter:image" content="https://ablage.le-space.de/og-image.png" />
 
+    <!--
+      Relative, like every other asset here: on a gateway this page lives under
+      `/ipfs/<cid>/`, and an absolute path asks the gateway for its own root.
+    -->
+    <link rel="manifest" href="./manifest.webmanifest" />
+
+    <!-- iOS reads none of the manifest for these. It wants its own tags. -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="ablage" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
     <link rel="icon" href="./icon-192.png" />
     <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
     <meta name="theme-color" content="#0b0e15" />

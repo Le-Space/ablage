@@ -197,6 +197,34 @@
         verdict come from the element; the slot is this app's own story.
       -->
       <qr-intro id="intro">
+        <!--
+          The same two switches as the header, because the header is behind the
+          overlay while this is open - and this is the first thing anybody sees,
+          including somebody who arrived from an invite link in the wrong
+          language. A dialog that explains the app in a language you do not read
+          and cannot change is worse than no dialog.
+
+          Their own ids, kept in step with the header pair by `applyLocale` and
+          `applyView` rather than by listening to each other, so neither is the
+          master and there is no loop to break.
+        -->
+        <div class="intro-controls">
+          <label>
+            <span class="visually-hidden" data-i18n="lang.label">Language</span>
+            <select id="intro-locale">
+              <option value="en">English</option>
+              <option value="de">Deutsch</option>
+            </select>
+          </label>
+          <label>
+            <span class="visually-hidden" data-i18n="view.label">View</span>
+            <select id="intro-view">
+              <option value="simple">Simple</option>
+              <option value="technical">Technical</option>
+            </select>
+          </label>
+        </div>
+
         <p data-i18n="intro.what"></p>
         <p data-i18n="intro.how"></p>
         <p data-i18n="intro.secure"></p>
@@ -213,6 +241,7 @@
             <li data-i18n="how.dtls"></li>
             <li data-i18n="how.signed"></li>
             <li data-i18n="how.bytes"></li>
+            <li data-i18n="how.music"></li>
             <li data-i18n="how.open"></li>
           </ul>
         </div>

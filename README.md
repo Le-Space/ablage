@@ -22,7 +22,7 @@ they are peers: the bytes travel directly, and no server ever holds them.
 ```bash
 npm install
 npm run dev       # the app
-npm test          # 47 unit tests, then 104 in Chromium and Firefox
+npm test          # 47 unit tests, then 120 in Chromium and Firefox
 ```
 
 ## The one rule

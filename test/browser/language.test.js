@@ -159,3 +159,90 @@ test.describe('the introduction', () => {
     expect(await page.evaluate(() => document.getElementById('intro').isOpen)).toBe(true)
   })
 })
+
+test.describe('switching from inside the introduction', () => {
+  test('the dialog carries its own switches, because the header is behind it', async ({ page }) => {
+    await open(page)
+
+    // The header pair is under the overlay and cannot be clicked. Without these
+    // the first thing anybody sees is a dialog they cannot change.
+    await expect(page.locator('#intro-locale')).toBeVisible()
+    await expect(page.locator('#intro-view')).toBeVisible()
+  })
+
+  test('changing the language in the dialog changes the dialog', async ({ page }) => {
+    await open(page)
+    await page.locator('#intro-locale').selectOption('de')
+
+    await expect(page.locator('[data-i18n="intro.secure"]')).toContainText('verschlüsselt')
+    // And the page underneath, which is the same switch by another handle.
+    await expect(page.locator('#invite')).toHaveText('Meinen Code zeigen')
+  })
+
+  test('asking for detail in the dialog reveals it without closing anything', async ({ page }) => {
+    await open(page)
+    await expect(page.locator('.intro-tech')).toBeHidden()
+
+    await page.locator('#intro-view').selectOption('technical')
+
+    await expect(page.locator('.intro-tech')).toBeVisible()
+
+    // Asked of the dialog rather than of `<qr-intro>`: the host element has no
+    // layout box of its own - everything it draws lives in a `<dialog>` in its
+    // shadow root - so the host reads as hidden even while the dialog is up.
+    const stillOpen = await page.evaluate(() =>
+      document.getElementById('intro').shadowRoot.querySelector('dialog').open)
+
+    expect(stillOpen).toBe(true)
+  })
+
+  test('the dialog switch speaks the chosen language too', async ({ page }) => {
+    await open(page)
+    await page.locator('#intro-locale').selectOption('de')
+
+    // A `<select>`'s options are not reached by `data-i18n` on the element, so
+    // they are written by hand - and the header pair was written by hand first,
+    // which is exactly how this one got left in English.
+    await expect(page.locator('#intro-view option').nth(1)).toHaveText('Technisch')
+  })
+
+  test('the two copies of each switch never disagree', async ({ page }) => {
+    await open(page)
+    await page.locator('#intro-view').selectOption('technical')
+    await page.locator('#intro-locale').selectOption('de')
+
+    // Both are written from `applyLocale`/`applyView` rather than from each
+    // other, so this is what would catch a missing line there.
+    await expect(page.locator('#view-mode')).toHaveValue('technical')
+    await expect(page.locator('#locale')).toHaveValue('de')
+  })
+})
+
+test.describe('why there is music', () => {
+  test('the technical half says what plays and why', async ({ page }) => {
+    await page.goto('/')
+    await page.locator('#intro-view').selectOption('technical')
+
+    // The two halves of the answer: which recording, and that it is a
+    // keep-alive rather than decoration.
+    await expect(page.locator('[data-i18n="how.music"]')).toContainText('1903')
+    await expect(page.locator('[data-i18n="how.music"]')).toContainText(/suspend/i)
+  })
+
+  test('it says it in German too', async ({ page }) => {
+    await page.goto('/?lang=de')
+    await page.locator('#intro-view').selectOption('technical')
+
+    await expect(page.locator('[data-i18n="how.music"]')).toContainText('1903')
+    await expect(page.locator('[data-i18n="how.music"]')).toContainText('schlafen')
+  })
+
+  test('the recording is actually served', async ({ page }) => {
+    // A keep-alive that 404s is a keep-alive that silently does nothing, and
+    // nothing in the interface would say so.
+    const response = await page.request.get('/audio/zauberfloete-dies-bildnis-cossira-1903.mp3')
+
+    expect(response.status()).toBe(200)
+    expect(Number(response.headers()['content-length'])).toBeGreaterThan(1_000_000)
+  })
+})

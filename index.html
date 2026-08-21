@@ -188,6 +188,26 @@
         <div class="actions">
           <button id="scan-reply" class="primary" type="button" data-i18n="link.scanReply">Scan their reply</button>
         </div>
+
+        <!--
+          The way back for a reply that arrived as text rather than through a
+          camera - a messenger, a mail, a second screen.
+
+          It cannot be a link. This device is holding a peer connection that is
+          waiting for that exact answer, and it lives in memory: opening a link
+          loads the page again and takes the pending offer with it. So the reply
+          comes *into* the page that made the offer, which is this field.
+
+          Folded, because the camera is the ordinary path and this is the way
+          out when it is not available.
+        -->
+        <details class="fold" id="paste-fold">
+          <summary data-i18n="link.pasteSummary">They sent the reply as text</summary>
+          <div class="paste">
+            <textarea id="reply-text" rows="3" data-i18n-attr="aria-label:link.pasteLabel"></textarea>
+            <button id="use-reply" type="button" data-i18n="link.pasteUse">Use this reply</button>
+          </div>
+        </details>
       </dialog>
 
       <!--

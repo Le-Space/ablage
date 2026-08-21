@@ -38,6 +38,9 @@ const inviteBox = $('invite-box')
 const inviteLink = $('invite-link')
 const codeEl = $('code')
 const scannerEl = $('scanner')
+const replyText = $('reply-text')
+const useReplyButton = $('use-reply')
+const pasteFold = $('paste-fold')
 const stateEl = $('link-state')
 const networkEl = $('network')
 const filesEl = $('files')
@@ -486,6 +489,11 @@ inviteButton.addEventListener('click', async () => {
     inviteLink.value = url.toString()
     codeEl.value = url.toString()
 
+    // Back on, for a device that answered somebody earlier: `scan-reply` is
+    // hidden while showing a *reply*, and without this it stayed hidden for the
+    // rest of the session - so the second pairing had no way to finish.
+    scanReplyButton.hidden = false
+    pasteFold.hidden = false
     inviteBox.showModal()
     setState(t('link.waiting'), 'waiting')
   } catch (error) {
@@ -493,20 +501,46 @@ inviteButton.addEventListener('click', async () => {
   }
 })
 
+/**
+ * A reply, however it reached this device - a camera, or the field in the
+ * dialog. One function, because there is one thing to do with it and two ways
+ * in, and the second was written months after the first everywhere it is two.
+ */
+async function acceptReply (text) {
+  inviteBox.close()
+
+  try {
+    const peerId = await peer.acceptAnswer(payloadOf(text))
+    attach(await peer.openSyncStream(peerId)).requestSync()
+  } catch (error) {
+    report(error)
+  }
+}
+
 scanReplyButton.addEventListener('click', () => {
   scannerEl.validate = text => ({ ok: text.includes('r=') || text.startsWith('q') })
   scannerEl.open()
-  scannerEl.addEventListener('scan', async event => {
+  scannerEl.addEventListener('scan', event => {
     scannerEl.close()
-    inviteBox.close()
-
-    try {
-      const peerId = await peer.acceptAnswer(payloadOf(event.detail.text))
-      attach(await peer.openSyncStream(peerId)).requestSync()
-    } catch (error) {
-      report(error)
-    }
+    acceptReply(event.detail.text)
   }, { once: true })
+})
+
+useReplyButton.addEventListener('click', () => {
+  const text = replyText.value.trim()
+
+  if (text === '') return
+
+  // Said here rather than left to `acceptAnswer` to fail: pasting the *invite*
+  // back instead of the reply is the easy mistake, and the error from down there
+  // would be about a payload rather than about which of two links this is.
+  if (!text.includes('r=') && !text.startsWith('q')) {
+    setState(t('link.pasteBad'), 'idle')
+    return
+  }
+
+  replyText.value = ''
+  acceptReply(text)
 })
 
 scanButton.addEventListener('click', () => {
@@ -522,8 +556,9 @@ scanButton.addEventListener('click', () => {
 
       inviteLink.value = url.toString()
       codeEl.value = url.toString()
-      inviteBox.showModal()
       scanReplyButton.hidden = true
+      pasteFold.hidden = true
+      inviteBox.showModal()
       setState(t('link.showBack'), 'waiting')
     } catch (error) {
       report(error)
@@ -576,6 +611,7 @@ async function consumeLink () {
     inviteLink.value = url.toString()
     codeEl.value = url.toString()
     scanReplyButton.hidden = true
+    pasteFold.hidden = true
     inviteBox.showModal()
     setState(t('link.showBack'), 'waiting')
   } catch (error) {

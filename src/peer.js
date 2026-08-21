@@ -1,6 +1,11 @@
+import { bootstrap } from '@libp2p/bootstrap'
+import { circuitRelayTransport } from '@libp2p/circuit-relay-v2'
 import { identify } from '@libp2p/identify'
+import { webSockets } from '@libp2p/websockets'
 import { QRSession, webRTCQR } from '@le-space/libp2p-webrtc-qr'
 import { createLibp2p } from 'libp2p'
+
+import { denyDial, relayBootstrapList } from './relay-policy.js'
 
 /**
  * A libp2p node and the QR handshake, and nothing about files.
@@ -15,6 +20,19 @@ import { createLibp2p } from 'libp2p'
  * subscriptions with it (libp2p-webrtc-qr#98), so the sync rides a direct
  * stream. When that is fixed, this is where a `pubsub` service would go and the
  * provider's channel argument is where it would be used.
+ *
+ * A relay is the second way in - for when the other person is not here to scan
+ * anything - and it is added rather than substituted. The transports for it are
+ * capability, not usage: without `relayOptIn` there is no bootstrap list, no
+ * announced `/p2p-circuit`, and the gater refuses every address that is not a
+ * QR session. That is the promise in AGENTS.md, and `relay-policy.js` is where
+ * it is written down and tested.
+ *
+ * The `addresses` block appears **only** when a relay was asked for. Adding one
+ * unconditionally is exactly what the paragraph above warns about: inventing an
+ * `addresses` block during the transport experiment produced a connection the
+ * upgrader could not finish. With no relay, the configuration below is byte for
+ * byte the demo's.
  */
 
 export const SYNC_PROTOCOL = '/ablage/sync/1.0.0'
@@ -23,14 +41,34 @@ export const SYNC_PROTOCOL = '/ablage/sync/1.0.0'
  * @param {object} [options]
  * @param {(stream: unknown, peerId: string) => void} [options.onSyncStream]
  *   called for a stream the other side opened
+ * @param {boolean} [options.relayOptIn] whether somebody asked for a relay.
+ *   `false` is the promise, not a preference: without it this node makes no
+ *   outbound call.
+ * @param {readonly string[]} [options.relayBootstrapAddrs] relay addresses,
+ *   ignored entirely unless `relayOptIn` is true
  */
-export async function createPeer ({ onSyncStream, rtcConfiguration } = {}) {
+export async function createPeer ({
+  onSyncStream,
+  rtcConfiguration,
+  relayOptIn = false,
+  relayBootstrapAddrs = []
+} = {}) {
   let session = null
 
+  const relays = relayBootstrapList(relayBootstrapAddrs, relayOptIn)
+  const hasRelay = relays.length > 0
+
   const node = await createLibp2p({
+    ...(hasRelay ? { addresses: { listen: ['/p2p-circuit'] } } : {}),
     transports: [
-      webRTCQR({ getOutboundSession: remotePeerId => session?.getOutboundSession(remotePeerId) ?? null })
+      webRTCQR({ getOutboundSession: remotePeerId => session?.getOutboundSession(remotePeerId) ?? null }),
+      circuitRelayTransport(),
+      webSockets()
     ],
+    connectionGater: {
+      denyDialMultiaddr: addr => denyDial(String(addr), relayOptIn)
+    },
+    peerDiscovery: hasRelay ? [bootstrap({ list: relays })] : [],
     services: { identify: identify() }
   })
 

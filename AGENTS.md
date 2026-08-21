@@ -30,6 +30,24 @@ than assumed. Order matters and is not only about speed:
 That way the app talks to Aleph exactly when the known relays are silent, which
 is what keeps the metadata footprint small.
 
+### Where the promise lives in the code
+
+`src/relay-policy.js` — `denyDial(address, relayOptIn)` and
+`relayBootstrapList(addresses, relayOptIn)`, free of libp2p and covered by
+`test/relay-policy.test.js`. A promise that can only be checked by starting a
+node is one nobody checks, so it is checkable on its own.
+
+`createPeer({ relayOptIn, relayBootstrapAddrs })` reads them. Two things follow
+that are easy to get wrong: the transports (`circuitRelayTransport`,
+`webSockets`) are present **unconditionally**, because they dial nothing on
+their own and removing them would mean a different node once somebody ticks the
+box — and the `addresses` block appears **only** with a relay, because inventing
+one during the transport experiment produced a connection the upgrader could not
+finish.
+
+The tests pass a relay address in deliberately. One that left it out would pass
+for the wrong reason, and would keep passing with the gate deleted.
+
 ### Which relay can do what
 
 A circuit relay brokers the connection; the data then flows **directly** between

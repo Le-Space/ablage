@@ -32,6 +32,10 @@ export default {
     gone: 'The other device went away. Show a code to reconnect.',
     fromLink: 'Answering the invite you opened…',
     modalTitle: 'Show this to the other device',
+    pasteSummary: 'They sent the reply as text',
+    pasteLabel: 'Paste their reply here',
+    pasteUse: 'Use this reply',
+    pasteBad: 'That does not look like a reply. A reply link contains #r=.',
     scanReply: 'Scan their reply',
     cameraHint: 'Their camera opens the same link — or send it to them.'
   },

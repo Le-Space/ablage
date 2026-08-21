@@ -79,3 +79,95 @@ test('both codes leave the screen once the two are connected', async () => {
     await browser.close()
   }
 })
+
+test('a reply that arrived as text finishes the pairing too', async () => {
+  // The reply cannot be a link that opens a page. This device is holding a peer
+  // connection waiting for that exact answer, and it lives in memory - loading
+  // the page again takes the pending offer with it. So the way in is a field on
+  // the page that made the offer, and this is the test that it works.
+  const browser = await chromium.launch()
+  const alice = await openSide(browser)
+  const bob = await openSide(browser)
+
+  try {
+    await alice.page.locator('#invite').click()
+    await expect.poll(() => isOpen(alice.page), { timeout: 60_000 }).toBe(true)
+    const invite = await alice.page.locator('#invite-link').inputValue()
+
+    await bob.page.goto(invite.replace(/#/, '?intro=off#'))
+    await expect.poll(() => isOpen(bob.page), { timeout: 60_000 }).toBe(true)
+    const reply = await bob.page.locator('#invite-link').inputValue()
+
+    // Folded, because the camera is the ordinary path - so a person opens it
+    // first, and so does this.
+    await alice.page.locator('#paste-fold summary').click()
+    await alice.page.locator('#reply-text').fill(reply)
+    await alice.page.locator('#use-reply').click()
+
+    await expect(alice.page.locator('#link-state')).toHaveClass(/is-connected/, { timeout: 60_000 })
+    await expect.poll(() => isOpen(alice.page), { timeout: 60_000 }).toBe(false)
+    await expect.poll(() => isOpen(bob.page), { timeout: 60_000 }).toBe(false)
+
+    expect(alice.errors).toEqual([])
+    expect(bob.errors).toEqual([])
+  } finally {
+    await alice.context.close()
+    await bob.context.close()
+    await browser.close()
+  }
+})
+
+test('pasting the invite back says which of the two links it wanted', async () => {
+  const browser = await chromium.launch()
+  const alice = await openSide(browser)
+
+  try {
+    await alice.page.locator('#invite').click()
+    await expect.poll(() => isOpen(alice.page), { timeout: 60_000 }).toBe(true)
+    const invite = await alice.page.locator('#invite-link').inputValue()
+
+    // The easy mistake: two links are on screen during a handover and they look
+    // alike. Left to `acceptAnswer`, the error would be about a payload.
+    await alice.page.locator('#paste-fold summary').click()
+    await alice.page.locator('#reply-text').fill(invite)
+    await alice.page.locator('#use-reply').click()
+
+    await expect(alice.page.locator('#link-state')).toContainText('#r=')
+    // And the invite is still up, because nothing was accepted.
+    expect(await isOpen(alice.page)).toBe(true)
+  } finally {
+    await alice.context.close()
+    await browser.close()
+  }
+})
+
+test('the answering side can invite somebody itself afterwards', async () => {
+  const browser = await chromium.launch()
+  const alice = await openSide(browser)
+  const bob = await openSide(browser)
+
+  try {
+    await alice.page.locator('#invite').click()
+    await expect.poll(() => isOpen(alice.page), { timeout: 60_000 }).toBe(true)
+    const invite = await alice.page.locator('#invite-link').inputValue()
+
+    await bob.page.goto(invite.replace(/#/, '?intro=off#'))
+    await expect.poll(() => isOpen(bob.page), { timeout: 60_000 }).toBe(true)
+
+    // Showing a *reply* hides both ways of taking one, which is right - there
+    // is nothing to take. They stayed hidden for the rest of the session, so
+    // Bob's own first invite had no way to be finished.
+    await expect(bob.page.locator('#scan-reply')).toBeHidden()
+
+    await bob.page.evaluate(() => document.getElementById('invite-box').close())
+    await bob.page.locator('#invite').click()
+    await expect.poll(() => isOpen(bob.page), { timeout: 60_000 }).toBe(true)
+
+    await expect(bob.page.locator('#scan-reply')).toBeVisible()
+    await expect(bob.page.locator('#paste-fold')).toBeVisible()
+  } finally {
+    await alice.context.close()
+    await bob.context.close()
+    await browser.close()
+  }
+})

@@ -212,3 +212,19 @@ button.primary:hover:not(:disabled) { background: var(--ls-red-bright); border-c
   font: inherit;
   font-size: 0.85rem;
 }
+
+/* The way back for a reply that came as text. Inside the dialog, so it has to
+   stay narrow enough not to widen it on a phone. */
+.paste { display: grid; gap: 0.5rem; margin-top: 0.6rem; }
+.paste textarea {
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 0.5rem;
+  border-radius: 8px;
+  border: 1px solid var(--ls-card-border);
+  background: var(--ls-bg);
+  color: var(--ls-text);
+}

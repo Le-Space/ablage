@@ -29,6 +29,10 @@ export default {
     gone: 'Das andere Gerät ist weg. Zeigen Sie einen Code, um neu zu verbinden.',
     fromLink: 'Beantworte die Einladung, die Sie geöffnet haben…',
     modalTitle: 'Zeigen Sie das dem anderen Gerät',
+    pasteSummary: 'Sie haben die Antwort als Text geschickt',
+    pasteLabel: 'Antwort hier einfügen',
+    pasteUse: 'Diese Antwort verwenden',
+    pasteBad: 'Das sieht nicht nach einer Antwort aus. Ein Antwort-Link enthält #r=.',
     scanReply: 'Antwort scannen',
     cameraHint: 'Die Kamera des anderen Geräts öffnet denselben Link — oder schicken Sie ihn hin.'
   },

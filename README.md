@@ -22,7 +22,7 @@ they are peers: the bytes travel directly, and no server ever holds them.
 ```bash
 npm install
 npm run dev       # the app
-npm test          # 47 unit tests, then 102 in Chromium and Firefox
+npm test          # 47 unit tests, then 104 in Chromium and Firefox
 ```
 
 ## The one rule
@@ -123,8 +123,8 @@ gossipsub did work, ran libp2p ^2.7.4.
 
 `@le-space/libp2p-webrtc-qr` can pack an invite the way
 [QWBP](https://magarcia.github.io/qwbp/spec.html) does — about a quarter the
-characters, so **one static code instead of an animated sequence**. It is here,
-behind the technical view, and **unticked by default**.
+characters, so **one static code instead of an animated sequence**. It is here, in
+every view, and **unticked by default**.
 
 Not because it is unfinished: a connection built from a reconstructed SDP goes
 silent under load — four of eight runs measured upstream against zero of eight on
@@ -132,6 +132,11 @@ the long format
 ([libp2p-webrtc-qr#83](https://github.com/NiKrause/libp2p-webrtc-qr/issues/83)).
 For a folder sync, where load is the normal case rather than the exception, that
 is the wrong default.
+
+"Experimental" is on the label in every view, because that is a warning rather
+than a detail — somebody who ticks it and then watches a transfer stall needs to
+have been told. Which packing it uses, and how it differs from the thing it is
+named after, follows the technical switch.
 
 *Reading* is unconditional: this app accepts either format whatever the box says,
 and answers in the format the invite arrived in. Ticking it only changes what

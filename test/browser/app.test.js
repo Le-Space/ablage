@@ -151,30 +151,39 @@ test.describe('the short code', () => {
     await page.locator('#view-mode').selectOption('technical')
   }
 
-  test('is offered to whoever asked for the technical view', async ({ page }) => {
-    // Experimental, so it is not put in front of somebody who only wants a
-    // folder to arrive on their other phone.
-    await technical(page)
-
-    await expect(page.locator('#compact-payload')).toBeVisible()
-    await expect(page.locator('.option')).toContainText('QWBP')
-  })
-
-  test('stays out of the simple view', async ({ page }) => {
+  test('is offered to everybody, not only to the technical view', async ({ page }) => {
+    // One code instead of a sequence of flashing ones is the plainest possible
+    // improvement, and holding it back from whoever picked the simple view
+    // would keep it from exactly the person it helps most.
     await page.goto('/?intro=off')
 
-    await expect(page.locator('#compact-payload')).toBeHidden()
+    await expect(page.locator('#compact-payload')).toBeVisible()
+    await expect(page.locator('.option')).toContainText('Experimental')
+  })
+
+  test('warns in every view, and explains itself only in the technical one', async ({ page }) => {
+    await page.goto('/?intro=off')
+
+    // A warning is not a detail: somebody who ticks this and then watches a
+    // transfer stall needs to have been told either way. Which packing it uses
+    // and how it differs from the thing it is named after is the detail.
+    await expect(page.locator('.option small')).toBeHidden()
+
+    await page.locator('#view-mode').selectOption('technical')
+
+    await expect(page.locator('.option small')).toBeVisible()
+    await expect(page.locator('.option small')).toContainText('QWBP')
   })
 
   test('is off until it is ticked, because v3 goes silent under load', async ({ page }) => {
-    await technical(page)
+    await page.goto('/?intro=off')
 
     // The default is the decision, not an oversight: libp2p-webrtc-qr#83.
     await expect(page.locator('#compact-payload')).not.toBeChecked()
   })
 
   test('changes the code this device hands out, and nothing about what it reads', async ({ page }) => {
-    await technical(page)
+    await page.goto('/?intro=off')
     await page.locator('#compact-payload').check()
     await page.locator('#invite').click()
 
@@ -187,10 +196,18 @@ test.describe('the short code', () => {
   test('hands out the long code when it is not ticked', async ({ page }) => {
     // The control against the test above: without it, a link that never
     // contained `q3:` would pass for the wrong reason.
-    await technical(page)
+    await page.goto('/?intro=off')
     await page.locator('#invite').click()
 
     await expect(page.locator('#invite-link')).toHaveValue(/#i=/, { timeout: 30_000 })
     await expect(page.locator('#invite-link')).not.toHaveValue(/#i=q3(%3A|:)/i)
+  })
+
+  test('says it in German too', async ({ page }) => {
+    await technical(page)
+    await page.locator('#locale').selectOption('de')
+
+    await expect(page.locator('.option')).toContainText('Kurzcode')
+    await expect(page.locator('.option small')).toContainText('signiert statt blank')
   })
 })

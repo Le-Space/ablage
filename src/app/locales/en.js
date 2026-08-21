@@ -10,7 +10,8 @@ export default {
     lede: 'A folder that stays the same on two devices. No account, nothing in the middle.'
   },
   compact: {
-    label: 'Short code (<a href="https://magarcia.github.io/qwbp/spec.html" target="_blank" rel="noreferrer">QWBP</a>-style) <small>experimental, and signed rather than bare</small>'
+    label: 'Short code — one code instead of a sequence. Experimental.',
+    detail: 'Packed <a href="https://magarcia.github.io/qwbp/spec.html" target="_blank" rel="noreferrer">QWBP</a>-style, but signed rather than bare — so it is not wire-compatible with QWBP itself.'
   },
   view: { label: 'View', simple: 'Simple', technical: 'Technical' },
   language: { label: 'Language' },

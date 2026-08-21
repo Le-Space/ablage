@@ -7,7 +7,8 @@ export default {
     lede: 'Ein Ordner, der auf zwei Geräten derselbe bleibt. Kein Konto, nichts dazwischen.'
   },
   compact: {
-    label: 'Kurzcode (nach <a href="https://magarcia.github.io/qwbp/spec.html" target="_blank" rel="noreferrer">QWBP</a>) <small>experimentell, und signiert statt blank</small>'
+    label: 'Kurzcode — ein Code statt einer Bilderfolge. Experimentell.',
+    detail: 'Gepackt nach <a href="https://magarcia.github.io/qwbp/spec.html" target="_blank" rel="noreferrer">QWBP</a>, aber signiert statt blank — also nicht wire-kompatibel mit QWBP selbst.'
   },
   view: { label: 'Ansicht', simple: 'Einfach', technical: 'Technisch' },
   language: { label: 'Sprache' },

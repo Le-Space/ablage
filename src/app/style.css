@@ -183,7 +183,10 @@ button.primary:hover:not(:disabled) { background: var(--ls-red-bright); border-c
   display: flex;
   align-items: baseline;
   gap: 0.5rem;
-  margin-top: 0.9rem;
+  /* Bottom margin as well as top: the network element's progress bar is the
+     next thing in flow and carries only a bottom margin of its own, so without
+     this the bar runs along the underside of this line while it measures. */
+  margin: 0.9rem 0 0.7rem;
   font-size: 0.9rem;
   color: var(--ls-text-dim);
 }

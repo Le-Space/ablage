@@ -21,7 +21,7 @@ Server hält sie je.
 ```bash
 npm install
 npm run dev       # die App
-npm test          # 47 Unit-Tests, dann 102 in Chromium und Firefox
+npm test          # 47 Unit-Tests, dann 104 in Chromium und Firefox
 ```
 
 Die Begründungen stehen in
@@ -104,7 +104,7 @@ dieses Repository nicht so, als sei die Frage erledigt.
 `@le-space/libp2p-webrtc-qr` kann eine Einladung so packen wie
 [QWBP](https://magarcia.github.io/qwbp/spec.html) — etwa ein Viertel der Zeichen,
 also **ein einzelner statischer Code statt einer Animation**. Er ist eingebaut,
-in der technischen Ansicht, und **standardmäßig aus**.
+in jeder Ansicht, und **standardmäßig aus**.
 
 Nicht weil er unfertig wäre: eine Verbindung aus rekonstruiertem SDP verstummt
 unter Last — vier von acht Läufen stromaufwärts gemessen, gegen null von acht
@@ -112,6 +112,11 @@ beim langen Format
 ([libp2p-webrtc-qr#83](https://github.com/NiKrause/libp2p-webrtc-qr/issues/83)).
 Für einen Ordnerabgleich, wo Last der Normalfall ist, ist das die falsche
 Voreinstellung.
+
+„Experimentell" steht in jeder Ansicht auf dem Etikett, denn das ist eine
+Warnung und kein Detail — wer es anhakt und dann eine hängende Übertragung
+sieht, muss es vorher gelesen haben. Welche Packung es benutzt und wie sie sich
+von ihrem Namensgeber unterscheidet, folgt dem technischen Schalter.
 
 *Gelesen* wird beides, immer: diese App nimmt jedes Format an, egal was das
 Kästchen sagt, und antwortet in dem Format, in dem die Einladung kam. Das Häkchen

@@ -141,9 +141,19 @@
           the signature over those bytes is ours, and the small print says so
           instead of letting the link imply interop.
         -->
-        <label class="option" data-view="technical">
+        <label class="option">
           <input id="compact-payload" type="checkbox" />
-          <span data-i18n-html="compact.label"></span>
+          <span>
+            <span data-i18n="compact.label">Short code — one code instead of a sequence. Experimental.</span>
+            <!--
+              "Experimental" stays above, in every view: somebody who ticks this
+              and then watches a transfer stall needs to have been told, and
+              that is a warning rather than a detail. What follows it is the
+              detail - which packing, and how it differs from the thing it is
+              named after - and that is what the switch is for.
+            -->
+            <small data-view="technical" data-i18n-html="compact.detail"></small>
+          </span>
         </label>
 
         <qr-status id="network" rows="ipv4 ipv6 overall" hidden></qr-status>

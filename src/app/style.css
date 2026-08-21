@@ -228,3 +228,19 @@ button.primary:hover:not(:disabled) { background: var(--ls-red-bright); border-c
   background: var(--ls-bg);
   color: var(--ls-text);
 }
+
+/* What the sound is, on the screen making it. */
+.music { margin-top: 0.9rem; }
+.music .option { margin: 0; }
+.music-now {
+  margin: 0.45rem 0 0;
+  padding-left: 1.6rem;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--ls-text-faint);
+}
+.music-now .piece { display: block; color: var(--ls-text-dim); }
+/* Reserved, not grown into. The two sentences differ by about a line, and this
+   dialog centres itself - a line more would shift every control above it. */
+.music-now .why { display: block; margin-top: 0.3rem; min-height: 4.5em; }
+.music-now .why.blocked { color: var(--ls-red-bright); }

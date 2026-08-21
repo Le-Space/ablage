@@ -146,6 +146,12 @@ test.describe('the interface', () => {
 })
 
 test.describe('the short code', () => {
+  // Scoped to its own checkbox. `.option` is the shared class for a small
+  // opt-in control and there are two of them now - the other is the waiting
+  // music - so a bare `.option` matches both and Playwright refuses it rather
+  // than picking one, which is the right refusal.
+  const option = page => page.locator('label.option:has(#compact-payload)')
+
   const technical = async page => {
     await page.goto('/?intro=off')
     await page.locator('#view-mode').selectOption('technical')
@@ -158,7 +164,7 @@ test.describe('the short code', () => {
     await page.goto('/?intro=off')
 
     await expect(page.locator('#compact-payload')).toBeVisible()
-    await expect(page.locator('.option')).toContainText('Experimental')
+    await expect(option(page)).toContainText('Experimental')
   })
 
   test('warns in every view, and explains itself only in the technical one', async ({ page }) => {
@@ -167,12 +173,12 @@ test.describe('the short code', () => {
     // A warning is not a detail: somebody who ticks this and then watches a
     // transfer stall needs to have been told either way. Which packing it uses
     // and how it differs from the thing it is named after is the detail.
-    await expect(page.locator('.option small')).toBeHidden()
+    await expect(option(page).locator('small')).toBeHidden()
 
     await page.locator('#view-mode').selectOption('technical')
 
-    await expect(page.locator('.option small')).toBeVisible()
-    await expect(page.locator('.option small')).toContainText('QWBP')
+    await expect(option(page).locator('small')).toBeVisible()
+    await expect(option(page).locator('small')).toContainText('QWBP')
   })
 
   test('is off until it is ticked, because v3 goes silent under load', async ({ page }) => {
@@ -207,7 +213,7 @@ test.describe('the short code', () => {
     await technical(page)
     await page.locator('#locale').selectOption('de')
 
-    await expect(page.locator('.option')).toContainText('Kurzcode')
-    await expect(page.locator('.option small')).toContainText('signiert statt blank')
+    await expect(option(page)).toContainText('Kurzcode')
+    await expect(option(page).locator('small')).toContainText('signiert statt blank')
   })
 })

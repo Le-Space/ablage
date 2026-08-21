@@ -201,6 +201,44 @@
         </div>
 
         <!--
+          What the sound is, while it is playing.
+
+          A page that starts playing opera when you press a button owes an
+          explanation on the same screen - otherwise the reasonable reaction is
+          to look for the mute, and muting the tab is precisely what stops this
+          from working. The "now playing" line only appears once audio actually
+          started: whether it can is a question about the device's audio stack,
+          and claiming it in a browser that refused would be worse than silence.
+        -->
+        <div class="music">
+          <label class="option">
+            <input id="music" type="checkbox" checked />
+            <span data-i18n="music.toggle">Play waiting music</span>
+          </label>
+          <!--
+            Always in flow while the music is on, and never inserted late.
+
+            A `<dialog>` centres itself, so anything that appears inside it
+            makes the whole box taller and pushes its top *upwards* - including
+            the checkbox above. The audio starts a second or two after the code
+            does, which is exactly when somebody is reaching for that checkbox,
+            and the control moved out from under the pointer between the press
+            and the release. The space is reserved instead, and only the words
+            change.
+          -->
+          <p id="music-now" class="music-now">
+            <span class="piece" data-i18n="music.piece"></span>
+            <!--
+              Swapped for the other outcome when a browser refuses to start
+              audio: the keep-alive is then simply not there, and the first
+              anyone learns of it is a transfer that died while they were in a
+              messenger. That silence is what the feature exists to prevent.
+            -->
+            <span id="music-why" class="why" data-i18n="music.why"></span>
+          </p>
+        </div>
+
+        <!--
           The way back for a reply that arrived as text rather than through a
           camera - a messenger, a mail, a second screen.
 

@@ -22,6 +22,7 @@ import { createIntroPolicy } from '@le-space/libp2p-webrtc-qr/elements'
 import { elementStrings, initialLocale, locale, setLocale, t, translateDocument } from './i18n.js'
 import { fileIcon, folderIcon, mark } from './icons.js'
 import { tree } from './tree.js'
+import { applyMusicChoice, musicWanted } from './music.js'
 import { applyViewMode, isSimple } from './view-mode.js'
 import { askForFolder, canPickFolder, pickFolder } from '../storage/handle.js'
 import { watchFolder } from '../storage/watch.js'
@@ -55,6 +56,9 @@ const viewModeEl = $('view-mode')
 const compactEl = $('compact-payload')
 const introLocaleEl = $('intro-locale')
 const introViewEl = $('intro-view')
+const musicEl = $('music')
+const musicNowEl = $('music-now')
+const musicWhyEl = $('music-why')
 const markEl = $('mark')
 
 const doc = new Y.Doc()
@@ -447,9 +451,47 @@ const keepAlive = createKeepAlive({
  * is refused. By the time an offer has gathered its candidates there is no
  * gesture left to spend.
  */
-function startKeepAlive () {
-  keepAlive.start().catch(() => {})
+/**
+ * Both outcomes are worth a sentence; only one of them is good news.
+ *
+ * The same paragraph either way, because an element appearing inside a centred
+ * `<dialog>` moves everything above it - see the note in the markup.
+ */
+function sayWhatTheSoundIs (playing) {
+  musicWhyEl.dataset.i18n = playing ? 'music.why' : 'music.blocked'
+  musicWhyEl.textContent = t(playing ? 'music.why' : 'music.blocked')
+  musicWhyEl.classList.toggle('blocked', !playing)
 }
+
+function startKeepAlive () {
+  if (!musicWanted()) return
+
+  // Reported on what actually happened rather than on what was asked for.
+  // Whether audio can play is a question about the device's audio stack - and
+  // a browser that refused leaves this page with nothing keeping it awake,
+  // which is exactly the failure the feature exists to prevent and therefore
+  // the last thing to stay quiet about.
+  keepAlive.start()
+    .then(sayWhatTheSoundIs)
+    .catch(() => sayWhatTheSoundIs(false))
+}
+
+musicEl.addEventListener('change', event => {
+  applyMusicChoice(event.target.checked)
+
+  if (!event.target.checked) {
+    keepAlive.stop().catch(() => {})
+    musicNowEl.hidden = true
+    return
+  }
+
+  musicNowEl.hidden = false
+
+  // Ticking the box is itself a gesture, which is the only moment the autoplay
+  // policy allows audio to start - so a code already on screen gets its music
+  // now rather than on the next invite.
+  if (inviteBox.open) startKeepAlive()
+})
 
 /**
  * The answering side never gets the gesture the offering side does - opening an
@@ -667,5 +709,9 @@ if ('serviceWorker' in navigator) {
 }
 
 applyView()
+musicEl.checked = applyMusicChoice()
+// Hidden only when the music is off, and decided before the first paint so the
+// dialog is never seen resizing itself.
+musicNowEl.hidden = !musicEl.checked
 applyLocale(initialLocale())
 start().then(consumeLink).then(maybeIntroduce).catch(report)

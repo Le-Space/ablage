@@ -51,3 +51,50 @@ test.describe('the social card', () => {
     }
   })
 })
+
+test.describe('what a search engine is told', () => {
+  test('the structured description parses, and says what this is', async ({ page }) => {
+    await page.goto('/?intro=off')
+
+    // A broken JSON-LD block is ignored silently, which is the failure mode
+    // worth a test: it looks exactly like not having one.
+    const data = JSON.parse(await page.locator('script[type="application/ld+json"]').textContent())
+
+    expect(data['@type']).toBe('WebApplication')
+    expect(data.inLanguage).toContain('de')
+    expect(data.isAccessibleForFree).toBe(true)
+  })
+
+  test('the two languages are declared as one page, not as two competing ones', async ({ page }) => {
+    await page.goto('/?intro=off')
+
+    await expect(page.locator('link[hreflang="de"]')).toHaveAttribute('href', /\?lang=de$/)
+    await expect(page.locator('link[hreflang="x-default"]')).toHaveCount(1)
+  })
+
+  test('the german address actually opens in german', async ({ page }) => {
+    // Otherwise the alternate above points at a page that decides for itself,
+    // and the declaration is a lie a crawler cannot check.
+    await page.goto('/?intro=off&lang=de')
+
+    await expect(page.locator('html')).toHaveAttribute('lang', 'de')
+    await expect(page.locator('#invite')).toHaveText('Meinen Code zeigen')
+  })
+
+  test('the url wins over a stored choice, so a shared link opens as sent', async ({ page }) => {
+    await page.goto('/?intro=off')
+    await page.locator('#locale').selectOption('en')
+
+    await page.goto('/?intro=off&lang=de')
+
+    await expect(page.locator('html')).toHaveAttribute('lang', 'de')
+  })
+
+  test('crawlers are pointed at the sitemap', async ({ page }) => {
+    const robots = await page.request.get('/robots.txt')
+    expect(robots.status()).toBe(200)
+    expect(await robots.text()).toContain('Sitemap: https://ablage.le-space.de/sitemap.xml')
+
+    expect((await page.request.get('/sitemap.xml')).status()).toBe(200)
+  })
+})

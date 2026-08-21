@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  One page, in two languages, at one address. The German version is the same URL
+  with `?lang=de`, which is why it appears as an alternate rather than as a
+  second entry: it is the same document, translated in the browser.
+-->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  <url>
+    <loc>https://ablage.le-space.de/</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://ablage.le-space.de/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://ablage.le-space.de/?lang=de" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://ablage.le-space.de/" />
+    <changefreq>weekly</changefreq>
+  </url>
+</urlset>

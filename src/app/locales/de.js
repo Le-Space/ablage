@@ -10,6 +10,7 @@ export default {
     label: 'Kurzcode — ein Code statt einer Bilderfolge. Experimentell.',
     detail: 'Gepackt nach <a href="https://magarcia.github.io/qwbp/spec.html" target="_blank" rel="noreferrer">QWBP</a>, aber signiert statt blank — also nicht wire-kompatibel mit QWBP selbst.'
   },
+  lang: { label: 'Sprache' },
   view: { label: 'Ansicht', simple: 'Einfach', technical: 'Technisch' },
   language: { label: 'Sprache' },
   link: {
@@ -59,6 +60,7 @@ export default {
     dtls: 'Verschlüsselt wird mit DTLS, derselben Schicht, die ein Browser für jede WebRTC-Verbindung benutzt. Das ist nichts Aufgesetztes und lässt sich nicht abschalten.',
     signed: 'Was der QR-Code trägt, ist mit dem eigenen Schlüssel dieses Geräts signiert, und die Signatur deckt den Zertifikats-Fingerabdruck der Verbindung ab. Der verschlüsselte Kanal ist damit an genau das Gerät gebunden, das Sie gescannt haben — ein untergeschobenes anderes macht die Signatur ungültig, bevor überhaupt gewählt wird.',
     bytes: 'Die Dateiinhalte reisen per Bitswap über dieselbe Verbindung, adressiert über ihren Inhalts-Hash. Geteilt wird als Dokument nur die Liste aus Pfaden und Hashes; die Bytes stecken nie darin.',
+    music: 'Beim Zeigen eines Codes läuft eine Mozart-Aufnahme von 1903. Das ist keine Deko: eine Seite, die hörbar Ton abspielt, wird vom Telefon nicht schlafen gelegt — und den Link zu verschicken heißt, diese App zu verlassen. Stille reichte nicht: was der Browser für unhörbar hält, zählt nicht als Wiedergabe.',
     open: 'Nichts davon müssen Sie uns glauben: es sind libp2p, WebRTC und Helia, und die Teile, die zu diesem Handschlag gehören, liegen offen unter NiKrause/libp2p-webrtc-qr.'
   }
 }

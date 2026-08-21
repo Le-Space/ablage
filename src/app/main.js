@@ -17,6 +17,7 @@ import { baseline } from '../sync/baseline.js'
 import { fileIndex } from '../sync/file-index.js'
 import { Provider } from '../sync/provider.js'
 import { openStorage } from '../storage/index.js'
+import { createKeepAlive } from '@le-space/libp2p-webrtc-qr'
 import { createIntroPolicy } from '@le-space/libp2p-webrtc-qr/elements'
 import { elementStrings, initialLocale, locale, setLocale, t, translateDocument } from './i18n.js'
 import { fileIcon, folderIcon, mark } from './icons.js'
@@ -49,6 +50,8 @@ const localeEl = $('locale')
 const introEl = $('intro')
 const viewModeEl = $('view-mode')
 const compactEl = $('compact-payload')
+const introLocaleEl = $('intro-locale')
+const introViewEl = $('intro-view')
 const markEl = $('mark')
 
 const doc = new Y.Doc()
@@ -209,12 +212,18 @@ function applyLocale (next) {
 
   document.documentElement.lang = locale()
   localeEl.value = locale()
+  // The dialog carries its own pair because the header is behind the overlay
+  // while it is open. Written from here rather than by listening to the header,
+  // so neither select is the master and there is no loop to break.
+  introLocaleEl.value = locale()
   translateDocument()
 
   // The switch labels are the app's own words, and a <select>'s options are not
   // reached by `data-i18n` on the element itself.
-  viewModeEl.options[0].textContent = t('view.simple')
-  viewModeEl.options[1].textContent = t('view.technical')
+  for (const select of [viewModeEl, introViewEl]) {
+    select.options[0].textContent = t('view.simple')
+    select.options[1].textContent = t('view.technical')
+  }
   $('view-label').textContent = t('view.label')
 
   // Written from JavaScript rather than marked in the markup, so `data-i18n`
@@ -237,10 +246,15 @@ localeEl.addEventListener('change', event => applyLocale(event.target.value))
 function applyView (next) {
   applyViewMode(next)
   viewModeEl.value = isSimple() ? 'simple' : 'technical'
+  introViewEl.value = viewModeEl.value
   introEl.technical = !isSimple()
 }
 
-viewModeEl.addEventListener('change', event => applyView(event.target.value === 'simple'))
+const viewChanged = event => applyView(event.target.value === 'simple')
+
+viewModeEl.addEventListener('change', viewChanged)
+introViewEl.addEventListener('change', viewChanged)
+introLocaleEl.addEventListener('change', event => applyLocale(event.target.value))
 
 markEl.innerHTML = mark()
 
@@ -385,10 +399,69 @@ dropEl.addEventListener('drop', async event => {
   await addFiles(event.dataTransfer.files)
 })
 
+// ---- keeping this page alive while somebody sends the link ------------------
+
+/**
+ * Audible on purpose, and the reason is the whole point of it.
+ *
+ * Sending an invite means leaving this app for a messenger, and a backgrounded
+ * page has its connection closed out from under it seconds later
+ * (libp2p-webrtc-qr#65). A page playing audible audio is one a phone will not
+ * suspend - and silence does not work, because a stream the browser judges
+ * inaudible stops counting as playback at all.
+ *
+ * The recording is a 1903 phonogram, chosen so that every layer is free rather
+ * than only the tune: `public/audio/README.md` works through composition,
+ * performance and phonogram rights, and why the obvious Beethoven choice failed
+ * on the third one.
+ *
+ * Whether this actually survives an app switch on Android is still unsettled -
+ * it is the experiment in AGENTS.md, and this is what makes it answerable.
+ */
+const keepAlive = createKeepAlive({
+  track: 'audio/zauberfloete-dies-bildnis-cossira-1903.mp3',
+  metadata: {
+    title: 'Waiting for the other device',
+    artist: 'Mozart, Die Zauberflöte - Emile Cossira, 1903'
+  }
+})
+
+/**
+ * Must be called from inside the gesture and before any await: an `AudioContext`
+ * starts suspended under the autoplay policy, and resuming one outside a gesture
+ * is refused. By the time an offer has gathered its candidates there is no
+ * gesture left to spend.
+ */
+function startKeepAlive () {
+  keepAlive.start().catch(() => {})
+}
+
+/**
+ * The answering side never gets the gesture the offering side does - opening an
+ * invite link renders the reply without anybody pressing anything, and that
+ * person has the harder job, because they are the one who has to leave twice.
+ * So take the next touch they make, whatever it was for.
+ */
+document.addEventListener('pointerdown', () => {
+  if (keepAlive.running || !inviteBox.open) return
+
+  startKeepAlive()
+}, { capture: true, passive: true })
+
+// Both endings at once: the code is off the screen, so audio still playing
+// would hold the CPU awake for nothing and say we are working on something that
+// finished.
+inviteBox.addEventListener('close', () => {
+  keepAlive.stop().catch(() => {})
+})
+
 // ---- pairing ---------------------------------------------------------------
 
 inviteButton.addEventListener('click', async () => {
   try {
+    // First, and before the await below: this is the gesture, and there is not
+    // another one coming.
+    startKeepAlive()
     setState(t('link.making'), 'waiting')
     // Read per invite rather than held in a variable: the box can be ticked
     // between two codes, and whoever ticks it means the next one.

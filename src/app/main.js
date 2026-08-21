@@ -163,6 +163,18 @@ function attach (stream) {
   provider = new Provider(doc, send)
   setState(t('link.connected'), 'connected')
 
+  // Both sides pass through here, which is why it belongs here rather than in
+  // either handler. The scanning side closes its own box the moment it scans;
+  // the *answering* side has no such moment - it puts its reply on screen and
+  // then nothing happens to it, because the connection is established by the
+  // other device dialling in. Its code sat there after the two were already
+  // syncing, which reads as a handshake that did not finish.
+  //
+  // Closing a dialog that is not open is a no-op, so the scanning side is
+  // unaffected. The `close` listener above stops the waiting music, which is
+  // the other thing that should end here.
+  inviteBox.close()
+
   ;(async () => {
     for await (const data of stream) {
       provider.receive(JSON.parse(decode(data.subarray?.() ?? data)))

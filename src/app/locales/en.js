@@ -13,6 +13,12 @@ export default {
     label: 'Short code — one code instead of a sequence. Experimental.',
     detail: 'Packed <a href="https://magarcia.github.io/qwbp/spec.html" target="_blank" rel="noreferrer">QWBP</a>-style, but signed rather than bare — so it is not wire-compatible with QWBP itself.'
   },
+    music: {
+      toggle: 'Play waiting music',
+      piece: 'Mozart, Die Zauberflöte — “Dies Bildnis ist bezaubernd schön”, sung by Emile Cossira in 1903. Public domain in every layer: the composition, the performance and the recording.',
+      blocked: 'This browser would not start the audio, so this page has nothing keeping it awake — leaving the app to send the link may end the invite before the other device answers.',
+      why: 'It is not decoration. A phone suspends a silent page within seconds of you leaving for a messenger, and that would close the connection you are setting up — audible playback is what keeps this page running while you send the link.'
+    },
   lang: { label: 'Language' },
   view: { label: 'View', simple: 'Simple', technical: 'Technical' },
   language: { label: 'Language' },

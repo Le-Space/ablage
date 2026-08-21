@@ -10,6 +10,12 @@ export default {
     label: 'Kurzcode — ein Code statt einer Bilderfolge. Experimentell.',
     detail: 'Gepackt nach <a href="https://magarcia.github.io/qwbp/spec.html" target="_blank" rel="noreferrer">QWBP</a>, aber signiert statt blank — also nicht wire-kompatibel mit QWBP selbst.'
   },
+    music: {
+      toggle: 'Wartemusik abspielen',
+      piece: 'Mozart, Die Zauberflöte — „Dies Bildnis ist bezaubernd schön“, gesungen von Emile Cossira, 1903. In jeder Schicht gemeinfrei: Komposition, Aufführung und Aufnahme.',
+      blocked: 'Dieser Browser hat den Ton nicht gestartet, diese Seite wird also von nichts wachgehalten — die App zum Verschicken des Links zu verlassen kann die Einladung beenden, bevor das andere Gerät antwortet.',
+      why: 'Das ist keine Deko. Ein Telefon legt eine stille Seite Sekunden nach dem Wechsel in den Messenger schlafen, und das würde die Verbindung beenden, die Sie gerade aufbauen — hörbare Wiedergabe hält diese Seite am Laufen, während Sie den Link verschicken.'
+    },
   lang: { label: 'Sprache' },
   view: { label: 'Ansicht', simple: 'Einfach', technical: 'Technisch' },
   language: { label: 'Sprache' },

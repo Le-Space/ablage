@@ -125,9 +125,18 @@
         -->
         <p id="link-state" class="state is-idle" data-i18n="link.idle">Not connected yet.</p>
 
+        <!--
+          Both ship disabled and are enabled when the node is up.
+
+          `peer` is null until `start()` resolves, and the handlers call it
+          straight away - so a press before then produced a TypeError in the
+          state line, where somebody is looking for a QR code. It is an easy
+          race to lose on a slow phone, and CI lost it on Firefox often enough
+          to fail a run.
+        -->
         <div class="actions">
-          <button id="invite" class="primary" type="button" data-i18n="link.invite">Show my code</button>
-          <button id="scan" type="button" data-i18n="link.scan">Scan their code</button>
+          <button id="invite" class="primary" type="button" disabled data-i18n="link.invite">Show my code</button>
+          <button id="scan" type="button" disabled data-i18n="link.scan">Scan their code</button>
         </div>
 
         <details class="fold">

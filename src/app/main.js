@@ -444,6 +444,7 @@ async function start () {
   // this line they are not, and that is the point: they call `peer` directly.
   inviteButton.disabled = false
   scanButton.disabled = false
+  pickEl.disabled = false
 
   // Only once the node exists - before that there is no address to show.
   showMyPeer()
@@ -822,7 +823,23 @@ pickButton.addEventListener('click', async () => {
 
 // ---- adding files ----------------------------------------------------------
 
+/**
+ * Resolves when the parts a dropped file needs are there.
+ *
+ * `start()` opens storage first and builds the node after it, so there is a
+ * window where a file can be written and then handed to a reconciler with no
+ * `content` to address it with. Adding an encrypter and a muxer widened that
+ * window enough for CI to land in it, and the file simply never appeared -
+ * `report()` put the error in the state line, where nobody adding a file is
+ * looking.
+ */
+let ready = null
+
 async function addFiles (fileList) {
+  // Awaited rather than refused: somebody who dropped a file meant it, and the
+  // wait is the app starting, not a fault.
+  await ready
+
   for (const file of fileList) {
     // `webkitRelativePath` is what a chosen *folder* fills in - without it a
     // whole directory would arrive as a heap of files at the top level, and the
@@ -1189,4 +1206,8 @@ musicEl.checked = applyMusicChoice()
 // dialog is never seen resizing itself.
 musicNowEl.hidden = !musicEl.checked
 applyLocale(initialLocale())
-start().then(consumeLink).then(maybeIntroduce).catch(report)
+// Held so anything that needs the whole app - a dropped file, most of all -
+// can wait for it rather than act on half of it.
+ready = start()
+
+ready.then(consumeLink).then(maybeIntroduce).catch(report)

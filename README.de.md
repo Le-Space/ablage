@@ -21,7 +21,7 @@ Server hält sie je.
 ```bash
 npm install
 npm run dev       # die App
-npm test          # 61 Unit-Tests, dann 186 in Chromium und Firefox
+npm test          # 61 Unit-Tests, dann 192 in Chromium und Firefox
 ```
 
 Die Begründungen stehen in

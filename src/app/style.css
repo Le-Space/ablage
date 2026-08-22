@@ -320,3 +320,62 @@ button.primary:hover:not(:disabled) { background: var(--ls-red-bright); border-c
   word-break: break-all;
   margin: 0 0 0.8rem;
 }
+
+/* Which build this is, and the two links that belong beside it. Quiet: nobody
+   comes here for the footer, and whoever needs it is looking. */
+.site-foot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
+  margin: 2rem 0 1rem;
+  font-size: 0.75rem;
+  color: var(--ls-text-faint);
+}
+.site-foot .stamp { display: inline-flex; gap: 0.4rem; align-items: baseline; flex-wrap: wrap; }
+.site-foot a { color: var(--ls-text-faint); text-decoration: none; }
+.site-foot a:hover { color: var(--ls-accent); text-decoration: underline; }
+.site-foot .foot-link { display: inline-flex; align-items: center; gap: 0.35rem; }
+.site-foot code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+/* The little picture in a row, in the slot the generic icon used to have, so a
+   list of photos and a list of documents line up. */
+.file .thumb {
+  width: 1.6rem;
+  height: 1.6rem;
+  object-fit: cover;
+  border-radius: 4px;
+  flex: none;
+  background: var(--ls-card-border);
+  cursor: zoom-in;
+}
+
+/* Sized to the picture, not to the screen: a portrait photo should not become a
+   letterbox on a phone. `dvh` rather than `vh` because a mobile browser's bars
+   come and go and `vh` measures the taller state. */
+.preview {
+  border: 1px solid var(--ls-card-border);
+  border-radius: 12px;
+  background: var(--ls-card);
+  padding: 0.6rem;
+  max-width: min(92vw, 1100px);
+  max-height: 88dvh;
+  overflow: hidden;
+}
+.preview::backdrop { background: rgba(0, 0, 0, 0.72); }
+.preview img {
+  display: block;
+  max-width: 100%;
+  max-height: calc(88dvh - 3rem);
+  object-fit: contain;
+  border-radius: 6px;
+  cursor: zoom-out;
+}
+.preview-name {
+  margin: 0.5rem 0 0;
+  font-size: 0.8rem;
+  color: var(--ls-text-dim);
+  word-break: break-all;
+  text-align: center;
+}

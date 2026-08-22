@@ -62,6 +62,7 @@ export default {
     refused: 'Abgelehnt — dieses Gerät kam nicht in den Ordner.',
     admitted: 'Gleicht mit einem Gerät ab, das Sie über ein Relay erreicht hat.'
   },
+  foot: { legal: 'Impressum & Datenschutz' },
   folder: {
     // Die Unterscheidung, die der Code bewusst nicht trifft. Beides ist ein
     // `FileSystemDirectoryHandle`, also muss es die Oberfläche sagen - wer

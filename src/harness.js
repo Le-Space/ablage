@@ -97,7 +97,7 @@ window.__ablage = {
     const base = baseline({ key: `ablage.baseline.${name}` })
     let storage = await directoryStorage({ root: await scratch(name) })
 
-    let provider = null
+    const peers = new Map()
     let pending = Promise.resolve()
 
     /** Serialised: two passes at once would both see the same disagreement. */
@@ -106,10 +106,15 @@ window.__ablage = {
       return pending
     }
 
-    const attach = stream => {
+    // One per peer, and each loop reads its own - the same shape `main.js`
+    // has. A shared binding lets a second peer take over the first one's
+    // incoming messages, which is the bug `several-peers.test.js` is for.
+    const attach = (stream, peerId) => {
       const send = message => stream.send(encode(JSON.stringify(message)))
+      const provider = new Provider(doc, send)
 
-      provider = new Provider(doc, send)
+      peers.get(peerId)?.destroy()
+      peers.set(peerId, provider)
 
       ;(async () => {
         for await (const data of stream) {
@@ -117,7 +122,14 @@ window.__ablage = {
           // A remote change is a reason to look at storage again.
           pass().catch(() => {})
         }
-      })().catch(() => {})
+      })()
+        .catch(() => {})
+        .finally(() => {
+          if (peers.get(peerId) === provider) {
+            provider.destroy()
+            peers.delete(peerId)
+          }
+        })
 
       return provider
     }
@@ -126,13 +138,16 @@ window.__ablage = {
     // claim about whatever network the test happens to be on.
     const peer = await createPeer({
       rtcConfiguration: { iceServers: [] },
-      onSyncStream: stream => { attach(stream) }
+      onSyncStream: (stream, peerId) => { attach(stream, peerId) }
     })
 
     const content = await createContent(peer.node)
 
     side = {
       peerId: () => peer.peerId(),
+
+      /** How many peers this side is talking to right now. */
+      syncPeers: () => peers.size,
 
       /**
        * Work in a different folder from now on.
@@ -165,7 +180,7 @@ window.__ablage = {
       acceptAnswer: async answer => {
         const peerId = await peer.acceptAnswer(answer)
         const stream = await peer.openSyncStream(peerId)
-        await attach(stream).requestSync()
+        await attach(stream, peerId).requestSync()
         return peerId
       },
 
@@ -202,6 +217,6 @@ window.__ablage = {
 // One side per browser context, which is what a device is.
 let side = null
 
-for (const name of ['peerId', 'createOffer', 'acceptOffer', 'acceptAnswer', 'write', 'remove', 'read', 'list', 'paths', 'reconcile', 'connections', 'useFolder']) {
+for (const name of ['peerId', 'createOffer', 'acceptOffer', 'acceptAnswer', 'write', 'remove', 'read', 'list', 'paths', 'reconcile', 'connections', 'useFolder', 'syncPeers']) {
   window.__ablage[name] = (...args) => side[name](...args)
 }

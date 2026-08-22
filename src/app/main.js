@@ -77,10 +77,22 @@ const base = baseline()
 let storage = null
 let content = null
 let peer = null
-let provider = null
-// Whether anybody is listening to the shared document right now. It decides
-// whether the folder may be switched at all - see `switchToFolder`.
-let connected = false
+/**
+ * One provider per connected peer, keyed by peer id.
+ *
+ * It was a single slot, which was wrong twice over. A second connection
+ * replaced the first with no disconnect and no message - and worse, the first
+ * stream's read loop went on calling the *module's* `provider`, so messages
+ * arriving from one peer were fed into the channel talking to another.
+ *
+ * The `Provider` was already built for this: `origin === this` suppresses the
+ * echo only back to the peer an update came from, so a change from A is
+ * forwarded to B through this device and never returned to A.
+ */
+const peers = new Map()
+
+/** Whether anybody is listening to the shared document right now. */
+const connected = () => peers.size > 0
 let pending = Promise.resolve()
 
 /**
@@ -173,13 +185,24 @@ async function render () {
   emptyEl.hidden = entries.length > 0
 }
 
-/** Both halves of a connection end here, whichever side dialled. */
-function attach (stream) {
+/**
+ * Both halves of a connection end here, whichever side dialled.
+ *
+ * @param {string} peerId who is on the other end. Keyed by it so a reconnection
+ *   replaces that peer's provider rather than accumulating one per attempt.
+ */
+function attach (stream, peerId) {
   const send = message => stream.send(encode(JSON.stringify(message)))
 
-  connected = true
+  // Its own binding, read by its own loop below. Reading the shared one was
+  // how a second peer took over the first one's messages.
+  const provider = new Provider(doc, send)
 
-  provider = new Provider(doc, send)
+  // A reconnection to the same peer: the old provider still holds a listener on
+  // the document and would keep posting into a closed stream.
+  peers.get(peerId)?.destroy()
+  peers.set(peerId, provider)
+
   setState(t('link.connected'), 'connected')
 
   // Both sides pass through here, which is why it belongs here rather than in
@@ -200,9 +223,21 @@ function attach (stream) {
       // A remote change is a reason to look at storage again.
       pass()
     }
-    connected = false
-    setState(t('link.gone'), 'idle')
-  })().catch(report)
+  })()
+    .catch(report)
+    .finally(() => {
+      // Only this peer's, and only if it is still the current one - a
+      // reconnection may have put a newer provider under the same key while
+      // this loop was ending.
+      if (peers.get(peerId) === provider) {
+        provider.destroy()
+        peers.delete(peerId)
+      }
+
+      // The others are still there; saying "gone" while two peers remain would
+      // be describing this stream rather than the state of the folder.
+      if (!connected()) setState(t('link.gone'), 'idle')
+    })
 
   return provider
 }
@@ -212,7 +247,7 @@ async function start () {
 
   storage = opened.store
   showFolder(opened)
-  peer = await createPeer({ onSyncStream: stream => attach(stream) })
+  peer = await createPeer({ onSyncStream: (stream, peerId) => attach(stream, peerId) })
   content = await createContent(peer.node)
 
   // The index changing is the other trigger - a local write is the first.
@@ -399,7 +434,7 @@ pickButton.addEventListener('click', async () => {
   // other side, and there are four reasonable answers. Until that exists, the
   // honest thing is to say so - not to guess, and not to pour one folder into
   // another while somebody watches.
-  if (connected) {
+  if (connected()) {
     setState(t('folder.notWhileConnected'), 'waiting')
     return
   }
@@ -629,7 +664,7 @@ async function acceptReply (text) {
 
   try {
     const peerId = await peer.acceptAnswer(payloadOf(text))
-    attach(await peer.openSyncStream(peerId)).requestSync()
+    attach(await peer.openSyncStream(peerId), peerId).requestSync()
   } catch (error) {
     report(error)
   }

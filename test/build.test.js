@@ -199,3 +199,19 @@ test('the relay choice is read from a key of our own', () => {
   assert.match(source, /const RELAY_OPT_IN_KEY = 'ablage\./)
   assert.match(source, /relayOptIn: readRelayOptIn\(globalThis\.localStorage, RELAY_OPT_IN_KEY\)/)
 })
+
+test('the file input ships disabled, like the controls that need a node', () => {
+  // `start()` opens storage before it builds the node, so a file dropped in
+  // between is written and then handed to a reconciler with no `content` to
+  // address it with. The file never appears and the error goes to the state
+  // line, where nobody adding a file is looking.
+  //
+  // Adding an encrypter and a muxer widened that window enough for CI to land
+  // in it - which is how a change to the relay broke a test about dropping a
+  // text file.
+  const html = built()
+  const input = html.match(/<input id="pick"[^>]*>/)?.[0]
+
+  assert.ok(input != null, 'no file input in the built page')
+  assert.ok(input.includes('disabled'), `ships enabled: ${input}`)
+})

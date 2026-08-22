@@ -9,12 +9,38 @@ import { expect, test } from '@playwright/test'
  * retyping three dozen labels.
  */
 
-const open = async (page, { hash = '' } = {}) => {
+/**
+ * @param {object} [options]
+ * @param {boolean} [options.expectOpen] false for the one case that asserts the
+ *   dialog stays shut - waiting for it there would wait for ever, and waiting
+ *   for the app instead is what makes "it did not open" mean something.
+ */
+const open = async (page, { hash = '', expectOpen = true } = {}) => {
   const errors = []
 
   page.on('pageerror', error => errors.push(error.message))
   await page.goto(`/${hash}`)
-  await page.waitForFunction(() => document.getElementById('intro') != null)
+
+  // For the dialog to be *open*, not for the element to exist - it exists in
+  // the markup from the first paint, while the introduction is opened after
+  // `start()` finishes. Waiting for the element meant acting on a dialog that
+  // was not up yet, which is flaky by construction and became visibly so when
+  // an encrypter and a muxer made the node slower to build.
+  await page.waitForFunction(
+    expected => {
+      const dialog = document.getElementById('intro')?.shadowRoot?.querySelector('dialog')
+
+      if (dialog == null) return false
+      // Either it opened, or the app finished starting without opening it. The
+      // second is what the invite case asserts, and the button being enabled is
+      // this page's signal that `start()` is done.
+      return expected
+        ? dialog.open === true
+        : document.getElementById('invite')?.disabled === false
+    },
+    expectOpen,
+    { timeout: 60_000 }
+  )
 
   return errors
 }
@@ -162,7 +188,7 @@ test.describe('the introduction', () => {
   test('does not stand in front of somebody who arrived by invite', async ({ page }) => {
     // That person came to accept something. They see it on their next plain
     // visit instead - so this must not count as having seen it either.
-    await open(page, { hash: '#i=whatever' })
+    await open(page, { hash: '#i=whatever', expectOpen: false })
     expect(await page.evaluate(() => document.getElementById('intro').isOpen)).toBe(false)
 
     await open(page)

@@ -98,6 +98,7 @@ window.__ablage = {
     let storage = await directoryStorage({ root: await scratch(name) })
 
     const peers = new Map()
+    let lastInbound = null
     let pending = Promise.resolve()
 
     /** Serialised: two passes at once would both see the same disagreement. */
@@ -138,13 +139,19 @@ window.__ablage = {
     // claim about whatever network the test happens to be on.
     const peer = await createPeer({
       rtcConfiguration: { iceServers: [] },
-      onSyncStream: (stream, peerId) => { attach(stream, peerId) }
+      onSyncStream: (stream, peerId, address) => {
+        lastInbound = { peerId, address }
+        attach(stream, peerId)
+      }
     })
 
     const content = await createContent(peer.node)
 
     side = {
       peerId: () => peer.peerId(),
+
+      /** How the last inbound sync stream reached this device. */
+      lastInbound: () => lastInbound,
 
       /** How many peers this side is talking to right now. */
       syncPeers: () => peers.size,
@@ -223,6 +230,6 @@ window.__ablage = {
 // One side per browser context, which is what a device is.
 let side = null
 
-for (const name of ['peerId', 'createOffer', 'acceptOffer', 'acceptAnswer', 'write', 'remove', 'read', 'list', 'paths', 'reconcile', 'connections', 'useFolder', 'syncPeers', 'identity']) {
+for (const name of ['peerId', 'createOffer', 'acceptOffer', 'acceptAnswer', 'write', 'remove', 'read', 'list', 'paths', 'reconcile', 'connections', 'useFolder', 'syncPeers', 'identity', 'lastInbound']) {
   window.__ablage[name] = (...args) => side[name](...args)
 }

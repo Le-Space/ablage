@@ -53,6 +53,15 @@ export default {
     // Deutsch löst den Plural auf, wo das Englische bei seinem "bytes" bleibt.
     size: ({ bytes }) => `${bytes} ${bytes === 1 ? 'Byte' : 'Bytes'}`
   },
+  admit: {
+    title: 'Ein Gerät möchte mit diesem Ordner abgleichen',
+    body: 'Es hat Sie über ein Relay erreicht und nicht durch das Scannen Ihres Codes — zugestimmt hat dem also noch niemand. Zulassen heißt, es kann Dateien in dem Ordner anlegen, ändern und löschen, in dem dieses Gerät arbeitet.',
+    remember: 'Dieses Gerät merken',
+    yes: 'Abgleich zulassen',
+    no: 'Ablehnen',
+    refused: 'Abgelehnt — dieses Gerät kam nicht in den Ordner.',
+    admitted: 'Gleicht mit einem Gerät ab, das Sie über ein Relay erreicht hat.'
+  },
   folder: {
     // Die Unterscheidung, die der Code bewusst nicht trifft. Beides ist ein
     // `FileSystemDirectoryHandle`, also muss es die Oberfläche sagen - wer

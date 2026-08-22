@@ -310,3 +310,13 @@ button.primary:hover:not(:disabled) { background: var(--ls-red-bright); border-c
 
 #folder-detail { margin: 0 0 0.6rem; }
 .hint.quiet { color: var(--ls-text-faint); font-size: 0.8rem; margin: 0 0 0.5rem; }
+
+/* A peer id is not a name, and pretending otherwise would be worse. Shown as
+   what it is: an address, in the font addresses belong in. */
+.peer-id {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.75rem;
+  color: var(--ls-text-faint);
+  word-break: break-all;
+  margin: 0 0 0.8rem;
+}

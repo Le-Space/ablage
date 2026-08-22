@@ -50,11 +50,14 @@ const dropEl = $('drop')
 const pickEl = $('pick')
 const pickButton = $('pick-folder')
 const folderEl = $('folder')
-const localeEl = $('locale')
+// Two flags and one button, in the header and again in the dialog. The dialog
+// needs its own pair because the header sits behind its overlay, and that is
+// the first thing anybody sees.
+const localeButtons = { de: $('locale-de'), en: $('locale-en') }
+const introLocaleButtons = { de: $('intro-locale-de'), en: $('intro-locale-en') }
 const introEl = $('intro')
 const viewModeEl = $('view-mode')
 const compactEl = $('compact-payload')
-const introLocaleEl = $('intro-locale')
 const introViewEl = $('intro-view')
 const musicEl = $('music')
 const musicNowEl = $('music-now')
@@ -235,20 +238,25 @@ function applyLocale (next) {
   introEl.strings = strings.intro
 
   document.documentElement.lang = locale()
-  localeEl.value = locale()
+  // `aria-pressed` rather than a class, because that is what a screen reader
+  // reads out; the dimming in the stylesheet follows from it.
+  for (const buttons of [localeButtons, introLocaleButtons]) {
+    for (const [code, button] of Object.entries(buttons)) {
+      button.setAttribute('aria-pressed', String(code === locale()))
+    }
+  }
   // The dialog carries its own pair because the header is behind the overlay
   // while it is open. Written from here rather than by listening to the header,
   // so neither select is the master and there is no loop to break.
-  introLocaleEl.value = locale()
   translateDocument()
 
-  // The switch labels are the app's own words, and a <select>'s options are not
-  // reached by `data-i18n` on the element itself.
-  for (const select of [viewModeEl, introViewEl]) {
-    select.options[0].textContent = t('view.simple')
-    select.options[1].textContent = t('view.technical')
+  // The button names where it goes, not where it is: a control labelled with
+  // its current state reads as a claim rather than an offer.
+  for (const button of [viewModeEl, introViewEl]) {
+    button.textContent = isSimple() ? t('view.technical') : t('view.simple')
+    button.title = isSimple() ? t('view.switchToTechnical') : t('view.switchToSimple')
+    button.setAttribute('aria-pressed', String(!isSimple()))
   }
-  $('view-label').textContent = t('view.label')
 
   // Written from JavaScript rather than marked in the markup, so `data-i18n`
   // never reaches it.
@@ -258,7 +266,11 @@ function applyLocale (next) {
   render()
 }
 
-localeEl.addEventListener('change', event => applyLocale(event.target.value))
+for (const buttons of [localeButtons, introLocaleButtons]) {
+  for (const [code, button] of Object.entries(buttons)) {
+    button.addEventListener('click', () => applyLocale(code))
+  }
+}
 
 // ---- how much detail -------------------------------------------------------
 
@@ -269,16 +281,19 @@ localeEl.addEventListener('change', event => applyLocale(event.target.value))
  */
 function applyView (next) {
   applyViewMode(next)
-  viewModeEl.value = isSimple() ? 'simple' : 'technical'
-  introViewEl.value = viewModeEl.value
   introEl.technical = !isSimple()
 }
 
-const viewChanged = event => applyView(event.target.value === 'simple')
+// A toggle takes no value from its event - it flips whatever is current.
+const viewChanged = () => {
+  applyView(!isSimple())
+  // The button's own label is one of the app's words, so the pass that writes
+  // the language writes it too. A second code path for it would drift.
+  applyLocale(locale())
+}
 
-viewModeEl.addEventListener('change', viewChanged)
-introViewEl.addEventListener('change', viewChanged)
-introLocaleEl.addEventListener('change', event => applyLocale(event.target.value))
+viewModeEl.addEventListener('click', viewChanged)
+introViewEl.addEventListener('click', viewChanged)
 
 markEl.innerHTML = mark()
 

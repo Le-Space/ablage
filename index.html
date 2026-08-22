@@ -96,20 +96,23 @@
           <span id="mark" class="mark"></span>
           <h1 data-i18n="page.title">ablage</h1>
         </span>
-        <label class="locale">
-          <span class="visually-hidden" id="view-label">View</span>
-          <select id="view-mode" aria-labelledby="view-label">
-            <option value="simple">Simple</option>
-            <option value="technical">Technical</option>
-          </select>
-        </label>
-        <label class="locale">
-          <span class="visually-hidden" id="locale-label">Language</span>
-          <select id="locale" aria-labelledby="locale-label">
-            <option value="en">English</option>
-            <option value="de">Deutsch</option>
-          </select>
-        </label>
+        <!--
+          Flags rather than a dropdown, and a button rather than a select: two
+          options do not need a menu, and a flag is recognisable before any of
+          the surrounding words are. The same shapes simple-todo uses, so a
+          person moving between the two apps recognises the controls.
+
+          The button names the mode it *switches to*, not the one it is in - a
+          control labelled with its current state reads as a claim rather than
+          an offer.
+        -->
+        <div class="switches">
+          <button id="view-mode" class="toggle" type="button"></button>
+          <div class="flags">
+            <button id="locale-de" class="flag" type="button" lang="de" aria-label="Deutsch">&#127465;&#127466;</button>
+            <button id="locale-en" class="flag" type="button" lang="en" aria-label="English">&#127468;&#127463;</button>
+          </div>
+        </div>
       </header>
       <p class="lede" data-i18n="page.lede">
         A folder that stays the same on two devices. No account, nothing in the middle.
@@ -138,14 +141,6 @@
           <button id="invite" class="primary" type="button" disabled data-i18n="link.invite">Show my code</button>
           <button id="scan" type="button" disabled data-i18n="link.scan">Scan their code</button>
         </div>
-
-        <details class="fold">
-          <summary data-i18n="link.fold">Or send it as a link</summary>
-          <div class="row">
-            <input id="invite-link" type="text" readonly aria-label="Invite link" />
-            <button id="copy" type="button" data-i18n="link.copy">Copy</button>
-          </div>
-        </details>
 
         <!--
           Off by default, and behind the technical view, because it is a
@@ -205,9 +200,44 @@
         </div>
         <qr-invite id="code"></qr-invite>
         <p class="hint" data-i18n="link.cameraHint">Their camera opens the same link — or send it to them.</p>
+
+        <!--
+          The link is this code in another form, so it belongs beside it rather
+          than on the card behind. On the card it was an orphan: an empty field
+          labelled "or send it as a link", offering to send something that did
+          not exist yet.
+        -->
+        <details class="fold">
+          <summary data-i18n="link.fold">Or send it as a link</summary>
+          <div class="row">
+            <input id="invite-link" type="text" readonly aria-label="Invite link" />
+            <button id="copy" type="button" data-i18n="link.copy">Copy</button>
+          </div>
+        </details>
+
         <div class="actions">
           <button id="scan-reply" class="primary" type="button" data-i18n="link.scanReply">Scan their reply</button>
         </div>
+
+        <!--
+          The way back for a reply that arrived as text rather than through a
+          camera - a messenger, a mail, a second screen.
+
+          It cannot be a link. This device is holding a peer connection that is
+          waiting for that exact answer, and it lives in memory: opening a link
+          loads the page again and takes the pending offer with it. So the reply
+          comes *into* the page that made the offer, which is this field.
+
+          Folded, because the camera is the ordinary path and this is the way
+          out when it is not available.
+        -->
+        <details class="fold" id="paste-fold">
+          <summary data-i18n="link.pasteSummary">They sent the reply as text</summary>
+          <div class="paste">
+            <textarea id="reply-text" rows="3" data-i18n-attr="aria-label:link.pasteLabel"></textarea>
+            <button id="use-reply" type="button" data-i18n="link.pasteUse">Use this reply</button>
+          </div>
+        </details>
 
         <!--
           What the sound is, while it is playing.
@@ -247,25 +277,6 @@
           </p>
         </div>
 
-        <!--
-          The way back for a reply that arrived as text rather than through a
-          camera - a messenger, a mail, a second screen.
-
-          It cannot be a link. This device is holding a peer connection that is
-          waiting for that exact answer, and it lives in memory: opening a link
-          loads the page again and takes the pending offer with it. So the reply
-          comes *into* the page that made the offer, which is this field.
-
-          Folded, because the camera is the ordinary path and this is the way
-          out when it is not available.
-        -->
-        <details class="fold" id="paste-fold">
-          <summary data-i18n="link.pasteSummary">They sent the reply as text</summary>
-          <div class="paste">
-            <textarea id="reply-text" rows="3" data-i18n-attr="aria-label:link.pasteLabel"></textarea>
-            <button id="use-reply" type="button" data-i18n="link.pasteUse">Use this reply</button>
-          </div>
-        </details>
       </dialog>
 
       <!--
@@ -286,22 +297,21 @@
           `applyView` rather than by listening to each other, so neither is the
           master and there is no loop to break.
         -->
-        <div class="intro-controls">
-          <label>
-            <span class="visually-hidden" data-i18n="lang.label">Language</span>
-            <select id="intro-locale">
-              <option value="en">English</option>
-              <option value="de">Deutsch</option>
-            </select>
-          </label>
-          <label>
-            <span class="visually-hidden" data-i18n="view.label">View</span>
-            <select id="intro-view">
-              <option value="simple">Simple</option>
-              <option value="technical">Technical</option>
-            </select>
-          </label>
+        <div class="switches intro-controls">
+          <button id="intro-view" class="toggle" type="button"></button>
+          <div class="flags">
+            <button id="intro-locale-de" class="flag" type="button" lang="de" aria-label="Deutsch">&#127465;&#127466;</button>
+            <button id="intro-locale-en" class="flag" type="button" lang="en" aria-label="English">&#127468;&#127463;</button>
+          </div>
         </div>
+
+        <!--
+          First, and in every view. Somebody deciding whether to put a folder of
+          real work in here needs this before the description, not after it -
+          and it is a warning, so it does not follow the technical switch the
+          way an explanation would.
+        -->
+        <p class="warning" data-i18n-html="intro.experimental"></p>
 
         <p data-i18n="intro.what"></p>
         <p data-i18n="intro.how"></p>

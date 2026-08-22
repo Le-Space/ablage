@@ -17,7 +17,9 @@ export default {
       why: 'Das ist keine Deko. Ein Telefon legt eine stille Seite Sekunden nach dem Wechsel in den Messenger schlafen, und das würde die Verbindung beenden, die Sie gerade aufbauen — hörbare Wiedergabe hält diese Seite am Laufen, während Sie den Link verschicken.'
     },
   lang: { label: 'Sprache' },
-  view: { label: 'Ansicht', simple: 'Einfach', technical: 'Technisch' },
+  view: {
+    switchToTechnical: 'Technische Angaben zeigen',
+    switchToSimple: 'Technische Angaben ausblenden', label: 'Ansicht', simple: 'Einfach', technical: 'Technisch' },
   language: { label: 'Sprache' },
   link: {
     heading: 'Dieses Gerät und das andere',
@@ -60,6 +62,7 @@ export default {
     resume: ({ name }) => `${name} wieder benutzen`
   },
   intro: {
+    experimental: '<strong>Hochgradig experimentell — benutzen Sie es für nichts, dessen Verlust weh tut.</strong> Es ist eine lauffähige Demonstration, keine Sicherung: das Format kann sich ändern, und ein Ordner hier ist keine Kopie von irgendetwas.',
     what: 'Dies ist ein Ordner, den zwei Ihrer Geräte teilen. Es gibt kein Konto, und keinen Server dazwischen, der Ihre Dateien hält.',
     how: 'Zeigen Sie den Code auf diesem Bildschirm dem anderen Gerät, oder schicken Sie ihm den Link. Sobald beide verbunden sind, erscheint alles, was Sie in den Ordner legen, auf beiden.',
     secure: 'Die Verbindung ist Ende zu Ende verschlüsselt. Niemand dazwischen kann mitlesen — kein Netzbetreiber, kein Gateway, und wir auch nicht.',

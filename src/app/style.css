@@ -244,3 +244,43 @@ button.primary:hover:not(:disabled) { background: var(--ls-red-bright); border-c
    dialog centres itself - a line more would shift every control above it. */
 .music-now .why { display: block; margin-top: 0.3rem; min-height: 4.5em; }
 .music-now .why.blocked { color: var(--ls-red-bright); }
+
+/* The switches, in the header and again in the dialog. */
+.switches { display: flex; align-items: center; gap: 0.5rem; }
+.toggle {
+  border: 1px solid var(--ls-card-border);
+  background: transparent;
+  color: var(--ls-text-faint);
+  border-radius: 999px;
+  padding: 0.2rem 0.7rem;
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+.toggle:hover { color: var(--ls-text); border-color: var(--ls-accent); }
+
+.flags { display: flex; gap: 0.15rem; }
+/* Dimmed rather than hidden: both flags stay visible so the choice is legible
+   as a choice, and the pressed one is the bright one. */
+.flag {
+  border: 0;
+  background: transparent;
+  padding: 0.15rem 0.3rem;
+  font-size: 1.15rem;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.4;
+  border-radius: 6px;
+}
+.flag[aria-pressed="true"] { opacity: 1; }
+.flag:hover { opacity: 0.85; }
+
+/* The one thing somebody must read before putting real work in here. */
+.warning {
+  border-left: 3px solid var(--ls-red);
+  padding: 0.5rem 0 0.5rem 0.75rem;
+  margin-bottom: 1rem;
+  color: var(--ls-text-dim);
+  font-size: 0.9rem;
+}
+.warning strong { color: var(--ls-red-bright); }

@@ -41,6 +41,7 @@ export default {
     pasteLabel: 'Antwort hier einfügen',
     pasteUse: 'Diese Antwort verwenden',
     pasteBad: 'Das sieht nicht nach einer Antwort aus. Ein Antwort-Link enthält #r=.',
+    myPeer: ({ id }) => `Dieses Gerät: ${id}`,
     scanReply: 'Antwort scannen',
     cameraHint: 'Die Kamera des anderen Geräts öffnet denselben Link — oder schicken Sie ihn hin.'
   },
@@ -81,6 +82,10 @@ export default {
     choose: 'Ordner wählen',
     another: 'Anderen Ordner wählen',
     resume: ({ name }) => `${name} wieder benutzen`
+  },
+  relay: {
+    onNextStart: 'Ein Relay wird beim nächsten Öffnen dieser Seite benutzt — die Verbindungseinstellungen stehen fest, sobald die App startet.',
+    off: 'Kein Relay. Dieses Gerät ist nur erreichbar, wenn jemand seinen Code scannt.'
   },
   share: {
     askTitle: 'Diesen Ordner an die verbundenen Geräte senden?',

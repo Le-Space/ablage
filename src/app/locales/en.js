@@ -20,7 +20,9 @@ export default {
       why: 'It is not decoration. A phone suspends a silent page within seconds of you leaving for a messenger, and that would close the connection you are setting up — audible playback is what keeps this page running while you send the link.'
     },
   lang: { label: 'Language' },
-  view: { label: 'View', simple: 'Simple', technical: 'Technical' },
+  view: {
+    switchToTechnical: 'Show the technical detail',
+    switchToSimple: 'Hide the technical detail', label: 'View', simple: 'Simple', technical: 'Technical' },
   language: { label: 'Language' },
   link: {
     heading: 'This device and the other one',
@@ -62,6 +64,7 @@ export default {
     resume: ({ name }) => `Use ${name} again`
   },
   intro: {
+    experimental: '<strong>Highly experimental — do not use this for anything you cannot lose.</strong> It is a working demonstration, not a backup: the format may change, and a folder here is not a copy of anything.',
     what: 'This is a folder shared between two of your devices. There is no account, and no server in the middle holding your files.',
     how: 'Show the code on this screen to the other device, or send it the link. Once the two are connected, whatever you put in the folder appears on both.',
     secure: 'The connection is encrypted end to end. Nobody in between can read what crosses it — not a network operator, not a gateway, and not us.',

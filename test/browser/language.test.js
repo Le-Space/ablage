@@ -26,14 +26,14 @@ test.describe('language', () => {
     await open(page)
     await shut(page)
 
-    await expect(page.locator('#locale')).toHaveValue('en')
+    await expect(page.locator('#locale-en')).toHaveAttribute('aria-pressed', 'true')
     await expect(page.locator('html')).toHaveAttribute('lang', 'en')
   })
 
   test('German reaches this app and the library elements alike', async ({ page }) => {
     await open(page)
     await shut(page)
-    await page.locator('#locale').selectOption('de')
+    await page.locator('#locale-de').click()
 
     // This app's own voice.
     await expect(page.locator('#link-state')).toHaveText('Noch nicht verbunden.')
@@ -51,26 +51,29 @@ test.describe('language', () => {
 
     // The folder line carries its own text and no `data-i18n`, so it is the one
     // a language switch forgets. It was forgotten once.
-    await page.locator('#locale').selectOption('de')
+    await page.locator('#locale-de').click()
     await expect(page.locator('#folder')).toHaveText('Arbeitet im privaten Speicher dieses Browsers')
 
-    await page.locator('#locale').selectOption('en')
+    await page.locator('#locale-en').click()
     await expect(page.locator('#folder')).toHaveText("Working in this browser's private storage")
   })
 
   test('the choice survives a reload', async ({ page }) => {
     await open(page)
     await shut(page)
-    await page.locator('#locale').selectOption('de')
+    await page.locator('#locale-de').click()
 
     await page.reload()
-    await page.waitForFunction(() => document.getElementById('locale') != null)
+    await page.waitForFunction(() => document.getElementById('locale-de') != null)
 
-    await expect(page.locator('#locale')).toHaveValue('de')
+    await expect(page.locator('#locale-de')).toHaveAttribute('aria-pressed', 'true')
   })
 })
 
 test.describe('how much detail', () => {
+  // While the introduction is open the header is behind its overlay and cannot
+  // be clicked - which is the whole reason the dialog carries the same pair.
+  // These use the ones a person could actually reach at that moment.
   test('one switch drives this page and the library element alike', async ({ page }) => {
     await open(page)
 
@@ -79,7 +82,7 @@ test.describe('how much detail', () => {
     await expect(page.locator('.intro-tech')).toBeHidden()
     await expect(page.locator('qr-intro .tech')).toBeHidden()
 
-    await page.locator('#view-mode').selectOption('technical')
+    await page.locator('#intro-view').click()
 
     // Both halves, from one control. Two switches for "how much detail" would
     // be one too many.
@@ -89,7 +92,7 @@ test.describe('how much detail', () => {
 
   test('the technical half names the technology rather than gesturing at it', async ({ page }) => {
     await open(page)
-    await page.locator('#view-mode').selectOption('technical')
+    await page.locator('#intro-view').click()
 
     // "Encrypted" on its own is a claim. These are the things somebody could
     // check: which layer, what binds it, and where the code is.
@@ -100,19 +103,24 @@ test.describe('how much detail', () => {
 
   test('the choice survives a reload', async ({ page }) => {
     await open(page)
-    await page.locator('#view-mode').selectOption('technical')
+    await page.locator('#intro-view').click()
 
     await page.reload()
     await page.waitForFunction(() => document.getElementById('view-mode') != null)
 
-    await expect(page.locator('#view-mode')).toHaveValue('technical')
+    // The button names where it goes, so the technical view offers the simple
+    // one. `aria-pressed` is the state, and the state is what survived.
+    await expect(page.locator('#view-mode')).toHaveAttribute('aria-pressed', 'true')
   })
 
   test('the switch speaks the chosen language', async ({ page }) => {
     await open(page)
-    await page.locator('#locale').selectOption('de')
+    await page.locator('#intro-locale-de').click()
 
-    await expect(page.locator('#view-mode option').first()).toHaveText('Einfach')
+    // The header's copy, which is written by the same pass. Read after the
+    // dialog is out of the way, because that is where it lives.
+    await shut(page)
+    await expect(page.locator('#view-mode')).toHaveText('Technisch')
   })
 })
 
@@ -124,7 +132,7 @@ test.describe('the introduction', () => {
     // the thing this app can actually claim.
     await expect(page.locator('qr-intro > [data-i18n="intro.secure"]')).toContainText('encrypted end to end')
 
-    await page.locator('#locale').selectOption('de')
+    await page.locator('#intro-locale-de').click()
     await expect(page.locator('qr-intro > [data-i18n="intro.secure"]')).toContainText('Ende zu Ende verschlüsselt')
   })
 
@@ -166,13 +174,14 @@ test.describe('switching from inside the introduction', () => {
 
     // The header pair is under the overlay and cannot be clicked. Without these
     // the first thing anybody sees is a dialog they cannot change.
-    await expect(page.locator('#intro-locale')).toBeVisible()
+    await expect(page.locator('#intro-locale-de')).toBeVisible()
+    await expect(page.locator('#intro-locale-en')).toBeVisible()
     await expect(page.locator('#intro-view')).toBeVisible()
   })
 
   test('changing the language in the dialog changes the dialog', async ({ page }) => {
     await open(page)
-    await page.locator('#intro-locale').selectOption('de')
+    await page.locator('#intro-locale-de').click()
 
     await expect(page.locator('[data-i18n="intro.secure"]')).toContainText('verschlüsselt')
     // And the page underneath, which is the same switch by another handle.
@@ -183,7 +192,7 @@ test.describe('switching from inside the introduction', () => {
     await open(page)
     await expect(page.locator('.intro-tech')).toBeHidden()
 
-    await page.locator('#intro-view').selectOption('technical')
+    await page.locator('#intro-view').click()
 
     await expect(page.locator('.intro-tech')).toBeVisible()
 
@@ -198,30 +207,30 @@ test.describe('switching from inside the introduction', () => {
 
   test('the dialog switch speaks the chosen language too', async ({ page }) => {
     await open(page)
-    await page.locator('#intro-locale').selectOption('de')
+    await page.locator('#intro-locale-de').click()
 
     // A `<select>`'s options are not reached by `data-i18n` on the element, so
     // they are written by hand - and the header pair was written by hand first,
     // which is exactly how this one got left in English.
-    await expect(page.locator('#intro-view option').nth(1)).toHaveText('Technisch')
+    await expect(page.locator('#intro-view')).toHaveText('Technisch')
   })
 
   test('the two copies of each switch never disagree', async ({ page }) => {
     await open(page)
-    await page.locator('#intro-view').selectOption('technical')
-    await page.locator('#intro-locale').selectOption('de')
+    await page.locator('#intro-view').click()
+    await page.locator('#intro-locale-de').click()
 
     // Both are written from `applyLocale`/`applyView` rather than from each
     // other, so this is what would catch a missing line there.
-    await expect(page.locator('#view-mode')).toHaveValue('technical')
-    await expect(page.locator('#locale')).toHaveValue('de')
+    await expect(page.locator('#view-mode')).toHaveAttribute('aria-pressed', 'true')
+    await expect(page.locator('#locale-de')).toHaveAttribute('aria-pressed', 'true')
   })
 })
 
 test.describe('why there is music', () => {
   test('the technical half says what plays and why', async ({ page }) => {
     await page.goto('/')
-    await page.locator('#intro-view').selectOption('technical')
+    await page.locator('#intro-view').click()
 
     // The two halves of the answer: which recording, and that it is a
     // keep-alive rather than decoration.
@@ -231,7 +240,7 @@ test.describe('why there is music', () => {
 
   test('it says it in German too', async ({ page }) => {
     await page.goto('/?lang=de')
-    await page.locator('#intro-view').selectOption('technical')
+    await page.locator('#intro-view').click()
 
     await expect(page.locator('[data-i18n="how.music"]')).toContainText('1903')
     await expect(page.locator('[data-i18n="how.music"]')).toContainText('schlafen')
@@ -268,8 +277,7 @@ test.describe('the network panel while the language changes under it', () => {
       const done = el.probe()
       const before = caption()
 
-      document.getElementById('locale').value = 'de'
-      document.getElementById('locale').dispatchEvent(new Event('change'))
+      document.getElementById('locale-de').click()
       const after = caption()
 
       await done
@@ -278,5 +286,80 @@ test.describe('the network panel while the language changes under it', () => {
 
     expect(seen.before).toContain('Checking')
     expect(seen.after).toBe('Prüfe, was dieses Netz zulässt…')
+  })
+})
+
+test.describe('the switches themselves', () => {
+  test('two flags, both visible, the chosen one bright', async ({ page }) => {
+    await open(page)
+    await shut(page)
+
+    // Both stay on screen. A control that hides the alternative does not read
+    // as a choice, and one flag alone is a label rather than a switch.
+    await expect(page.locator('#locale-en')).toHaveAttribute('aria-pressed', 'true')
+    await expect(page.locator('#locale-de')).toHaveAttribute('aria-pressed', 'false')
+
+    await page.locator('#locale-de').click()
+
+    await expect(page.locator('#locale-de')).toHaveAttribute('aria-pressed', 'true')
+    await expect(page.locator('#locale-en')).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  test('the flags say which language they are, for anyone not reading flags', async ({ page }) => {
+    await open(page)
+
+    // A flag is a country, not a language, and a screen reader announces
+    // neither. The label is what makes it a language switch.
+    await expect(page.locator('#locale-de')).toHaveAttribute('aria-label', 'Deutsch')
+    await expect(page.locator('#locale-en')).toHaveAttribute('aria-label', 'English')
+  })
+
+  test('the view button offers the other view, rather than naming this one', async ({ page }) => {
+    await open(page)
+    await shut(page)
+
+    // Labelled with its destination. A button that says "Simple" while the
+    // view is simple reads as a statement, and pressing it is a guess.
+    await expect(page.locator('#view-mode')).toHaveText('Technical')
+
+    await page.locator('#view-mode').click()
+
+    await expect(page.locator('#view-mode')).toHaveText('Simple')
+    await expect(page.locator('#view-mode')).toHaveAttribute('aria-pressed', 'true')
+  })
+})
+
+test.describe('the warning', () => {
+  test('says this is experimental, before it says anything else', async ({ page }) => {
+    await open(page)
+
+    await expect(page.locator('.warning')).toContainText('Highly experimental')
+    await expect(page.locator('.warning')).toContainText(/cannot lose/i)
+
+    // First in the dialog, not somewhere down the page: somebody deciding
+    // whether to put real work in here needs it before the description.
+    const order = await page.evaluate(() => {
+      const warning = document.querySelector('qr-intro > .warning')
+      const what = document.querySelector('qr-intro > [data-i18n="intro.what"]')
+      return warning.compareDocumentPosition(what) & Node.DOCUMENT_POSITION_FOLLOWING ? 'warning first' : 'warning later'
+    })
+
+    expect(order).toBe('warning first')
+  })
+
+  test('stays in the simple view, because it is a warning and not a detail', async ({ page }) => {
+    await open(page)
+
+    await expect(page.locator('.warning')).toBeVisible()
+
+    await page.locator('#intro-view').click()
+    await expect(page.locator('.warning')).toBeVisible()
+  })
+
+  test('and says it in German', async ({ page }) => {
+    await open(page)
+    await page.locator('#intro-locale-de').click()
+
+    await expect(page.locator('.warning')).toContainText('Hochgradig experimentell')
   })
 })

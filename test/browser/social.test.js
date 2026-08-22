@@ -83,7 +83,7 @@ test.describe('what a search engine is told', () => {
 
   test('the url wins over a stored choice, so a shared link opens as sent', async ({ page }) => {
     await page.goto('/?intro=off')
-    await page.locator('#locale').selectOption('en')
+    await page.locator('#locale-en').click()
 
     await page.goto('/?intro=off&lang=de')
 

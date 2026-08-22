@@ -154,7 +154,7 @@ test.describe('the short code', () => {
 
   const technical = async page => {
     await page.goto('/?intro=off')
-    await page.locator('#view-mode').selectOption('technical')
+    await page.locator('#view-mode').click()
   }
 
   test('is offered to everybody, not only to the technical view', async ({ page }) => {
@@ -175,7 +175,7 @@ test.describe('the short code', () => {
     // and how it differs from the thing it is named after is the detail.
     await expect(option(page).locator('small')).toBeHidden()
 
-    await page.locator('#view-mode').selectOption('technical')
+    await page.locator('#view-mode').click()
 
     await expect(option(page).locator('small')).toBeVisible()
     await expect(option(page).locator('small')).toContainText('QWBP')
@@ -211,9 +211,43 @@ test.describe('the short code', () => {
 
   test('says it in German too', async ({ page }) => {
     await technical(page)
-    await page.locator('#locale').selectOption('de')
+    await page.locator('#locale-de').click()
 
     await expect(option(page)).toContainText('Kurzcode')
     await expect(option(page).locator('small')).toContainText('signiert statt blank')
+  })
+})
+
+test.describe('where the link lives', () => {
+  test('the link is beside the code, not on the card behind it', async ({ page }) => {
+    await page.goto('/?intro=off')
+
+    // On the card it was an orphan: a field labelled "or send it as a link",
+    // offering to send something that did not exist yet.
+    await expect(page.locator('#invite-link')).toBeHidden()
+
+    await page.locator('#invite').click()
+    await expect.poll(() => page.evaluate(() => document.getElementById('invite-box').open), { timeout: 60_000 }).toBe(true)
+
+    const inside = await page.evaluate(() =>
+      document.getElementById('invite-box').contains(document.getElementById('invite-link')))
+
+    expect(inside).toBe(true)
+  })
+
+  test('the way back sits above the music, next to the action it belongs to', async ({ page }) => {
+    await page.goto('/?intro=off')
+    await page.locator('#invite').click()
+    await expect.poll(() => page.evaluate(() => document.getElementById('invite-box').open), { timeout: 60_000 }).toBe(true)
+
+    // Taking a reply is part of this handover; the music is about something
+    // else entirely, and it was standing between the two.
+    const order = await page.evaluate(() => {
+      const paste = document.getElementById('paste-fold')
+      const music = document.querySelector('.music')
+      return paste.compareDocumentPosition(music) & Node.DOCUMENT_POSITION_FOLLOWING ? 'paste first' : 'music first'
+    })
+
+    expect(order).toBe('paste first')
   })
 })

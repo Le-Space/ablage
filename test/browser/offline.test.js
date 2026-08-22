@@ -35,7 +35,7 @@ test.describe('with the network gone', () => {
     // string - so a page whose JavaScript never loaded looks identical to a
     // working one. The first version of this test asserted the heading and
     // passed while nothing ran at all.
-    await expect(page.locator('#view-mode option').first()).toHaveText('Simple')
+    await expect(page.locator('#view-mode')).toHaveText('Technical')
     await expect(page.locator('#invite')).toBeEnabled()
     await expect(page.locator('.brand svg')).toBeVisible()
   })

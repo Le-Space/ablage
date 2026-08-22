@@ -92,10 +92,10 @@ window.__ablage = {
   start: async name => {
     await window.__ablage.clear(name)
 
-    const doc = new Y.Doc()
-    const index = fileIndex(doc)
+    let doc = new Y.Doc()
+    let index = fileIndex(doc)
     const base = baseline({ key: `ablage.baseline.${name}` })
-    const storage = await directoryStorage({ root: await scratch(name) })
+    let storage = await directoryStorage({ root: await scratch(name) })
 
     let provider = null
     let pending = Promise.resolve()
@@ -133,6 +133,27 @@ window.__ablage = {
 
     side = {
       peerId: () => peer.peerId(),
+
+      /**
+       * Work in a different folder from now on.
+       *
+       * What `pick-folder` does, minus the picker - that opens a native dialog
+       * no automation can drive. Everything after the dialog is the same code
+       * path, which is the part worth testing.
+       */
+      useFolder: async folderName => {
+        const root = await navigator.storage.getDirectory()
+        storage = await directoryStorage({ root: await root.getDirectoryHandle(folderName, { create: true }) })
+
+        // The same two steps `main.js` takes, in the same order: a *fresh*
+        // document, never an emptied one - emptying writes a tombstone per path
+        // and a peer would act on it - and the baseline dropped, because what
+        // was agreed about a path says nothing once the path means another file.
+        doc = new Y.Doc()
+        index = fileIndex(doc)
+        base.clear()
+      },
+
       createOffer: () => peer.createOffer(),
       acceptOffer: offer => peer.acceptOffer(offer),
 
@@ -181,6 +202,6 @@ window.__ablage = {
 // One side per browser context, which is what a device is.
 let side = null
 
-for (const name of ['peerId', 'createOffer', 'acceptOffer', 'acceptAnswer', 'write', 'remove', 'read', 'list', 'paths', 'reconcile', 'connections']) {
+for (const name of ['peerId', 'createOffer', 'acceptOffer', 'acceptAnswer', 'write', 'remove', 'read', 'list', 'paths', 'reconcile', 'connections', 'useFolder']) {
   window.__ablage[name] = (...args) => side[name](...args)
 }

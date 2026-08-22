@@ -69,6 +69,7 @@ export default {
     syncing: ({ name }) => `Syncing ${name}`,
     private: "Working in this browser's private storage",
     remembered: ({ name }) => `${name} is remembered, but this browser dropped the permission — give it back to continue there`,
+    notWhileConnected: 'Disconnect first — changing folders while a device is connected would need that device asked what the change means for it, and that is not built yet.',
     choose: 'Choose a folder',
     another: 'Choose another folder',
     resume: ({ name }) => `Use ${name} again`

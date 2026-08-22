@@ -121,3 +121,20 @@ test('the controls that need a node ship disabled', () => {
     assert.ok(tag.includes('disabled'), `#${id} ships pressable, and its handler calls the node: ${tag}`)
   }
 })
+
+test('the refusal to switch folders under a connection is written in both languages', () => {
+  // The guard itself is one line in `main.js` and no automated test drives it:
+  // reaching it needs a real second peer, and the folder picker on the other
+  // side of it opens a native dialog. What *is* checkable is that the sentence
+  // it shows exists at all - a guard that fell back to an empty state line
+  // would read as a button that does nothing.
+  const html = built()
+
+  assert.ok(html.includes('assets/'), 'no built page to check against')
+
+  for (const locale of ['en', 'de']) {
+    const source = readFileSync(fileURLToPath(new URL(`../src/app/locales/${locale}.js`, import.meta.url)), 'utf8')
+
+    assert.ok(source.includes('notWhileConnected:'), `folder.notWhileConnected missing from ${locale}`)
+  }
+})

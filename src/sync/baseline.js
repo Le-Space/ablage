@@ -66,6 +66,21 @@ export function baseline ({ key = 'ablage.baseline', storage = globalThis.localS
 
     snapshot () {
       return Object.fromEntries(known)
+    },
+
+    /**
+     * Forget every agreement at once.
+     *
+     * For a folder switch. What this device last agreed with another about
+     * `notes/todo.md` says nothing once `notes/todo.md` means a different file
+     * in a different folder - and keeping it would make the first comparison
+     * after the switch read an edit as an agreement.
+     */
+    clear () {
+      if (known.size === 0) return
+
+      known.clear()
+      save()
     }
   }
 }

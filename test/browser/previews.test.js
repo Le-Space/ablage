@@ -8,8 +8,15 @@ import { expect, test } from '@playwright/test'
  * it shows the bytes of that file - not that any particular photo renders.
  */
 
-// A 1x1 red PNG. Small enough to inline, real enough to decode.
-const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
+// 64x48, and the size is the point.
+//
+// It was a 1x1 PNG, which decoded fine and made the *big* view one CSS pixel
+// wide. Playwright clicks the centre of an element, and on Firefox that single
+// pixel resolved to the dialog behind it - "dialog intercepts pointer events",
+// for a click aimed at an image that was genuinely there. Chromium happened to
+// hit it, so the difference read as a Firefox bug rather than as a target too
+// small to aim at.
+const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAEAAAAAwEAIAAAB+uTcLAAAAIGNIUk0AAHomAACAhAAA+gAAAIDoAAB1MAAA6mAAADqYAAAXcJy6UTwAAAAGYktHRP///////wlY99wAAAAHdElNRQfqCBYSJxoGDO3HAAAAJXRFWHRkYXRlOmNyZWF0ZQAyMDI2LTA4LTIyVDE4OjM5OjI2KzAwOjAwp17ZxAAAACV0RVh0ZGF0ZTptb2RpZnkAMjAyNi0wOC0yMlQxODozOToyNiswMDowMNYDYXgAAAAodEVYdGRhdGU6dGltZXN0YW1wADIwMjYtMDgtMjJUMTg6Mzk6MjYrMDA6MDCBFkCnAAAA30lEQVR42u3awQ3DIBBE0ZhMX6EPl2DJlI8PIOdAEf/AfxWshIYlEx/ve13n+REks5X+/dFj7CvDA0Bl3qXHA8CsBFR6jH25A2DuAFhmcweQMlp5TAAn4/YKIrmEYRmt9FR6jH2ZAFhGOzwAkAmAZdgFofwlDFtXUKXH2JcJgNkFwUwALNMuCGUCYKsL8gAwma08PkM5XkEwuyCYXRDMBMDcATAPALa6oEqPsS8TALMLgpkAmM9QmGUczP+EYe4AmF9HwzJbedwBHL8NhfkMhbmEYZZxMF9BMK8gmEsY9ge7gYDi1g/y2QAAAABJRU5ErkJggg=='
 
 const withImage = async (page, name = 'bild.png') => {
   await page.goto('/?intro=off')
@@ -45,7 +52,7 @@ test.describe('pictures in the list', () => {
     // Polled, because 0 is also what it reads while the decode is still
     // running: the first version of this asserted once and passed alone,
     // failing only in a full run where the machine was busier.
-    await expect.poll(() => page.locator('.file .thumb').evaluate(img => img.naturalWidth)).toBe(1)
+    await expect.poll(() => page.locator('.file .thumb').evaluate(img => img.naturalWidth)).toBe(64)
   })
 
   test('a file that is not an image keeps the icon', async ({ page }) => {
@@ -72,6 +79,15 @@ test.describe('pictures in the list', () => {
 
     expect(large).toBe(small)
     await expect(page.locator('#preview-name')).toHaveText('bild.png')
+
+    // Big enough to aim at. This is what the 1x1 fixture got wrong: the picture
+    // was there and decoded, and the element was one CSS pixel wide, so a click
+    // at its centre landed on the dialog behind it. A test image that small
+    // made the *test* wrong in a way that looked like a Firefox bug.
+    const box = await page.locator('#preview img').boundingBox()
+
+    expect(box.width).toBeGreaterThan(16)
+    expect(box.height).toBeGreaterThan(16)
   })
 
   test('and clicking it again puts it away', async ({ page }) => {
@@ -113,7 +129,7 @@ test('escape puts it away too, and lets go of the picture', async ({ page }) => 
   await page.setInputFiles('#pick', {
     name: 'bild.png',
     mimeType: 'image/png',
-    buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64')
+    buffer: Buffer.from(PNG, 'base64')
   })
   await expect(page.locator('.tree')).toContainText('bild.png')
 

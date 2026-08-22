@@ -21,6 +21,7 @@ import { createKeepAlive } from '@le-space/libp2p-webrtc-qr'
 import { createIntroPolicy } from '@le-space/libp2p-webrtc-qr/elements'
 import { elementStrings, initialLocale, locale, setLocale, t, translateDocument } from './i18n.js'
 import { fileIcon, folderIcon, mark } from './icons.js'
+import { looksLikeImage, previews } from './previews.js'
 import { tree } from './tree.js'
 import { applyMusicChoice, musicWanted } from './music.js'
 import { admission, decide } from '../sync/admission.js'
@@ -66,6 +67,9 @@ const introViewEl = $('intro-view')
 const musicEl = $('music')
 const musicNowEl = $('music-now')
 const musicWhyEl = $('music-why')
+const previewEl = $('preview')
+const previewImageEl = $('preview-image')
+const previewNameEl = $('preview-name')
 const folderDetailEl = $('folder-detail')
 const folderNoteEl = $('folder-note')
 const admitEl = $('admit-ask')
@@ -130,8 +134,112 @@ function report (error) {
   setState(error?.message ?? String(error), 'idle')
 }
 
+const thumbnails = previews()
+
+/**
+ * Read a thumbnail only once its row is on screen.
+ *
+ * `render()` runs on every index change, so drawing a folder of photos would
+ * otherwise read and decode all of them each time. Waiting for the row to be
+ * visible means an unscrolled list of two hundred files reads the handful
+ * somebody is actually looking at.
+ */
+const whenVisible = new IntersectionObserver(entries => {
+  for (const entry of entries) {
+    if (!entry.isIntersecting) continue
+
+    whenVisible.unobserve(entry.target)
+    entry.target.dispatchEvent(new CustomEvent('shown'))
+  }
+}, { rootMargin: '200px' })
+
+/**
+ * Show it big.
+ *
+ * Opened by a tap, and by a hover that lasted long enough to be meant - without
+ * the delay, crossing the list on the way to something else would flash a full
+ * screen picture at every row. Closed by anything: Escape and the backdrop come
+ * with `<dialog>`, and moving the pointer away from the row that opened it ends
+ * a peek that was never asked to stay.
+ */
+function showPreview (url, name) {
+  previewImageEl.src = url
+  previewImageEl.alt = name
+  previewNameEl.textContent = name
+
+  if (!previewEl.open) previewEl.showModal()
+}
+
+/**
+ * Put it away and let go of the picture.
+ *
+ * The clearing happens here rather than in a `close` listener because
+ * **`dialog.close()` fires no `close` event in this Chromium** - the same trap
+ * `<qr-intro>` hit, where a dialog that had visibly shut went on reporting
+ * itself as open. `cancel` does fire, and that is the Escape path.
+ */
+function hidePreview () {
+  previewEl.close()
+  previewImageEl.removeAttribute('src')
+}
+
+previewEl.addEventListener('click', hidePreview)
+previewEl.addEventListener('cancel', () => previewImageEl.removeAttribute('src'))
+
 /** Folders the person collapsed. Open is the default; closing is the choice. */
 const collapsed = new Set()
+
+/**
+ * Swap the generic icon for the picture itself, once the row is on screen.
+ *
+ * The icon stays until then rather than an empty box appearing: a row that
+ * changes height when its picture arrives makes the list jump under whoever is
+ * reading it.
+ */
+function attachThumbnail (li, node) {
+  const cid = index.get(node.path)?.cid
+
+  if (cid == null) return
+
+  li.addEventListener('shown', async () => {
+    const url = await thumbnails.urlFor(node.path, cid, storage)
+
+    if (url == null) return
+
+    const img = document.createElement('img')
+
+    img.className = 'thumb'
+    img.src = url
+    img.alt = ''
+    img.loading = 'lazy'
+
+    let peek = null
+
+    // A tap is unambiguous; a hover has to wait to be sure it was meant.
+    img.addEventListener('click', event => {
+      event.stopPropagation()
+      showPreview(url, node.name)
+    })
+
+    img.addEventListener('pointerenter', event => {
+      if (event.pointerType !== 'mouse') return
+
+      peek = setTimeout(() => showPreview(url, node.name), 400)
+    })
+
+    const stop = () => {
+      clearTimeout(peek)
+      peek = null
+    }
+
+    img.addEventListener('pointerleave', stop)
+    img.addEventListener('pointercancel', stop)
+
+    li.querySelector('svg')?.replaceWith(img)
+  }, { once: true })
+
+  whenVisible.observe(li)
+}
 
 function fileRow (node) {
   const li = document.createElement('li')
@@ -141,6 +249,8 @@ function fileRow (node) {
 
   li.className = 'file'
   li.insertAdjacentHTML('afterbegin', fileIcon())
+
+  if (looksLikeImage(node.path)) attachThumbnail(li, node)
   name.className = 'name'
   name.textContent = node.name
   size.className = 'size'
@@ -200,6 +310,10 @@ async function render () {
 
   filesEl.replaceChildren(...list(tree(entries)).childNodes)
   emptyEl.hidden = entries.length > 0
+
+  // Everything the list no longer holds. A blob stays alive until it is
+  // revoked, whether or not anything still points at it.
+  thumbnails.keepOnly(index.paths().map(path => index.get(path)?.cid).filter(Boolean))
 }
 
 /**

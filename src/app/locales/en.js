@@ -64,6 +64,7 @@ export default {
     refused: 'Refused — that device was not let into this folder.',
     admitted: 'Syncing with a device that reached you through a relay.'
   },
+  foot: { legal: 'Imprint & privacy' },
   folder: {
     // The distinction the code deliberately cannot make. Both are a
     // `FileSystemDirectoryHandle`, so the interface has to say which one this

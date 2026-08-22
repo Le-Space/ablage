@@ -160,3 +160,32 @@ test('refusing a device is offered as plainly as letting it in', () => {
     assert.match(html, new RegExp(`<button id="${id}"[^>]*type="button"`))
   }
 })
+
+test('the built page says which build it is', () => {
+  // In the markup, not written from JavaScript: `curl` should answer "is the
+  // fix live yet?", and the stamp should survive a bundle that fails to boot -
+  // which is the build most in need of being identified.
+  const html = built()
+
+  for (const token of ['__ABLAGE_VERSION__', '__ABLAGE_COMMIT__', '__ABLAGE_BUILD_TIME__', '__ABLAGE_BUILD_ISO__']) {
+    assert.ok(!html.includes(token), `placeholder left unfilled: ${token}`)
+  }
+
+  assert.match(html, /<time datetime="\d{4}-\d{2}-\d{2}T\d{2}:\d{2}Z">/)
+  assert.match(html, /<code>[0-9a-f]{7}<\/code>|<code>unknown<\/code>/)
+})
+
+test('the service worker changes when the stamp does', () => {
+  // The version used to hash the asset *names*. A rebuild that changed only the
+  // build time changes only `index.html`, so the cache name stayed and a
+  // returning visitor kept being served the old page - showing a stamp for a
+  // build that is no longer deployed.
+  const worker = readFileSync(fileURLToPath(new URL('../dist/sw.js', import.meta.url)), 'utf8')
+  const built = readFileSync(fileURLToPath(new URL('../vite.config.js', import.meta.url)), 'utf8')
+
+  assert.match(worker, /const VERSION = "[0-9a-f]{12}"/)
+  assert.ok(
+    built.includes('stamp.__ABLAGE_BUILD_ISO__'),
+    'the stamp is not part of the cache version, so a rebuild would not reach returning visitors'
+  )
+})

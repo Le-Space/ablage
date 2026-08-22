@@ -1,5 +1,46 @@
+import { execSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
+
+/**
+ * Stamp the build into the page.
+ *
+ * A deployed site is an anonymous bundle behind a CID: nothing on it says which
+ * build it is, so "is the fix live yet?" is answered by grepping the served
+ * HTML for a string that happened to change. The stamp goes into `index.html`
+ * rather than being written from JavaScript, so `curl` answers it - and so it
+ * survives a bundle that fails to boot, which is the build most in need of
+ * being identified.
+ */
+const { version } = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'))
+
+const commit = () => {
+  // Actions builds from a detached HEAD and hands the sha over in the
+  // environment. A tree exported without .git still has to build, hence the
+  // fallback: an unknown commit is worth less than a real one, not than none.
+  if (process.env.GITHUB_SHA != null) return process.env.GITHUB_SHA.slice(0, 7)
+
+  try {
+    return execSync('git rev-parse --short HEAD', { encoding: 'utf8' }).trim()
+  } catch {
+    return 'unknown'
+  }
+}
+
+// One instant, two renderings - from a single Date so they cannot land on
+// opposite sides of a minute and disagree. Minutes and UTC: a deploy is
+// identified by which one it is, not by its second, and a local timezone would
+// make two people's screenshots disagree.
+const builtAt = new Date().toISOString().slice(0, 16)
+
+const stamp = {
+  __ABLAGE_VERSION__: version,
+  __ABLAGE_BUILD_TIME__: `${builtAt.replace('T', ' ')} UTC`,
+  // The machine-readable half of <time>, which has to parse as a datetime -
+  // the human string with its trailing "UTC" does not.
+  __ABLAGE_BUILD_ISO__: `${builtAt}Z`,
+  __ABLAGE_COMMIT__: commit()
+}
 
 /**
  * Emit the service worker with this build's file list baked in.
@@ -41,8 +82,13 @@ const serviceWorker = () => ({
     const precache = ['index.html', ...Object.keys(bundle).filter(name => !name.endsWith('.map'))]
     const assets = [...new Set([...precache, 'manifest.webmanifest'])]
 
+    // The stamp is folded in, and that is not decoration. The hash was over the
+    // asset *names*, so a rebuild that changed only `index.html` - which a new
+    // build time does, and nothing else - kept the same cache name. A returning
+    // visitor would then be served the old `index.html` from cache for ever,
+    // showing a build stamp for a build that is no longer deployed.
     const version = createHash('sha256')
-      .update(assets.join('|'))
+      .update([...assets, stamp.__ABLAGE_COMMIT__, stamp.__ABLAGE_BUILD_ISO__].join('|'))
       .digest('hex')
       .slice(0, 12)
 
@@ -64,7 +110,18 @@ export default {
   // months and it was the one thing I did not copy.
   base: './',
 
-  plugins: [serviceWorker()],
+  plugins: [
+    {
+      name: 'ablage-build-stamp',
+      transformIndexHtml: {
+        // Ahead of vite's own %VAR% pass, so the two substitutions cannot
+        // interleave over each other's output.
+        order: 'pre',
+        handler: html => Object.entries(stamp).reduce((out, [token, value]) => out.replaceAll(token, value), html)
+      }
+    },
+    serviceWorker()
+  ],
 
   server: { host: '127.0.0.1' },
   preview: { host: '127.0.0.1' },

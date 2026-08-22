@@ -74,6 +74,22 @@ export default {
     another: 'Choose another folder',
     resume: ({ name }) => `Use ${name} again`
   },
+  share: {
+    askTitle: 'Send this folder to the connected devices?',
+    askBody: ({ count, name }) => `${count === 1 ? 'One device is' : `${count} devices are`} connected. Sending means the contents of ${name} appear there; keeping it means this device works on its own until it disconnects.`,
+    yes: 'Send it',
+    no: 'Keep it to this device',
+    stopped: 'Working on this device alone — the connected devices were not sent this folder.'
+  },
+  switched: {
+    title: 'The other device switched folders',
+    body: ({ name }) => `It is now working in a folder called ${name}, which is not the one you were sharing.`,
+    follow: 'Follow it here',
+    keep: 'Keep my folder',
+    rest: 'Two more answers — using a folder you already have, and taking the contents once without syncing — are not built yet.',
+    followed: ({ name }) => `Following ${name}`,
+    kept: 'Kept this folder — the other device is working somewhere else now.'
+  },
   intro: {
     experimental: '<strong>Highly experimental — do not use this for anything you cannot lose.</strong> It is a working demonstration, not a backup: the format may change, and a folder here is not a copy of anything.',
     what: 'This is a folder shared between two of your devices. There is no account, and no server in the middle holding your files.',

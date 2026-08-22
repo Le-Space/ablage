@@ -72,6 +72,22 @@ export default {
     another: 'Anderen Ordner wählen',
     resume: ({ name }) => `${name} wieder benutzen`
   },
+  share: {
+    askTitle: 'Diesen Ordner an die verbundenen Geräte senden?',
+    askBody: ({ count, name }) => `${count === 1 ? 'Ein Gerät ist' : `${count} Geräte sind`} verbunden. Senden heißt, der Inhalt von ${name} erscheint dort; behalten heißt, dieses Gerät arbeitet für sich, bis die Verbindung endet.`,
+    yes: 'Senden',
+    no: 'Auf diesem Gerät behalten',
+    stopped: 'Arbeitet allein auf diesem Gerät — die verbundenen Geräte haben diesen Ordner nicht bekommen.'
+  },
+  switched: {
+    title: 'Das andere Gerät hat den Ordner gewechselt',
+    body: ({ name }) => `Es arbeitet jetzt in einem Ordner namens ${name}, und das ist nicht der, den Sie geteilt haben.`,
+    follow: 'Hier auch dorthin wechseln',
+    keep: 'Meinen Ordner behalten',
+    rest: 'Zwei weitere Antworten — einen Ordner nehmen, den Sie schon haben, und den Inhalt einmalig übernehmen — sind noch nicht gebaut.',
+    followed: ({ name }) => `Folgt ${name}`,
+    kept: 'Diesen Ordner behalten — das andere Gerät arbeitet jetzt woanders.'
+  },
   intro: {
     experimental: '<strong>Hochgradig experimentell — benutzen Sie es für nichts, dessen Verlust weh tut.</strong> Es ist eine lauffähige Demonstration, keine Sicherung: das Format kann sich ändern, und ein Ordner hier ist keine Kopie von irgendetwas.',
     what: 'Dies ist ein Ordner, den zwei Ihrer Geräte teilen. Es gibt kein Konto, und keinen Server dazwischen, der Ihre Dateien hält.',

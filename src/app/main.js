@@ -205,6 +205,11 @@ async function start () {
   // The index changing is the other trigger - a local write is the first.
   index.observe(() => render())
 
+  // The node is up, so the two controls that need it become pressable. Before
+  // this line they are not, and that is the point: they call `peer` directly.
+  inviteButton.disabled = false
+  scanButton.disabled = false
+
   networkEl.hidden = false
   networkEl.probe?.()
 

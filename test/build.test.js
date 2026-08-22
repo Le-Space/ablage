@@ -106,3 +106,18 @@ test('the service worker ships with this build\'s own file list', () => {
     assert.ok(!path.startsWith('/'), `precached path is absolute: ${path}`)
   }
 })
+
+test('the controls that need a node ship disabled', () => {
+  // Asserted on the built markup rather than in a browser, because the window
+  // this closes is too short to hit on purpose locally - the node starts in
+  // about a millisecond here and took long enough on Firefox in CI to fail a
+  // run. What is checkable everywhere is that the attribute is there.
+  const html = built()
+
+  for (const id of ['invite', 'scan']) {
+    const tag = html.match(new RegExp(`<button id="${id}"[^>]*>`))?.[0]
+
+    assert.ok(tag != null, `no button #${id} in the built page`)
+    assert.ok(tag.includes('disabled'), `#${id} ships pressable, and its handler calls the node: ${tag}`)
+  }
+})

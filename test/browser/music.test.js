@@ -9,10 +9,35 @@ import { expect, test } from '@playwright/test'
  * never `keepAlive.running`, which would be asserting on the runner.
  */
 
+// Making an invite is a real peer connection gathering real candidates, and in
+// a container with nowhere to send them that takes as long as its timeout. The
+// default 30s test budget was shorter than this file's own 60s poll, so the
+// poll never got to finish and the failure said "test timeout" instead of
+// anything about the invite.
+test.setTimeout(120_000)
+
 const invite = async page => {
   await page.goto('/?intro=off')
+
+  // Wait for the node before pressing the button that needs it. Nothing in the
+  // markup stops a press before then - `#invite` ships enabled - so a test that
+  // clicks immediately is racing the node's start, and on Firefox in CI it
+  // loses. A person on a slow phone would lose the same race.
+  await expect(page.locator('#network')).toBeVisible({ timeout: 60_000 })
+
   await page.locator('#invite').click()
-  await expect.poll(() => page.evaluate(() => document.getElementById('invite-box').open), { timeout: 60_000 }).toBe(true)
+
+  try {
+    await expect
+      .poll(() => page.evaluate(() => document.getElementById('invite-box').open), { timeout: 60_000 })
+      .toBe(true)
+  } catch (error) {
+    // Say what the app said. A bare timeout here is the least informative
+    // failure this suite can produce - the page has usually written the reason
+    // into the state line, and without this it is thrown away.
+    const state = await page.locator('#link-state').innerText().catch(() => '(unlesbar)')
+    throw new Error(`the invite never opened. #link-state said: ${state}\n\n${error.message}`)
+  }
 }
 
 test.describe('the waiting music', () => {

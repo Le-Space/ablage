@@ -6,6 +6,7 @@ import { QRSession, webRTCQR } from '@le-space/libp2p-webrtc-qr'
 import { createLibp2p } from 'libp2p'
 
 import { denyDial, relayBootstrapList } from './relay-policy.js'
+import { openSyncStream } from './sync-dial.js'
 
 /**
  * A libp2p node and the QR handshake, and nothing about files.
@@ -99,7 +100,13 @@ export async function createPeer ({
     },
 
     /** Open the sync stream. Whoever dialled the answer opens it. */
-    openSyncStream: peerId => session.dialProtocol(peerId, SYNC_PROTOCOL),
+    // By peer id, not through the QR session: `QRSession.dialProtocol` builds
+    // `/webrtc/p2p/<id>` itself, which names the QR transport and so reaches
+    // only a peer whose answer this device accepted. Receiving was never so
+    // limited - `node.handle` above hangs on the bare node - and this makes
+    // sending match it. See `sync-dial.js` for the muxer race it still has to
+    // survive.
+    openSyncStream: peerId => openSyncStream(node, peerId, SYNC_PROTOCOL),
 
     connections: () => node.getConnections().length,
 

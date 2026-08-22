@@ -99,3 +99,49 @@ test.describe('opfs storage', () => {
     expect((await store.list()).sort()).toEqual(['a.txt', 'deep/b.txt', 'deep/deeper/c.txt'])
   })
 })
+
+test.describe("the folder's own id", () => {
+  test('is written into the folder and kept out of the index', async ({ page }) => {
+    await page.goto('/harness.html')
+    await page.waitForFunction(() => window.__ablage != null)
+
+    const seen = await page.evaluate(async () => {
+      const { folderIdentity, IDENTITY_FILE } = await import('/src/storage/identity.js')
+      const store = await window.__ablage.storage('identity-check')
+
+      const { id, created } = await folderIdentity({
+        read: async path => new TextEncoder().encode(await store.read(path)),
+        write: (path, bytes) => store.write(path, new TextDecoder().decode(bytes))
+      })
+
+      return { id, created, listed: await store.list(), name: IDENTITY_FILE }
+    })
+
+    expect(seen.created).toBe(true)
+    expect(seen.id).toMatch(/^[0-9a-f-]{36}$/)
+
+    // The one that matters: `list()` is what the index is built from, and an id
+    // in there would be replicated into the other side's folder - overwriting
+    // their identity with ours, so two folders would claim to be the same one.
+    expect(seen.listed).not.toContain(seen.name)
+    expect(seen.listed).toEqual([])
+  })
+
+  test('is still readable directly, which is how identity.js reaches it', async ({ page }) => {
+    await page.goto('/harness.html')
+    await page.waitForFunction(() => window.__ablage != null)
+
+    const contents = await page.evaluate(async () => {
+      const { IDENTITY_FILE } = await import('/src/storage/identity.js')
+      const store = await window.__ablage.storage('identity-read')
+
+      await store.write(IDENTITY_FILE, '{"id":"abc"}')
+      return { read: await store.read(IDENTITY_FILE), listed: await store.list() }
+    })
+
+    // Excluded from the listing, not from the folder. `read` and `write` still
+    // reach it - it is the *index* that must never see it.
+    expect(contents.read).toBe('{"id":"abc"}')
+    expect(contents.listed).toEqual([])
+  })
+})

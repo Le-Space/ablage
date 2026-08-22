@@ -16,6 +16,8 @@
  * alternative is a migration the day directories appear.
  */
 
+import { IDENTITY_FILE } from './identity.js'
+
 /** @param {FileSystemDirectoryHandle} root @param {string} path */
 async function walk (root, path, { create = false } = {}) {
   const parts = path.split('/').filter(Boolean)
@@ -43,6 +45,15 @@ export async function directoryStorage ({ root } = {}) {
 
     for await (const [name, handle] of dir.entries()) {
       const path = prefix ? `${prefix}/${name}` : name
+
+      // The folder's own id is not one of its files. Replicating it would put
+      // our id in the other side's folder, and then two folders would claim to
+      // be the same one - measured, not feared: without this line the second
+      // device's id becomes the first device's. Excluded here rather than in
+      // the interface, because it is the *index* that must never see it;
+      // `read` and `write` still reach it, which is how `identity.js` gets at
+      // it at all.
+      if (path === IDENTITY_FILE) continue
 
       if (handle.kind === 'directory') {
         found.push(...await collect(handle, path))

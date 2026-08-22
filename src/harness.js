@@ -149,6 +149,12 @@ window.__ablage = {
       /** How many peers this side is talking to right now. */
       syncPeers: () => peers.size,
 
+      /** This folder's own id, written on first sight. */
+      identity: async () => {
+        const { folderIdentity } = await import('./storage/identity.js')
+        return (await folderIdentity(storage)).id
+      },
+
       /**
        * Work in a different folder from now on.
        *
@@ -217,6 +223,6 @@ window.__ablage = {
 // One side per browser context, which is what a device is.
 let side = null
 
-for (const name of ['peerId', 'createOffer', 'acceptOffer', 'acceptAnswer', 'write', 'remove', 'read', 'list', 'paths', 'reconcile', 'connections', 'useFolder', 'syncPeers']) {
+for (const name of ['peerId', 'createOffer', 'acceptOffer', 'acceptAnswer', 'write', 'remove', 'read', 'list', 'paths', 'reconcile', 'connections', 'useFolder', 'syncPeers', 'identity']) {
   window.__ablage[name] = (...args) => side[name](...args)
 }

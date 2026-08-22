@@ -550,11 +550,18 @@ markEl.innerHTML = mark()
  */
 introEl.relay = {
   storageKey: RELAY_OPT_IN_KEY,
-  check: () => findReachableRelays({
+  check: () => {
+    // The gate is shut on a node that started without a relay, and it would
+    // refuse this very check - which is what made a live relay report itself as
+    // silent. Opened for the probe; using one still waits for the next start.
+    peer?.allowRelayDials(true)
+
+    return findReachableRelays({
     baked: bakedRelayAddresses(),
-    probe: relayProbe(peer.node, multiaddr),
-    discover: discoverRelays
-  })
+      probe: relayProbe(peer.node, multiaddr),
+      discover: discoverRelays
+    })
+  }
 }
 
 // A choice made now takes effect at the next start: the bootstrap list, the

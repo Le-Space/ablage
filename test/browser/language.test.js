@@ -470,3 +470,19 @@ test.describe('the second way in', () => {
     await expect.poll(() => page.evaluate(() => localStorage.getItem('ablage.relay'))).toBe('true')
   })
 })
+
+test('ticking the relay box finds one, rather than reporting silence', async ({ page }) => {
+  // What this looked like from the outside: "Kein Relay hat geantwortet" for a
+  // relay that was up. Two causes, hiding each other - no encrypter or muxer to
+  // negotiate an ordinary connection, and the node's own gate refusing the very
+  // check that would have said so.
+  test.setTimeout(120_000)
+  await open(page)
+
+  const box = page.locator('qr-intro').locator('input[part="relay-opt-in"]')
+
+  await box.check()
+
+  // The element paints the source it found - `baked`, `aleph` or `none`.
+  await expect(page.locator('qr-intro')).not.toContainText(/no relay answered|Kein Relay hat geantwortet/i, { timeout: 60_000 })
+})

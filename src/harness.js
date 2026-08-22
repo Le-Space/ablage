@@ -80,6 +80,44 @@ window.__ablage = {
     }
   },
 
+  /**
+   * Dial a relay the way the app does, with the gate in a chosen state.
+   *
+   * Here rather than in a test file so the imports are the app's own - vite
+   * resolves them, and a probe that reached a different copy of `multiaddr`
+   * would be measuring the test rig.
+   */
+  probeRelay: async (address, relayOptIn) => {
+    const { createPeer } = await import('./peer.js')
+    const { relayProbe } = await import('./relay-sources.js')
+    const { multiaddr } = await import('@multiformats/multiaddr')
+
+    const peer = await createPeer({ relayOptIn })
+
+    try {
+      const answered = await relayProbe(peer.node, multiaddr, { timeoutMs: 15000 })([address])
+
+      // The reason, when there is none to report: `relayProbe` returns an empty
+      // list for anything that failed, which is right for the caller and
+      // useless for finding out why.
+      let reason = null
+
+      if (answered.length === 0) {
+        try {
+          await peer.node.dial(multiaddr(address), { signal: AbortSignal.timeout(15000) })
+        } catch (error) {
+          reason = String(error?.message ?? error).slice(0, 200)
+        }
+      }
+
+      return { answered, reason }
+    } catch (error) {
+      return { answered: [], reason: String(error?.message ?? error).slice(0, 200) }
+    } finally {
+      await peer.stop().catch(() => {})
+    }
+  },
+
   clear: async name => {
     const root = await navigator.storage.getDirectory()
     await root.removeEntry(name, { recursive: true }).catch(() => {})

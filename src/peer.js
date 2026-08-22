@@ -1,3 +1,5 @@
+import { noise } from '@chainsafe/libp2p-noise'
+import { yamux } from '@chainsafe/libp2p-yamux'
 import { bootstrap } from '@libp2p/bootstrap'
 import { circuitRelayTransport } from '@libp2p/circuit-relay-v2'
 import { identify } from '@libp2p/identify'
@@ -56,6 +58,17 @@ export async function createPeer ({
 } = {}) {
   let session = null
 
+  // Live, not captured. The checkbox in the introduction checks the moment it
+  // is ticked - that is the element's promise, and a good one - but the gate
+  // was fixed when the node was made, so the probe was refused by this node's
+  // own gater and reported as "no relay answered". A dead relay and a closed
+  // gate looked identical, and only one of them was true.
+  //
+  // What still waits for a restart is *using* one: the bootstrap list and the
+  // `/p2p-circuit` announcement below are read once. Opening the gate lets the
+  // check happen; it does not quietly turn the relay on.
+  let relayWanted = relayOptIn
+
   const relays = relayBootstrapList(relayBootstrapAddrs, relayOptIn)
   const hasRelay = relays.length > 0
 
@@ -66,8 +79,25 @@ export async function createPeer ({
       circuitRelayTransport(),
       webSockets()
     ],
+    // Neither is used by the QR transport, and without them nothing else can
+    // connect at all.
+    //
+    // The QR path brings its own: `upgradeOutbound(…, { skipEncryption: true,
+    // muxerFactory: session.muxerFactory })`, safe because the signed payload
+    // already authenticated the peer. A relay connection is an ordinary libp2p
+    // connection over a WebSocket, and it has neither - so the upgrader reached
+    // multistream-select with an empty protocol list and threw "At least one
+    // protocol must be specified", an error that names the symptom and not the
+    // absence.
+    //
+    // Measured, not guessed: with the gate open, that was the error. The demo's
+    // configuration - which this file mirrors on purpose - never needed them,
+    // because the demo only ever speaks QR.
+    connectionEncrypters: [noise()],
+    streamMuxers: [yamux()],
+
     connectionGater: {
-      denyDialMultiaddr: addr => denyDial(String(addr), relayOptIn)
+      denyDialMultiaddr: addr => denyDial(String(addr), relayWanted)
     },
     peerDiscovery: hasRelay ? [bootstrap({ list: relays })] : [],
     services: { identify: identify() }
@@ -89,6 +119,15 @@ export async function createPeer ({
     node,
     session,
     peerId: () => node.peerId.toString(),
+
+    /**
+     * Let this node try a relay now, without restarting it.
+     *
+     * For the check the introduction runs when somebody ticks the box. It opens
+     * the gate and nothing else - no bootstrap, no announcement - so a start
+     * that nobody asked anything of still makes no outbound call.
+     */
+    allowRelayDials: (on = true) => { relayWanted = on },
 
     /** The offering half of the handshake. */
     createOffer: options => session.createOffer(options),

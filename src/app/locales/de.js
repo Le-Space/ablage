@@ -54,9 +54,19 @@ export default {
     size: ({ bytes }) => `${bytes} ${bytes === 1 ? 'Byte' : 'Bytes'}`
   },
   folder: {
-    private: 'Arbeitet im privaten Speicher dieses Browsers',
+    // Die Unterscheidung, die der Code bewusst nicht trifft. Beides ist ein
+    // `FileSystemDirectoryHandle`, also muss es die Oberfläche sagen - wer
+    // glaubt, seine Dateien lägen in ~/Dokumente, während sie im Browserprofil
+    // liegen, merkt es beim Leeren des Browsers.
+    onDisk: ({ name }) => `Auf Ihrer Festplatte: ${name}`,
+    onDiskDetail: 'Das sind Ihre echten Dateien. Was hier erscheint, erscheint in Ihrem Dateimanager, und was Sie dort löschen, verschwindet hier.',
+    inBrowser: 'Im Browser — kein Ordner auf Ihrer Festplatte',
+    inBrowserDetail: 'Kein Dateimanager sieht diese Dateien, und das Leeren der Browserdaten löscht sie. Wählen Sie einen Ordner, um stattdessen in Ihren eigenen Dateien zu arbeiten.',
+    grant: 'Einen Ordner zu wählen erlaubt ablage, in genau diesem Ordner zu lesen und zu schreiben, sonst nirgends. Sie können das in den Browsereinstellungen für diese Seite zurücknehmen, und der Browser fragt nach einem Neustart unter Umständen erneut.',
+    noPicker: 'Nur Chromium-Browser können einen Ordner auf Ihrer Festplatte öffnen. Hier arbeitet ablage in seinem eigenen Speicher im Browser.',
     syncing: ({ name }) => `Gleicht ${name} ab`,
-    remembered: ({ name }) => `${name} ist gemerkt — geben Sie ihn wieder frei, um dort weiterzumachen`,
+    private: 'Arbeitet im privaten Speicher dieses Browsers',
+    remembered: ({ name }) => `${name} ist gemerkt, aber dieser Browser hat die Berechtigung fallen lassen — geben Sie sie zurück, um dort weiterzumachen`,
     choose: 'Ordner wählen',
     another: 'Anderen Ordner wählen',
     resume: ({ name }) => `${name} wieder benutzen`

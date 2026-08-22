@@ -284,3 +284,29 @@ button.primary:hover:not(:disabled) { background: var(--ls-red-bright); border-c
   font-size: 0.9rem;
 }
 .warning strong { color: var(--ls-red-bright); }
+
+/* Which of the two storages this is. Coral for the browser's own, because that
+   is the one whose contents vanish with the browser data; cyan for a real
+   folder, which is the ordinary, reassuring case. */
+.folder-state {
+  margin: 0 0 0.25rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  display: flex;
+  align-items: baseline;
+  gap: 0.45rem;
+}
+.folder-state::before {
+  content: '';
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  flex: none;
+}
+.folder-state[data-place="disk"] { color: var(--ls-text); }
+.folder-state[data-place="disk"]::before { background: var(--ls-accent); }
+.folder-state[data-place="browser"] { color: var(--ls-red-bright); }
+.folder-state[data-place="browser"]::before { background: var(--ls-red); }
+
+#folder-detail { margin: 0 0 0.6rem; }
+.hint.quiet { color: var(--ls-text-faint); font-size: 0.8rem; margin: 0 0 0.5rem; }

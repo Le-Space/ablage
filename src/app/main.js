@@ -23,6 +23,9 @@ import { elementStrings, initialLocale, locale, setLocale, t, translateDocument 
 import { fileIcon, folderIcon, mark } from './icons.js'
 import { tree } from './tree.js'
 import { applyMusicChoice, musicWanted } from './music.js'
+import { peerSet } from '../sync/peer-set.js'
+import { sharing } from '../sync/sharing.js'
+import { folderIdentity } from '../storage/identity.js'
 import { applyViewMode, isSimple } from './view-mode.js'
 import { askForFolder, canPickFolder, pickFolder } from '../storage/handle.js'
 import { watchFolder } from '../storage/watch.js'
@@ -64,6 +67,9 @@ const musicNowEl = $('music-now')
 const musicWhyEl = $('music-why')
 const folderDetailEl = $('folder-detail')
 const folderNoteEl = $('folder-note')
+const shareAskEl = $('share-ask')
+const switchToldEl = $('switch-told')
+const switchToldBodyEl = $('switch-told-body')
 const markEl = $('mark')
 
 // Both are replaced when the folder changes: the index describes *a* folder,
@@ -89,7 +95,13 @@ let peer = null
  * echo only back to the peer an update came from, so a change from A is
  * forwarded to B through this device and never returned to A.
  */
-const peers = new Map()
+const peers = peerSet()
+
+/** What this device decided to send to whom. Per peer - see `sharing.js`. */
+const shared = sharing()
+
+/** This folder's id and name, for the message a switch sends. */
+let folder = { id: null, name: null }
 
 /** Whether anybody is listening to the shared document right now. */
 const connected = () => peers.size > 0
@@ -198,10 +210,12 @@ function attach (stream, peerId) {
   // how a second peer took over the first one's messages.
   const provider = new Provider(doc, send)
 
-  // A reconnection to the same peer: the old provider still holds a listener on
-  // the document and would keep posting into a closed stream.
-  peers.get(peerId)?.destroy()
-  peers.set(peerId, provider)
+  // The channel is kept beside the provider, not only inside it. A folder
+  // switch replaces the provider - it has to, the document underneath is a new
+  // one - and the stream it talks over is the same stream. Without this the
+  // only way to rebuild would be to drop the connection and hand somebody a QR
+  // code again.
+  peers.add(peerId, provider, send)
 
   setState(t('link.connected'), 'connected')
 
@@ -219,7 +233,18 @@ function attach (stream, peerId) {
 
   ;(async () => {
     for await (const data of stream) {
-      provider.receive(JSON.parse(decode(data.subarray?.() ?? data)))
+      const message = JSON.parse(decode(data.subarray?.() ?? data))
+
+      // The application's own message, on the sync stream. The provider's
+      // switch has no default, so an unknown type would be dropped in silence -
+      // which is why it is taken out here rather than added there: the CRDT has
+      // no opinion about folders.
+      if (message.type === 'folder-switch') {
+        toldAboutSwitch(peerId, message)
+        continue
+      }
+
+      provider.receive(message)
       // A remote change is a reason to look at storage again.
       pass()
     }
@@ -229,10 +254,7 @@ function attach (stream, peerId) {
       // Only this peer's, and only if it is still the current one - a
       // reconnection may have put a newer provider under the same key while
       // this loop was ending.
-      if (peers.get(peerId) === provider) {
-        provider.destroy()
-        peers.delete(peerId)
-      }
+      peers.dropIfCurrent(peerId, provider)
 
       // The others are still there; saying "gone" while two peers remain would
       // be describing this stream rather than the state of the folder.
@@ -428,25 +450,129 @@ function startFreshIndex () {
   base.clear()
 }
 
-pickButton.addEventListener('click', async () => {
-  // Refused rather than done badly. Switching under an attached peer is issue
-  // #8 §2 and §3: it needs somebody to be asked what the switch means for the
-  // other side, and there are four reasonable answers. Until that exists, the
-  // honest thing is to say so - not to guess, and not to pour one folder into
-  // another while somebody watches.
-  if (connected()) {
-    setState(t('folder.notWhileConnected'), 'waiting')
-    return
+/**
+ * Ask once, and record it per peer.
+ *
+ * @param {string} name the folder being switched to
+ * @returns {Promise<boolean>} whether the connected peers may be sent it
+ */
+function askAboutSharing (name) {
+  return new Promise(resolve => {
+    $('share-ask-body').textContent = t('share.askBody', { count: peers.size, name })
+
+    const answer = allowed => {
+      shareAskEl.close()
+      // Recorded against the peers connected *at the moment of the question*.
+      // One that joins afterwards is a device nobody was asked about, and
+      // inheriting this answer is exactly what per-peer storage prevents.
+      shared.set([...peers.keys()], allowed)
+      resolve(allowed)
+    }
+
+    $('share-yes').onclick = () => answer(true)
+    $('share-no').onclick = () => answer(false)
+    shareAskEl.showModal()
+  })
+}
+
+/**
+ * Tell the peers, then start again on the new folder.
+ *
+ * The message goes first and on the *old* providers, because they are the ones
+ * still holding the document the other side is synced against. A moment later
+ * they are replaced: a provider built on the old document would go on
+ * describing a folder this device no longer has, which is what happens today
+ * when nothing is sent at all - measured, the peer keeps the old listing for
+ * ever and nobody tells it why.
+ */
+function announceSwitch (name, id) {
+  const tell = shared.allowed(peers.ids())
+
+  // `startFreshIndex` between the two, because `rebuild` below has to build on
+  // the *new* document and the message has to leave over the old one.
+  const message = { type: 'folder-switch', id, name }
+
+  peers.switchFolder({
+    tell,
+    message,
+    // Between the message and the rebuild: sent from the document the peer is
+    // synced against, rebuilt on the one that replaces it.
+    beforeRebuild: startFreshIndex,
+    rebuild: send => {
+      const provider = new Provider(doc, send)
+
+      provider.requestSync()
+      return provider
+    }
+  })
+}
+
+/**
+ * Somebody on the other end is now working in a different folder.
+ *
+ * Two answers of the four the issue names. "Follow it here" and "keep mine" are
+ * the ends of the range; using a folder you already have, and taking the
+ * contents once without syncing, are refinements between them and are not built
+ * - which the dialog says rather than leaving somebody to guess why their case
+ * is missing.
+ */
+function toldAboutSwitch (peerId, message) {
+  switchToldBodyEl.textContent = t('switched.body', { name: message.name })
+
+  const answer = follow => {
+    switchToldEl.close()
+
+    if (!follow) {
+      // Their folder is not this one. Stop describing this folder to them, keep
+      // the connection: a dropped connection would read as a fault rather than
+      // as an answer.
+      peers.drop(peerId)
+      setState(t('switched.kept'), 'idle')
+      return
+    }
+
+    // Start again on nothing, then ask them for everything. The fresh document
+    // is what stops the old folder's entries being merged with theirs - the
+    // union of two folders is the "merged view" §1 forbids.
+    startFreshIndex()
+    peers.follow(peerId, send => {
+      const provider = new Provider(doc, send)
+
+      provider.requestSync()
+      return provider
+    })
+
+    setState(t('switched.followed', { name: message.name }), 'waiting')
   }
 
+  $('switch-follow').onclick = () => answer(true)
+  $('switch-keep').onclick = () => answer(false)
+  switchToldEl.showModal()
+}
+
+pickButton.addEventListener('click', async () => {
   try {
     // Both paths need the gesture this handler is: picking opens a dialog, and
     // re-granting permission on a remembered handle does too.
     const restored = pickButton.dataset.resume === 'yes' ? (await openStorage()).pending : null
     const handle = restored != null && await askForFolder(restored) ? restored : await pickFolder()
 
+    // Asked before anything changes, so "keep it to this device" leaves the
+    // folder as it was rather than half-switched.
+    const share = connected() ? await askAboutSharing(handle.name) : false
+
     storage = (await openStorage()).store
-    startFreshIndex()
+    const identity = await folderIdentity(storage)
+
+    folder = { id: identity.id, name: handle.name }
+
+    if (connected()) {
+      announceSwitch(handle.name, identity.id)
+      if (!share) setState(t('share.stopped'), 'idle')
+    } else {
+      startFreshIndex()
+    }
+
     showFolder({ kind: 'picked', handle })
     await pass()
   } catch (error) {

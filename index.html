@@ -302,6 +302,36 @@
         front of the only thing they came for. The caveats and the live network
         verdict come from the element; the slot is this app's own story.
       -->
+      <!--
+        Two dialogs for the two halves of a folder switch.
+
+        The first asks the device that is switching; the second asks the device
+        that is told. They are separate because the questions are: one is about
+        sending, the other about what to do with what arrives.
+      -->
+      <dialog id="share-ask" class="modal">
+        <div class="modal-head">
+          <h3 data-i18n="share.askTitle">Send this folder to the connected devices?</h3>
+        </div>
+        <p id="share-ask-body"></p>
+        <div class="actions">
+          <button id="share-yes" class="primary" type="button" data-i18n="share.yes">Send it</button>
+          <button id="share-no" type="button" data-i18n="share.no">Keep it to this device</button>
+        </div>
+      </dialog>
+
+      <dialog id="switch-told" class="modal">
+        <div class="modal-head">
+          <h3 data-i18n="switched.title">The other device switched folders</h3>
+        </div>
+        <p id="switch-told-body"></p>
+        <div class="actions">
+          <button id="switch-follow" class="primary" type="button" data-i18n="switched.follow">Follow it here</button>
+          <button id="switch-keep" type="button" data-i18n="switched.keep">Keep my folder</button>
+        </div>
+        <p class="hint quiet" data-i18n="switched.rest"></p>
+      </dialog>
+
       <qr-intro id="intro">
         <!--
           The same two switches as the header, because the header is behind the

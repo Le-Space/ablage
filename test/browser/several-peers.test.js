@@ -128,3 +128,36 @@ test('and a file from one edge crosses to the other, through the middle', async 
     await browser.close()
   }
 })
+
+test('a folder keeps its own id when another folder syncs with it', async () => {
+  // The property the exclusion exists for. An id that replicated would land in
+  // the other side's folder and overwrite their identity with ours - two
+  // folders claiming to be the same one, and neither able to say otherwise.
+  const browser = await chromium.launch()
+  const a = await startSide(browser, 'id-a')
+  const b = await startSide(browser, 'id-b')
+
+  try {
+    const idA = await a.page.evaluate(() => window.__ablage.identity())
+    const idB = await b.page.evaluate(() => window.__ablage.identity())
+
+    expect(idA).not.toBe(idB)
+
+    await pair(a, b)
+    await a.page.evaluate(() => window.__ablage.write('geteilt.txt', 'hallo'))
+    expect(await eventually(b.page, 'geteilt.txt')).toBe('hallo')
+
+    // The file crossed. The id did not.
+    expect(await b.page.evaluate(() => window.__ablage.identity())).toBe(idB)
+    expect(await a.page.evaluate(() => window.__ablage.identity())).toBe(idA)
+
+    // And neither folder lists the other's - nor its own, which is what keeps
+    // it out of the index in the first place.
+    expect(await a.page.evaluate(() => window.__ablage.list())).toEqual(['geteilt.txt'])
+    expect(await b.page.evaluate(() => window.__ablage.list())).toEqual(['geteilt.txt'])
+  } finally {
+    await a.context.close()
+    await b.context.close()
+    await browser.close()
+  }
+})

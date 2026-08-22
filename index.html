@@ -177,11 +177,28 @@
       <section class="card">
         <h2 data-i18n="files.heading">Files</h2>
 
-        <p id="folder" class="hint"></p>
         <!--
-          Hidden where there is no picker at all, which is Firefox and WebKit -
-          a control that cannot do anything is worse than its absence.
+          Which of the two storages this is, said plainly and at a glance.
+
+          `directory.js` deliberately cannot tell them apart - a picked folder
+          and the origin's private one are both a `FileSystemDirectoryHandle`,
+          which is what let the picker be added without touching the reconciler.
+          That is good design inside and a trap outside: the app looks identical
+          whether the files are on somebody's disk or locked in a browser
+          profile, and the difference only shows up when they clear the browser.
+
+          So the interface says what the code does not. `data-place` carries it
+          for the stylesheet and for anything that wants to ask.
         -->
+        <p id="folder" class="folder-state"></p>
+        <p id="folder-detail" class="hint"></p>
+
+        <!--
+          Before the button, not after it. Whether this browser can open a real
+          folder at all is the first thing to know, and finding out by pressing
+          something that does nothing is the worst way to learn it.
+        -->
+        <p id="folder-note" class="hint quiet"></p>
         <button id="pick-folder" type="button" hidden data-i18n="folder.choose">Choose a folder</button>
 
         <div id="drop" class="drop">

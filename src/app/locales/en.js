@@ -56,9 +56,19 @@ export default {
     size: ({ bytes }) => `${bytes} bytes`
   },
   folder: {
-    private: "Working in this browser's private storage",
+    // The distinction the code deliberately cannot make. Both are a
+    // `FileSystemDirectoryHandle`, so the interface has to say which one this
+    // is - a person who thinks their files are in ~/Documents when they are in
+    // the browser profile finds out when they clear the browser.
+    onDisk: ({ name }) => `On your disk: ${name}`,
+    onDiskDetail: 'These are your real files. What appears here appears in your file manager, and what you delete there disappears here.',
+    inBrowser: 'Inside this browser — not a folder on your disk',
+    inBrowserDetail: 'No file manager can see these files, and clearing this browser\u2019s data deletes them. Choose a folder to work in your own files instead.',
+    grant: 'Choosing a folder lets ablage read and write in that folder and nowhere else. You can withdraw it in the browser\u2019s settings for this site, and the browser may ask again after a restart.',
+    noPicker: 'Only Chromium-based browsers can open a folder on your disk. Here, ablage works in its own storage inside the browser.',
     syncing: ({ name }) => `Syncing ${name}`,
-    remembered: ({ name }) => `${name} is remembered — give it back to continue there`,
+    private: "Working in this browser's private storage",
+    remembered: ({ name }) => `${name} is remembered, but this browser dropped the permission — give it back to continue there`,
     choose: 'Choose a folder',
     another: 'Choose another folder',
     resume: ({ name }) => `Use ${name} again`

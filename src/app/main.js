@@ -62,6 +62,8 @@ const introViewEl = $('intro-view')
 const musicEl = $('music')
 const musicNowEl = $('music-now')
 const musicWhyEl = $('music-why')
+const folderDetailEl = $('folder-detail')
+const folderNoteEl = $('folder-note')
 const markEl = $('mark')
 
 const doc = new Y.Doc()
@@ -328,8 +330,15 @@ function showFolder (state = folderState) {
   unwatch?.()
   unwatch = null
 
+  // What this browser can do at all, before the control that does it.
+  folderNoteEl.textContent = canPickFolder() ? t('folder.grant') : t('folder.noPicker')
+
   if (kind === 'picked') {
-    folderEl.textContent = t('folder.syncing', { name: handle.name })
+    // Named for what it is rather than for what the app is doing with it:
+    // "Syncing Documents" says nothing about whose Documents, or where.
+    folderEl.textContent = t('folder.onDisk', { name: handle.name })
+    folderEl.dataset.place = 'disk'
+    folderDetailEl.textContent = t('folder.onDiskDetail')
     pickButton.textContent = t('folder.another')
 
     // Only a picked folder can change behind the app's back. Nothing outside it
@@ -340,7 +349,9 @@ function showFolder (state = folderState) {
 
   folderEl.textContent = pending != null
     ? t('folder.remembered', { name: pending.name })
-    : t('folder.private')
+    : t('folder.inBrowser')
+  folderEl.dataset.place = 'browser'
+  folderDetailEl.textContent = t('folder.inBrowserDetail')
 
   pickButton.textContent = pending != null ? t('folder.resume', { name: pending.name }) : t('folder.choose')
   pickButton.dataset.resume = pending != null ? 'yes' : ''

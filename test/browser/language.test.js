@@ -52,10 +52,12 @@ test.describe('language', () => {
     // The folder line carries its own text and no `data-i18n`, so it is the one
     // a language switch forgets. It was forgotten once.
     await page.locator('#locale-de').click()
-    await expect(page.locator('#folder')).toHaveText('Arbeitet im privaten Speicher dieses Browsers')
+    await expect(page.locator('#folder')).toHaveText('Im Browser — kein Ordner auf Ihrer Festplatte')
+    await expect(page.locator('#folder-detail')).toContainText('Dateimanager')
 
     await page.locator('#locale-en').click()
-    await expect(page.locator('#folder')).toHaveText("Working in this browser's private storage")
+    await expect(page.locator('#folder')).toHaveText('Inside this browser — not a folder on your disk')
+    await expect(page.locator('#folder-detail')).toContainText('file manager')
   })
 
   test('the choice survives a reload', async ({ page }) => {

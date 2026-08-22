@@ -66,8 +66,10 @@ const folderDetailEl = $('folder-detail')
 const folderNoteEl = $('folder-note')
 const markEl = $('mark')
 
-const doc = new Y.Doc()
-const index = fileIndex(doc)
+// Both are replaced when the folder changes: the index describes *a* folder,
+// and after a switch it describes the wrong one. See `switchToFolder` below.
+let doc = new Y.Doc()
+let index = fileIndex(doc)
 // What this device last agreed with the other one about - the third value
 // that tells "I edited it" apart from "we both edited it".
 const base = baseline()
@@ -76,6 +78,9 @@ let storage = null
 let content = null
 let peer = null
 let provider = null
+// Whether anybody is listening to the shared document right now. It decides
+// whether the folder may be switched at all - see `switchToFolder`.
+let connected = false
 let pending = Promise.resolve()
 
 /**
@@ -172,6 +177,8 @@ async function render () {
 function attach (stream) {
   const send = message => stream.send(encode(JSON.stringify(message)))
 
+  connected = true
+
   provider = new Provider(doc, send)
   setState(t('link.connected'), 'connected')
 
@@ -193,6 +200,7 @@ function attach (stream) {
       // A remote change is a reason to look at storage again.
       pass()
     }
+    connected = false
     setState(t('link.gone'), 'idle')
   })().catch(report)
 
@@ -359,7 +367,43 @@ function showFolder (state = folderState) {
 
 pickButton.hidden = !canPickFolder()
 
+/**
+ * Start again, describing the folder this device is now working in.
+ *
+ * The index describes *a* folder. After a switch it describes the wrong one,
+ * and the reconciler acts on it: every entry it holds is missing from the new
+ * folder, so it fetches the bytes by address and **writes them there**. A
+ * folder chosen because it was empty does not stay empty - measured, not
+ * feared: switching to a fresh directory copied the previous folder's file into
+ * it.
+ *
+ * A fresh document rather than emptying this one. `index.remove` writes a
+ * tombstone, which is right for a deleted file and catastrophic here: with a
+ * peer attached, emptying the index would send a deletion for every path and
+ * the other device would act on it. The bug being fixed would become a worse
+ * one pointed at somebody else's disk.
+ *
+ * The baseline goes too. What this device last agreed about `notes/todo.md`
+ * says nothing once that path means a different file.
+ */
+function startFreshIndex () {
+  doc = new Y.Doc()
+  index = fileIndex(doc)
+  index.observe(() => render())
+  base.clear()
+}
+
 pickButton.addEventListener('click', async () => {
+  // Refused rather than done badly. Switching under an attached peer is issue
+  // #8 §2 and §3: it needs somebody to be asked what the switch means for the
+  // other side, and there are four reasonable answers. Until that exists, the
+  // honest thing is to say so - not to guess, and not to pour one folder into
+  // another while somebody watches.
+  if (connected) {
+    setState(t('folder.notWhileConnected'), 'waiting')
+    return
+  }
+
   try {
     // Both paths need the gesture this handler is: picking opens a dialog, and
     // re-granting permission on a remembered handle does too.
@@ -367,6 +411,7 @@ pickButton.addEventListener('click', async () => {
     const handle = restored != null && await askForFolder(restored) ? restored : await pickFolder()
 
     storage = (await openStorage()).store
+    startFreshIndex()
     showFolder({ kind: 'picked', handle })
     await pass()
   } catch (error) {

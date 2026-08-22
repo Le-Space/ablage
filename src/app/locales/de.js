@@ -67,6 +67,7 @@ export default {
     syncing: ({ name }) => `Gleicht ${name} ab`,
     private: 'Arbeitet im privaten Speicher dieses Browsers',
     remembered: ({ name }) => `${name} ist gemerkt, aber dieser Browser hat die Berechtigung fallen lassen — geben Sie sie zurück, um dort weiterzumachen`,
+    notWhileConnected: 'Erst trennen — den Ordner zu wechseln, während ein Gerät verbunden ist, müsste dieses Gerät fragen, was der Wechsel für es bedeutet. Das ist noch nicht gebaut.',
     choose: 'Ordner wählen',
     another: 'Anderen Ordner wählen',
     resume: ({ name }) => `${name} wieder benutzen`

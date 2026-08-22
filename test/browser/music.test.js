@@ -19,11 +19,14 @@ test.setTimeout(120_000)
 const invite = async page => {
   await page.goto('/?intro=off')
 
-  // Wait for the node before pressing the button that needs it. Nothing in the
-  // markup stops a press before then - `#invite` ships enabled - so a test that
-  // clicks immediately is racing the node's start, and on Firefox in CI it
-  // loses. A person on a slow phone would lose the same race.
-  await expect(page.locator('#network')).toBeVisible({ timeout: 60_000 })
+  // Wait for the node before pressing the button that needs it. The button
+  // itself is the signal now: it ships disabled and is enabled when the node is
+  // up, which is exactly the state this is waiting for.
+  //
+  // It used to wait for `#network` instead. That worked only for as long as the
+  // network chips were in every view - they moved behind the technical switch,
+  // and this helper waited for something that was never going to appear.
+  await expect(page.locator('#invite')).toBeEnabled({ timeout: 60_000 })
 
   await page.locator('#invite').click()
 

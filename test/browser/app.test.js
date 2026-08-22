@@ -138,6 +138,11 @@ test.describe('the interface', () => {
   test('the readiness panel is the library element, not a copy of one', async ({ page }) => {
     await open(page)
 
+    // In the technical view, where the chips now live: they are diagnostics,
+    // and "IPv6: none" is not something the simple view can act on. What this
+    // test is about is unchanged - that the panel is the library's element.
+    await page.locator('#view-mode').click()
+
     // Third consumer of `@le-space/libp2p-webrtc-qr`, and the point of the
     // elements existing: this app writes no network judgement of its own.
     await expect(page.locator('qr-status')).toBeVisible()

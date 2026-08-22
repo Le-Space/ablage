@@ -365,3 +365,108 @@ test.describe('the warning', () => {
     await expect(page.locator('.warning')).toContainText('Hochgradig experimentell')
   })
 })
+
+test.describe('the network chips', () => {
+  test('are not in the simple view', async ({ page }) => {
+    await open(page)
+    await shut(page)
+
+    // Diagnostics. "IPv6: none" is not something somebody who chose the simple
+    // view can act on, and three coloured dots that never change are furniture.
+    await expect(page.locator('#network')).toBeHidden()
+  })
+
+  test('and are there for whoever asked for detail', async ({ page }) => {
+    await open(page)
+    await page.locator('#intro-view').click()
+    await shut(page)
+
+    await expect(page.locator('#network')).toBeVisible()
+  })
+
+  test('the measurement still runs either way', async ({ page }) => {
+    await open(page)
+
+    // Hidden is not switched off. The introduction reports the same check in a
+    // sentence, which is the form the simple view wants it in - and asserting
+    // that keeps somebody from "fixing" the hiding by skipping the probe.
+    await expect(page.locator('qr-intro')).toContainText(/Checking|direct connection|network/i)
+  })
+})
+
+test.describe("this device's own address", () => {
+  test('is shown, because otherwise nobody can be told which device is yours', async ({ page }) => {
+    await open(page)
+    await page.locator('#intro-view').click()
+    await shut(page)
+
+    // The admission dialog names the device that is asking. Without this there
+    // is no way to tell somebody which of those names is you.
+    await expect(page.locator('#my-peer')).toBeVisible()
+    await expect(page.locator('#my-peer')).toContainText(/12D3Koo|Qm/)
+  })
+
+  test('and not in the simple view, because a peer id is not a name', async ({ page }) => {
+    await open(page)
+    await shut(page)
+
+    await expect(page.locator('#my-peer')).toBeHidden()
+  })
+
+  test('it says whose it is, in German too', async ({ page }) => {
+    await open(page)
+    await page.locator('#intro-locale-de').click()
+    await page.locator('#intro-view').click()
+    await shut(page)
+
+    await expect(page.locator('#my-peer')).toContainText('Dieses Gerät:')
+  })
+})
+
+test.describe('the second way in', () => {
+  // By its part name, not by position. The shadow root holds two checkboxes -
+  // this one and "do not show again" - and the library's own source warns that
+  // reaching for them by order silently picks the wrong one. It did here: the
+  // first version of this suite used `.last()`, and the opening test passed
+  // while ticking the dismissal box.
+  const relayBox = page => page.locator('qr-intro').locator('input[part="relay-opt-in"]')
+
+  test('the introduction offers a relay, unticked', async ({ page }) => {
+    await open(page)
+
+    // The element only grows this half when the app hands it a `relay` - which
+    // is the seam that was missing: the checkbox existed in the library and
+    // nothing here had ever set the property.
+    await expect(relayBox(page)).toBeVisible()
+    await expect(relayBox(page)).not.toBeChecked()
+  })
+
+  test('and says a choice takes effect at the next start, rather than pretending', async ({ page }) => {
+    await open(page)
+
+    // `relayOptIn` decides the bootstrap list, the `/p2p-circuit` announcement
+    // and what the gater refuses - all fixed when the node is created. A tick
+    // that appeared to do something now would be the lie.
+    await relayBox(page).check()
+
+    await expect(page.locator('#link-state')).toContainText(/next time this page is opened/i)
+  })
+
+  test('unticking it says what that means', async ({ page }) => {
+    await open(page)
+    await relayBox(page).check()
+    await relayBox(page).uncheck()
+
+    await expect(page.locator('#link-state')).toContainText(/scanning its code/i)
+  })
+
+  test('the choice is written where the node reads it', async ({ page }) => {
+    // The whole seam in one assertion. The element writes under the key we give
+    // it; `createPeer` reads that same key at the next start. A different key
+    // on either side would leave the box working and the node unaware.
+    await open(page)
+    await relayBox(page).check()
+
+    await expect.poll(() => page.evaluate(() => localStorage.getItem('ablage.relay'))).toBe('true')
+  })
+})

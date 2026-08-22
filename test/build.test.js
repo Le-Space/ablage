@@ -189,3 +189,13 @@ test('the service worker changes when the stamp does', () => {
     'the stamp is not part of the cache version, so a rebuild would not reach returning visitors'
   )
 })
+
+test('the relay choice is read from a key of our own', () => {
+  // The library takes a key rather than inventing one, so that a package cannot
+  // put its namespace in somebody else's origin. Passing none would silently
+  // mean "never opted in", which is a working app that ignores the choice.
+  const source = readFileSync(fileURLToPath(new URL('../src/app/main.js', import.meta.url)), 'utf8')
+
+  assert.match(source, /const RELAY_OPT_IN_KEY = 'ablage\./)
+  assert.match(source, /relayOptIn: readRelayOptIn\(globalThis\.localStorage, RELAY_OPT_IN_KEY\)/)
+})

@@ -24,7 +24,11 @@ import { fileIcon, folderIcon, mark } from './icons.js'
 import { looksLikeImage, previews } from './previews.js'
 import { tree } from './tree.js'
 import { applyMusicChoice, musicWanted } from './music.js'
+import { multiaddr } from '@multiformats/multiaddr'
+import { findReachableRelays, readRelayOptIn } from '@le-space/libp2p-webrtc-qr'
+
 import { admission, decide } from '../sync/admission.js'
+import { bakedRelayAddresses, discoverRelays, relayProbe } from '../relay-sources.js'
 import { peerSet } from '../sync/peer-set.js'
 import { sharing } from '../sync/sharing.js'
 import { folderIdentity } from '../storage/identity.js'
@@ -72,6 +76,7 @@ const previewImageEl = $('preview-image')
 const previewNameEl = $('preview-name')
 const folderDetailEl = $('folder-detail')
 const folderNoteEl = $('folder-note')
+const myPeerEl = $('my-peer')
 const admitEl = $('admit-ask')
 const shareAskEl = $('share-ask')
 const switchToldEl = $('switch-told')
@@ -105,6 +110,28 @@ const peers = peerSet()
 
 /** What this device decided to send to whom. Per peer - see `sharing.js`. */
 const shared = sharing()
+
+/**
+ * This device's address, in the current language.
+ *
+ * Its own function because it is written from JavaScript and therefore invisible
+ * to `data-i18n` - the same trap the folder line fell into once, and the reason
+ * `language.test.js` checks that kind of text separately. Called from
+ * `applyLocale`, so a switch reaches it too.
+ */
+function showMyPeer () {
+  if (peer == null) return
+
+  myPeerEl.textContent = t('link.myPeer', { id: peer.peerId() })
+}
+
+/**
+ * Where the relay choice is kept.
+ *
+ * Ours, not the library's: it takes a key rather than inventing one, so a
+ * package cannot put its own namespace in somebody else's origin.
+ */
+const RELAY_OPT_IN_KEY = 'ablage.relay'
 
 /** Who may write into this folder. The QR scan is the only automatic yes. */
 const admitted = admission()
@@ -389,6 +416,16 @@ async function start () {
   storage = opened.store
   showFolder(opened)
   peer = await createPeer({
+    // Read here and nowhere else. `relayOptIn` decides the bootstrap list,
+    // whether a `/p2p-circuit` is announced, and what the gater refuses - all
+    // of them fixed when the node is created, so the choice takes effect at the
+    // next start rather than at once.
+    //
+    // Nothing writes this key yet. `<qr-intro>` grows the checkbox that would,
+    // but it wants a `relay.check` and only the app knows its addresses -
+    // ablage ships none. This is the half of the seam that does not need one:
+    // without it, a choice made later would reach the interface and stop there.
+    relayOptIn: readRelayOptIn(globalThis.localStorage, RELAY_OPT_IN_KEY),
     onSyncStream: (stream, peerId, address) => {
       if (decide({ address, peerId, admitted }) === 'admit') {
         attach(stream, peerId)
@@ -407,6 +444,10 @@ async function start () {
   // this line they are not, and that is the point: they call `peer` directly.
   inviteButton.disabled = false
   scanButton.disabled = false
+
+  // Only once the node exists - before that there is no address to show.
+  showMyPeer()
+  myPeerEl.hidden = false
 
   networkEl.hidden = false
   networkEl.probe?.()
@@ -454,8 +495,9 @@ function applyLocale (next) {
   }
 
   // Written from JavaScript rather than marked in the markup, so `data-i18n`
-  // never reaches it.
+  // never reaches them.
   showFolder()
+  showMyPeer()
 
   // Rows carry their own text and are not repainted by anything else.
   render()
@@ -493,6 +535,35 @@ introViewEl.addEventListener('click', viewChanged)
 markEl.innerHTML = mark()
 
 // ---- the introduction ------------------------------------------------------
+
+/**
+ * The second way in, offered in the introduction as a choice.
+ *
+ * The element owns the checkbox, the wording and the remembering; what it does
+ * not own is where the addresses come from or how to ping one, which is why
+ * `check` is ours. It writes the answer under our key, and `createPeer` reads
+ * that same key at the next start - which is the whole seam.
+ *
+ * `peer` is read when `check` runs rather than captured now: the introduction
+ * can be open before the node exists, and the check only happens if somebody
+ * ticks the box.
+ */
+introEl.relay = {
+  storageKey: RELAY_OPT_IN_KEY,
+  check: () => findReachableRelays({
+    baked: bakedRelayAddresses(),
+    probe: relayProbe(peer.node, multiaddr),
+    discover: discoverRelays
+  })
+}
+
+// A choice made now takes effect at the next start: the bootstrap list, the
+// `/p2p-circuit` announcement and the gater are all fixed when the node is
+// created. Said out loud rather than left for somebody to notice that ticking
+// the box changed nothing today.
+introEl.addEventListener('relay-opt-in', event => {
+  setState(t(event.detail.optIn ? 'relay.onNextStart' : 'relay.off'), 'idle')
+})
 
 const introPolicy = createIntroPolicy({ storageKey: 'ablage.introSeen' })
 

@@ -44,6 +44,7 @@ export default {
     pasteLabel: 'Paste their reply here',
     pasteUse: 'Use this reply',
     pasteBad: 'That does not look like a reply. A reply link contains #r=.',
+    myPeer: ({ id }) => `This device: ${id}`,
     scanReply: 'Scan their reply',
     cameraHint: 'Their camera opens the same link — or send it to them.'
   },
@@ -83,6 +84,10 @@ export default {
     choose: 'Choose a folder',
     another: 'Choose another folder',
     resume: ({ name }) => `Use ${name} again`
+  },
+  relay: {
+    onNextStart: 'A relay will be used the next time this page is opened — the connection settings are fixed when the app starts.',
+    off: 'No relay. This device can only be reached by somebody scanning its code.'
   },
   share: {
     askTitle: 'Send this folder to the connected devices?',

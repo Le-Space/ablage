@@ -23,6 +23,7 @@ import { elementStrings, initialLocale, locale, setLocale, t, translateDocument 
 import { fileIcon, folderIcon, mark } from './icons.js'
 import { tree } from './tree.js'
 import { applyMusicChoice, musicWanted } from './music.js'
+import { admission, decide } from '../sync/admission.js'
 import { peerSet } from '../sync/peer-set.js'
 import { sharing } from '../sync/sharing.js'
 import { folderIdentity } from '../storage/identity.js'
@@ -67,6 +68,7 @@ const musicNowEl = $('music-now')
 const musicWhyEl = $('music-why')
 const folderDetailEl = $('folder-detail')
 const folderNoteEl = $('folder-note')
+const admitEl = $('admit-ask')
 const shareAskEl = $('share-ask')
 const switchToldEl = $('switch-told')
 const switchToldBodyEl = $('switch-told-body')
@@ -99,6 +101,9 @@ const peers = peerSet()
 
 /** What this device decided to send to whom. Per peer - see `sharing.js`. */
 const shared = sharing()
+
+/** Who may write into this folder. The QR scan is the only automatic yes. */
+const admitted = admission()
 
 /** This folder's id and name, for the message a switch sends. */
 let folder = { id: null, name: null }
@@ -269,7 +274,16 @@ async function start () {
 
   storage = opened.store
   showFolder(opened)
-  peer = await createPeer({ onSyncStream: (stream, peerId) => attach(stream, peerId) })
+  peer = await createPeer({
+    onSyncStream: (stream, peerId, address) => {
+      if (decide({ address, peerId, admitted }) === 'admit') {
+        attach(stream, peerId)
+        return
+      }
+
+      askToAdmit(stream, peerId)
+    }
+  })
   content = await createContent(peer.node)
 
   // The index changing is the other trigger - a local write is the first.
@@ -505,6 +519,38 @@ function announceSwitch (name, id) {
       return provider
     }
   })
+}
+
+/**
+ * Somebody reached this device without scanning anything.
+ *
+ * The stream is already open - that is how this dialog can say who is asking -
+ * but nothing is attached, so nothing they send reaches the document and
+ * nothing is written to disk. A refusal closes the stream, which is the only
+ * way the other side learns the answer at all.
+ */
+function askToAdmit (stream, peerId) {
+  $('admit-who').textContent = peerId
+  $('admit-remember').checked = false
+
+  const answer = admit => {
+    admitEl.close()
+
+    if (!admit) {
+      stream.close?.().catch?.(() => {})
+      setState(t('admit.refused'), 'idle')
+      return
+    }
+
+    if ($('admit-remember').checked) admitted.remember(peerId)
+
+    attach(stream, peerId)
+    setState(t('admit.admitted'), 'connected')
+  }
+
+  $('admit-yes').onclick = () => answer(true)
+  $('admit-no').onclick = () => answer(false)
+  admitEl.showModal()
 }
 
 /**

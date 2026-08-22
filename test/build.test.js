@@ -138,3 +138,25 @@ test('the refusal to switch folders under a connection is written in both langua
     assert.ok(source.includes('notWhileConnected:'), `folder.notWhileConnected missing from ${locale}`)
   }
 })
+
+test('the box that grants a standing permission ships unticked', () => {
+  // The default *is* the decision here. Somebody answering a dialog about a
+  // device that reached them through a relay should have to reach for
+  // "remember", not discover afterwards that not reading carefully granted
+  // something standing.
+  const html = built()
+  const box = html.match(/<input id="admit-remember"[^>]*>/)?.[0]
+
+  assert.ok(box != null, 'no remember box in the built page')
+  assert.ok(!box.includes('checked'), `ships ticked: ${box}`)
+})
+
+test('refusing a device is offered as plainly as letting it in', () => {
+  // A dialog with one obvious button and one that looks like a way out teaches
+  // people to press the obvious one. Both are buttons, and both are named.
+  const html = built()
+
+  for (const id of ['admit-yes', 'admit-no']) {
+    assert.match(html, new RegExp(`<button id="${id}"[^>]*type="button"`))
+  }
+})

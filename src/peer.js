@@ -79,7 +79,10 @@ export async function createPeer ({
   // "stream was reset right after opening", which reads like a transport fault
   // and is a wrong signature.
   await node.handle(SYNC_PROTOCOL, (stream, connection) => {
-    onSyncStream?.(stream, connection.remotePeer.toString())
+    // The address says how this peer was reached, and that decides whether it
+    // is asked about. A QR peer arrives over `/webrtc/p2p/<id>` - the scan was
+    // the consent - while anything through a relay carries `/p2p-circuit`.
+    onSyncStream?.(stream, connection.remotePeer.toString(), String(connection.remoteAddr ?? ''))
   })
 
   return {

@@ -55,6 +55,15 @@ export default {
     remove: 'Remove',
     size: ({ bytes }) => `${bytes} bytes`
   },
+  admit: {
+    title: 'A device wants to sync with this folder',
+    body: 'It reached you through a relay rather than by scanning your code, so nobody has agreed to this yet. Letting it sync means it can add, change and delete files in the folder this device is working in.',
+    remember: 'Remember this device',
+    yes: 'Let it sync',
+    no: 'Refuse',
+    refused: 'Refused — that device was not let into this folder.',
+    admitted: 'Syncing with a device that reached you through a relay.'
+  },
   folder: {
     // The distinction the code deliberately cannot make. Both are a
     // `FileSystemDirectoryHandle`, so the interface has to say which one this

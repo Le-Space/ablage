@@ -309,6 +309,32 @@
         that is told. They are separate because the questions are: one is about
         sending, the other about what to do with what arrives.
       -->
+      <!--
+        The gate the QR scan used to be.
+
+        Somebody reached this device without standing in the room, and
+        `reconcile` writes into a real folder on disk. The stream is accepted so
+        that this dialog can say who is asking; nothing they send reaches the
+        document until the answer is yes.
+      -->
+      <dialog id="admit-ask" class="modal">
+        <div class="modal-head">
+          <h3 data-i18n="admit.title">A device wants to sync with this folder</h3>
+        </div>
+        <p data-i18n="admit.body"></p>
+        <p id="admit-who" class="peer-id"></p>
+        <label class="option">
+          <!-- Unticked, and that is the decision: the safe answer is the one
+               somebody gets by not reading carefully. -->
+          <input id="admit-remember" type="checkbox" />
+          <span data-i18n="admit.remember">Remember this device</span>
+        </label>
+        <div class="actions">
+          <button id="admit-yes" class="primary" type="button" data-i18n="admit.yes">Let it sync</button>
+          <button id="admit-no" type="button" data-i18n="admit.no">Refuse</button>
+        </div>
+      </dialog>
+
       <dialog id="share-ask" class="modal">
         <div class="modal-head">
           <h3 data-i18n="share.askTitle">Send this folder to the connected devices?</h3>

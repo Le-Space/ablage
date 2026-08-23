@@ -130,6 +130,11 @@ function showPeers (found) {
   // missing panel is not. The line underneath says how long to wait.
   peersEl.hidden = false
   peersEmptyEl.hidden = found.length > 0
+  // Two different empty lists. Without a relay there is nowhere to be found, so
+  // the line has to say what to switch on - "devices appear a few seconds after
+  // they reach a relay" is true and useless to somebody who has not turned one
+  // on, which is everybody by default.
+  peersEmptyEl.textContent = t(readRelayOptIn(globalThis.localStorage, RELAY_OPT_IN_KEY) ? 'peers.empty' : 'peers.noRelay')
   peerListEl.replaceChildren(...found.map(({ peerId, state }) => {
     const li = document.createElement('li')
     const name = document.createElement('code')

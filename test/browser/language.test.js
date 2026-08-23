@@ -512,3 +512,12 @@ test('ticking the relay box finds one, rather than reporting silence', async ({ 
   // The element paints the source it found - `baked`, `aleph` or `none`.
   await expect(page.locator('qr-intro')).not.toContainText(/no relay answered|Kein Relay hat geantwortet/i, { timeout: 60_000 })
 })
+
+test('an empty peer list says what to switch on', async ({ page }) => {
+  await open(page)
+  await shut(page)
+
+  // "Devices appear a few seconds after they reach a relay" is true and useless
+  // to somebody who has not turned one on - which is everybody, by default.
+  await expect(page.locator('#peers-empty')).toContainText(/switched off|introduction is where/i)
+})

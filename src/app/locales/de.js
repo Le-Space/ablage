@@ -114,7 +114,11 @@ export default {
     body: ({ name }) => `Es arbeitet jetzt in einem Ordner namens ${name}, und das ist nicht der, den Sie geteilt haben.`,
     follow: 'Hier auch dorthin wechseln',
     keep: 'Meinen Ordner behalten',
-    rest: 'Zwei weitere Antworten — einen Ordner nehmen, den Sie schon haben, und den Inhalt einmalig übernehmen — sind noch nicht gebaut.',
+    select: 'Einen Ordner nehmen, den ich schon habe',
+    selected: ({ name }) => `Arbeitet in ${name}, im Gleichlauf mit dem anderen Gerät`,
+    once: 'Inhalt einmalig übernehmen',
+    taking: 'Übernimmt den Inhalt einmalig. Was danach kommt, kommt nicht von selbst.',
+    took: ({ count }) => `${count === 1 ? 'Eine Datei' : `${count} Dateien`} übernommen. Dieser Ordner läuft nicht mehr mit jenem Gerät mit.`,
     followed: ({ name }) => `Folgt ${name}`,
     kept: 'Diesen Ordner behalten — das andere Gerät arbeitet jetzt woanders.'
   },

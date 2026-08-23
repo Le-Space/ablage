@@ -440,11 +440,23 @@
           <h3 data-i18n="switched.title">The other device switched folders</h3>
         </div>
         <p id="switch-told-body"></p>
-        <div class="actions">
+        <!--
+          Four answers, because "they switched folders" genuinely has four, and
+          picking one would be wrong three times out of four. They are stacked
+          rather than in a row: each is a sentence, and four sentences side by
+          side on a phone is four columns of two words each.
+        -->
+        <div class="answers">
           <button id="switch-follow" class="primary" type="button" data-i18n="switched.follow">Follow it here</button>
+          <!--
+            Hidden where there is no picker at all - Firefox and WebKit - for
+            the same reason `#pick-folder` is: a control that cannot do
+            anything is worse than its absence.
+          -->
+          <button id="switch-select" type="button" hidden data-i18n="switched.select">Use a folder I already have</button>
+          <button id="switch-once" type="button" data-i18n="switched.once">Take the contents once</button>
           <button id="switch-keep" type="button" data-i18n="switched.keep">Keep my folder</button>
         </div>
-        <p class="hint quiet" data-i18n="switched.rest"></p>
       </dialog>
 
       <qr-intro id="intro">

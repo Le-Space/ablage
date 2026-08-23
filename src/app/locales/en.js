@@ -116,7 +116,11 @@ export default {
     body: ({ name }) => `It is now working in a folder called ${name}, which is not the one you were sharing.`,
     follow: 'Follow it here',
     keep: 'Keep my folder',
-    rest: 'Two more answers — using a folder you already have, and taking the contents once without syncing — are not built yet.',
+    select: 'Use a folder I already have',
+    selected: ({ name }) => `Working in ${name}, kept in step with the other device`,
+    once: 'Take the contents once',
+    taking: 'Taking the contents once. Nothing after this arrives on its own.',
+    took: ({ count }) => `Took ${count === 1 ? 'one file' : `${count} files`}. This folder is no longer kept in step with that device.`,
     followed: ({ name }) => `Following ${name}`,
     kept: 'Kept this folder — the other device is working somewhere else now.'
   },

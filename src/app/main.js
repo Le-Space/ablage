@@ -786,7 +786,11 @@ function askAboutSharing (name) {
       // Recorded against the peers connected *at the moment of the question*.
       // One that joins afterwards is a device nobody was asked about, and
       // inheriting this answer is exactly what per-peer storage prevents.
-      shared.set([...peers.keys()], allowed)
+      // `ids()`, not `keys()`. The peer map became a `peerSet` in #19 and this
+      // call was left behind - it threw inside the click, so the promise never
+      // settled and the whole switch stopped at the question. Nothing noticed,
+      // because no test had ever driven §2 from one interface to the other.
+      shared.set(peers.ids(), allowed)
       resolve(allowed)
     }
 
@@ -884,37 +888,99 @@ function askToAdmit (stream, peerId) {
  * - which the dialog says rather than leaving somebody to guess why their case
  * is missing.
  */
+/**
+ * Start again on nothing and ask them for everything.
+ *
+ * The fresh document is what stops the old folder's entries being merged with
+ * theirs - the union of two folders is the "merged view" §1 forbids. Shared by
+ * three of the four answers, which differ in *where* the files land and in
+ * whether anything arrives after the first exchange.
+ */
+function followPeer (peerId) {
+  startFreshIndex()
+
+  return peers.follow(peerId, send => {
+    const provider = new Provider(doc, send)
+
+    provider.requestSync()
+    return provider
+  })
+}
+
 function toldAboutSwitch (peerId, message) {
   switchToldBodyEl.textContent = t('switched.body', { name: message.name })
+  $('switch-select').hidden = !canPickFolder()
 
-  const answer = follow => {
-    switchToldEl.close()
+  const close = () => switchToldEl.close()
 
-    if (!follow) {
-      // Their folder is not this one. Stop describing this folder to them, keep
-      // the connection: a dropped connection would read as a fault rather than
-      // as an answer.
-      peers.drop(peerId)
-      setState(t('switched.kept'), 'idle')
-      return
-    }
+  $('switch-keep').onclick = () => {
+    close()
+    // Their folder is not this one. Stop describing this folder to them, keep
+    // the connection: a dropped connection would read as a fault rather than
+    // as an answer.
+    peers.drop(peerId)
+    setState(t('switched.kept'), 'idle')
+  }
 
-    // Start again on nothing, then ask them for everything. The fresh document
-    // is what stops the old folder's entries being merged with theirs - the
-    // union of two folders is the "merged view" §1 forbids.
-    startFreshIndex()
-    peers.follow(peerId, send => {
-      const provider = new Provider(doc, send)
-
-      provider.requestSync()
-      return provider
-    })
-
+  $('switch-follow').onclick = () => {
+    close()
+    followPeer(peerId)
     setState(t('switched.followed', { name: message.name }), 'waiting')
   }
 
-  $('switch-follow').onclick = () => answer(true)
-  $('switch-keep').onclick = () => answer(false)
+  /**
+   * The same, into a folder of this person's choosing.
+   *
+   * Their `xyz` is a name, not a place - and on this device it may already
+   * exist somewhere else entirely, which is the whole reason this answer is one
+   * of the four. The picker must be opened from the click that asked for it:
+   * doing the storage work first would spend the gesture.
+   */
+  $('switch-select').onclick = async () => {
+    close()
+
+    try {
+      const handle = await pickFolder()
+
+      storage = (await openStorage()).store
+      folder = { id: (await folderIdentity(storage)).id, name: handle.name }
+
+      followPeer(peerId)
+      showFolder({ kind: 'picked', handle })
+      setState(t('switched.selected', { name: handle.name }), 'waiting')
+      await pass()
+    } catch (error) {
+      if (error?.name !== 'AbortError') report(error)
+    }
+  }
+
+  /**
+   * Take what is there now, and nothing after it.
+   *
+   * "Once" needs a moment to mean, and this is the honest one: the first
+   * exchange is what they have, so when the reconciler has finished acting on
+   * it, the copying is done. Waiting for anything later would be waiting for
+   * ongoing sync, which is the answer this is not.
+   */
+  $('switch-once').onclick = async () => {
+    close()
+    followPeer(peerId)
+    setState(t('switched.taking'), 'waiting')
+
+    // Their state vector comes back as one response, and `pass()` is queued
+    // behind whatever the read loop started - so waiting for it is waiting for
+    // that response to have been acted on.
+    await new Promise(resolve => setTimeout(resolve, 1500))
+    await pass()
+
+    const count = index.paths().length
+
+    // Dropped, not disconnected: the copying is finished, the acquaintance is
+    // not. `drop` leaves the connection and stops describing this folder.
+    peers.drop(peerId)
+    setState(t('switched.took', { count }), 'idle')
+  }
+
   switchToldEl.showModal()
 }
 

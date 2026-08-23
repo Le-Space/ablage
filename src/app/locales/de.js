@@ -89,6 +89,7 @@ export default {
     connected: 'verbunden',
     share: 'Teilen anfragen',
     asking: ({ id }) => `${id} gefragt — wartet auf Antwort`,
+    noRelay: 'Niemand zu zeigen. Geräte finden einander nur über ein Relay, und dieses ist aus — im Intro lässt es sich einschalten.',
     empty: 'Noch hat niemand gerufen. Geräte erscheinen hier ein paar Sekunden, nachdem sie ein Relay erreicht haben.',
     unreachable: ({ id }) => `${id} war nicht erreichbar`,
     notAnAddress: 'Das ist weder eine Peer-ID noch eine Adresse.',
@@ -123,6 +124,7 @@ export default {
     kept: 'Diesen Ordner behalten — das andere Gerät arbeitet jetzt woanders.'
   },
   intro: {
+    start: 'Los geht\u2019s',
     experimental: '<strong>Hochgradig experimentell — benutzen Sie es für nichts, dessen Verlust weh tut.</strong> Es ist eine lauffähige Demonstration, keine Sicherung: das Format kann sich ändern, und ein Ordner hier ist keine Kopie von irgendetwas.',
     what: 'Dies ist ein Ordner, den zwei Ihrer Geräte teilen. Es gibt kein Konto, und keinen Server dazwischen, der Ihre Dateien hält.',
     how: 'Zeigen Sie den Code auf diesem Bildschirm dem anderen Gerät, oder schicken Sie ihm den Link. Sobald beide verbunden sind, erscheint alles, was Sie in den Ordner legen, auf beiden.',

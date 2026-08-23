@@ -91,6 +91,7 @@ export default {
     connected: 'connected',
     share: 'Ask to share',
     asking: ({ id }) => `Asked ${id} — waiting for an answer`,
+    noRelay: 'Nobody to show. Devices can only find each other through a relay, and this one is switched off — the introduction is where to turn it on.',
     empty: 'Nobody has called out yet. Devices appear here a few seconds after they connect to a relay.',
     unreachable: ({ id }) => `${id} could not be reached`,
     notAnAddress: 'That is neither a peer id nor an address.',
@@ -125,6 +126,7 @@ export default {
     kept: 'Kept this folder — the other device is working somewhere else now.'
   },
   intro: {
+    start: "Let's go",
     experimental: '<strong>Highly experimental — do not use this for anything you cannot lose.</strong> It is a working demonstration, not a backup: the format may change, and a folder here is not a copy of anything.',
     what: 'This is a folder shared between two of your devices. There is no account, and no server in the middle holding your files.',
     how: 'Show the code on this screen to the other device, or send it the link. Once the two are connected, whatever you put in the folder appears on both.',

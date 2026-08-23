@@ -428,3 +428,17 @@ button.primary:hover:not(:disabled) { background: var(--ls-red-bright); border-c
    phone is four columns of two words each. */
 .answers { display: grid; gap: 0.5rem; margin-top: 1rem; }
 .answers button { width: 100%; }
+
+/* Appears only when the list is long enough to lose somebody in. */
+.peer-filter {
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 0.4rem;
+  padding: 0.35rem 0.6rem;
+  font: inherit;
+  font-size: 0.8rem;
+  border: 1px solid var(--ls-card-border);
+  border-radius: 999px;
+  background: var(--ls-bg);
+  color: var(--ls-text);
+}

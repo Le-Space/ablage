@@ -24,6 +24,7 @@ export default {
   link: {
     heading: 'Dieses Gerät und das andere',
     idle: 'Noch nicht verbunden.',
+    pairSummary: 'Per Code koppeln, ohne irgendetwas dazwischen',
     invite: 'Meinen Code zeigen',
     scan: 'Code des anderen scannen',
     fold: 'Oder als Link senden',
@@ -85,6 +86,8 @@ export default {
   },
   peers: {
     heading: 'Geräte da draußen',
+    filter: 'Nach Peer-ID filtern',
+    noMatch: 'Kein Gerät hier passt dazu.',
     heard: 'über das Relay gehört',
     connected: 'verbunden',
     share: 'Teilen anfragen',
@@ -125,9 +128,11 @@ export default {
   },
   intro: {
     start: 'Los geht\u2019s',
+    start: 'Los geht\u2019s',
     experimental: '<strong>Hochgradig experimentell — benutzen Sie es für nichts, dessen Verlust weh tut.</strong> Es ist eine lauffähige Demonstration, keine Sicherung: das Format kann sich ändern, und ein Ordner hier ist keine Kopie von irgendetwas.',
     what: 'Dies ist ein Ordner, den zwei Ihrer Geräte teilen. Es gibt kein Konto, und keinen Server dazwischen, der Ihre Dateien hält.',
     how: 'Zeigen Sie den Code auf diesem Bildschirm dem anderen Gerät, oder schicken Sie ihm den Link. Sobald beide verbunden sind, erscheint alles, was Sie in den Ordner legen, auf beiden.',
+    howRelay: 'Ein Relay stellt die beiden Geräte einander vor, mehr nicht. Beide rufen auf demselben Treffpunkt; danach erscheint jedes in der Liste des anderen, und eines fragt das andere. Das Relay sieht nie, was hinübergeht — es reicht eine Adresse weiter und tritt zur Seite.',
     secure: 'Die Verbindung ist Ende zu Ende verschlüsselt. Niemand dazwischen kann mitlesen — kein Netzbetreiber, kein Gateway, und wir auch nicht.',
     who: 'Beide Geräte müssen gleichzeitig offen sein. Die Zustellung, wenn sie es nicht sind, ist noch nicht gebaut — und der Ordner sagt das, statt so zu tun.'
   },

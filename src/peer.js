@@ -1,5 +1,7 @@
 import { noise } from '@chainsafe/libp2p-noise'
 import { yamux } from '@chainsafe/libp2p-yamux'
+import { gossipsub } from '@libp2p/gossipsub'
+import { pubsubPeerDiscovery } from '@libp2p/pubsub-peer-discovery'
 import { bootstrap } from '@libp2p/bootstrap'
 import { circuitRelayTransport } from '@libp2p/circuit-relay-v2'
 import { identify } from '@libp2p/identify'
@@ -39,6 +41,41 @@ import { openSyncStream } from './sync-dial.js'
  */
 
 export const SYNC_PROTOCOL = '/ablage/sync/1.0.0'
+
+/**
+ * Where devices call out to find each other.
+ *
+ * One topic for the whole app, so any two devices with a relay meet - which is
+ * the mesh, and it is deliberate. Meeting is not sharing: what a peer may do
+ * with this folder is decided by the dialog in `admission.js`, and being
+ * discoverable is not being open.
+ */
+export const DISCOVERY_TOPICS = [
+  // orbitdb-relay's default, and the one the relay this app ships actually
+  // carries - measured, see below.
+  'todo._peer-discovery._p2p._pubsub',
+  // universal-connectivity's. Free to listen on, and inert until this app also
+  // reaches a relay deployed with the `uc-go-peer` profile: our own discovery
+  // filters for `relay:orbitdb-relay:orbitdb-relay` and would never return one.
+  'universal-connectivity-browser-peer-discovery'
+]
+
+/**
+ * **A topic only works if the node between the peers carries it.**
+ *
+ * Measured, and it is the whole story of this feature: two browsers whose only
+ * common peer is a relay exchange nothing on a topic that relay does not
+ * subscribe to. gossipsub forwards for topics a node has joined, and a relay
+ * deployed for another app has joined that app's topic and no other.
+ *
+ *     ablage's own topic   - 60s, neither peer ever heard the other
+ *     simple-todo's topic  - both peers found each other in 10s
+ *
+ * Same code, same relay, same two browsers. So the meeting place is not a
+ * property of "having a relay": it is a property of the relay's own
+ * `PUBSUB_TOPICS`, and until one carries this topic, discovery here is silent
+ * while every connection looks healthy.
+ */
 
 /**
  * @param {object} [options]
@@ -99,8 +136,41 @@ export async function createPeer ({
     connectionGater: {
       denyDialMultiaddr: addr => denyDial(String(addr), relayWanted)
     },
-    peerDiscovery: hasRelay ? [bootstrap({ list: relays })] : [],
-    services: { identify: identify() }
+    /**
+     * A meeting place, and only where there is one to meet in.
+     *
+     * Peers announce themselves on a shared topic every few seconds and hear
+     * everyone else doing the same - nobody types an address. Without a relay
+     * there is no shared network to announce on, so this is empty and the QR
+     * handshake stays the only way in, which is what it was built to be.
+     */
+    peerDiscovery: hasRelay
+      ? [
+          bootstrap({ list: relays }),
+          pubsubPeerDiscovery({ interval: 5000, topics: DISCOVERY_TOPICS, listenOnly: false })
+        ]
+      : [],
+
+    services: {
+      identify: identify(),
+
+      /**
+       * `runOnLimitedConnection` is the line that decides whether any of this
+       * works.
+       *
+       * libp2p marks a circuit-relay connection as *limited*, and gossipsub
+       * refuses to run on a limited connection by default - so peers that met
+       * through a relay would exchange no subscriptions and the meeting place
+       * would stay silent while every connection looked healthy. That is the
+       * same silence libp2p-webrtc-qr#98 describes over a QR connection, from
+       * the opposite cause.
+       *
+       * Configured whether or not a relay is: it costs nothing on a node with
+       * no pubsub peers, and making the service conditional would mean a
+       * different node the moment somebody ticks the box.
+       */
+      pubsub: gossipsub({ emitSelf: false, allowPublishToZeroTopicPeers: true, runOnLimitedConnection: true })
+    }
   })
 
   session = new QRSession(node, rtcConfiguration != null ? { rtcConfiguration } : {})
@@ -119,6 +189,42 @@ export async function createPeer ({
     node,
     session,
     peerId: () => node.peerId.toString(),
+
+    /**
+     * Who is out there, as it changes.
+     *
+     * Discovery and connection are different events and both matter: a peer
+     * heard on the meeting place can be called, and one already connected is
+     * further along than that. The caller gets both and decides what to draw.
+     */
+    watchPeers: onChange => {
+      const seen = new Map()
+
+      const publish = () => onChange([...seen].map(([peerId, state]) => ({ peerId, state })))
+
+      const remember = (id, how) => {
+        if (seen.get(id) === how) return
+
+        seen.set(id, how)
+        publish()
+      }
+
+      const forget = id => {
+        if (!seen.delete(id)) return
+
+        publish()
+      }
+
+      node.addEventListener('peer:discovery', event => remember(event.detail.id.toString(), 'heard'))
+      node.addEventListener('peer:connect', event => remember(event.detail.toString(), 'connected'))
+      node.addEventListener('peer:disconnect', event => forget(event.detail.toString()))
+
+      // Whatever is already there. A list that only fills on the next event
+      // looks empty for as long as nothing happens, which is most of the time.
+      for (const connection of node.getConnections()) {
+        remember(connection.remotePeer.toString(), 'connected')
+      }
+    },
 
     /**
      * Let this node try a relay now, without restarting it.

@@ -77,6 +77,8 @@ const previewNameEl = $('preview-name')
 const folderDetailEl = $('folder-detail')
 const folderNoteEl = $('folder-note')
 const myPeerEl = $('my-peer')
+const peersEl = $('peers')
+const peerListEl = $('peer-list')
 const admitEl = $('admit-ask')
 const shareAskEl = $('share-ask')
 const switchToldEl = $('switch-told')
@@ -110,6 +112,60 @@ const peers = peerSet()
 
 /** What this device decided to send to whom. Per peer - see `sharing.js`. */
 const shared = sharing()
+
+/**
+ * Short enough to read, long enough to tell two apart.
+ *
+ * A peer id is 52 characters of base58 and nobody reads it as a name. Both ends
+ * kept rather than a prefix: ids from the same key type share their first
+ * characters, so a prefix alone makes different devices look identical.
+ */
+const shortId = id => `${id.slice(0, 8)}…${id.slice(-6)}`
+
+/** Everyone the meeting place has turned up, and what can be done about them. */
+function showPeers (found) {
+  peersEl.hidden = found.length === 0
+  peerListEl.replaceChildren(...found.map(({ peerId, state }) => {
+    const li = document.createElement('li')
+    const name = document.createElement('code')
+    const how = document.createElement('span')
+    const ask = document.createElement('button')
+
+    name.className = 'peer-name'
+    name.textContent = shortId(peerId)
+    name.title = peerId
+    how.className = 'peer-how'
+    how.textContent = t(state === 'connected' ? 'peers.connected' : 'peers.heard')
+    ask.type = 'button'
+    ask.textContent = t('peers.share')
+    ask.addEventListener('click', () => askToShare(peerId))
+
+    li.append(name, how, ask)
+    return li
+  }))
+}
+
+/**
+ * Ask a device out there whether it will share this folder.
+ *
+ * Opening the sync stream *is* the request: on the other side it arrives at
+ * `node.handle`, and a peer met through a relay lands in the admission dialog
+ * rather than being attached. So the half that asks was already built - this is
+ * only the half that calls.
+ */
+async function askToShare (peerId) {
+  setState(t('peers.asking', { id: shortId(peerId) }), 'waiting')
+
+  try {
+    attach(await peer.openSyncStream(peerId), peerId).requestSync()
+  } catch (error) {
+    // A refusal closes the stream, which arrives here as a failed dial. It is
+    // an answer rather than a fault, and saying "refused" is more use than the
+    // libp2p message underneath it.
+    setState(t('peers.refused', { id: shortId(peerId) }), 'idle')
+    report(error)
+  }
+}
 
 /**
  * This device's address, in the current language.
@@ -449,6 +505,8 @@ async function start () {
   // Only once the node exists - before that there is no address to show.
   showMyPeer()
   myPeerEl.hidden = false
+
+  peer.watchPeers(showPeers)
 
   networkEl.hidden = false
   networkEl.probe?.()

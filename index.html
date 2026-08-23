@@ -179,6 +179,23 @@
           The check still runs: the introduction reports the same measurement in
           a sentence, and that is the form the simple view wants it in.
         -->
+        <!--
+          Everyone the meeting place has turned up.
+          
+          A list rather than a dropdown, and the reason is what a row has to
+          carry: a shortened address, how that device was reached, and an action.
+          A `<select>` holds only text, its options cannot be pressed one by one,
+          and a native menu that reorders itself while it is open - which this
+          list does, as devices come and go - is unusable.
+
+          A fixed height with its own scrollbar is what keeps the card from
+          growing, not the choice of control.
+        -->
+        <div id="peers" class="peers" hidden>
+          <h3 data-i18n="peers.heading">Devices out there</h3>
+          <ul id="peer-list" class="peer-list"></ul>
+        </div>
+
         <qr-status id="network" rows="ipv4 ipv6 overall" data-view="technical" hidden></qr-status>
 
         <!--

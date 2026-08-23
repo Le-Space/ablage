@@ -194,7 +194,22 @@
         <div id="peers" class="peers" hidden>
           <h3 data-i18n="peers.heading">Devices out there</h3>
           <ul id="peer-list" class="peer-list"></ul>
+          <p id="peers-empty" class="hint quiet" data-i18n="peers.empty"></p>
         </div>
+
+        <!--
+          For a device the meeting place has not turned up. Folded, because it
+          is the rarer way in and an address is not something anybody types by
+          choice.
+        -->
+        <details class="fold" id="call-fold" data-view="technical">
+          <summary data-i18n="peers.callSummary">Call a device that is not listed</summary>
+          <div class="row">
+            <input id="call-address" type="text" data-i18n-attr="placeholder:peers.callPlaceholder" />
+            <button id="call" type="button" data-i18n="peers.call">Call</button>
+          </div>
+          <p class="hint quiet" data-i18n="peers.callHint"></p>
+        </details>
 
         <qr-status id="network" rows="ipv4 ipv6 overall" data-view="technical" hidden></qr-status>
 

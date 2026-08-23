@@ -79,6 +79,8 @@ const folderNoteEl = $('folder-note')
 const myPeerEl = $('my-peer')
 const peersEl = $('peers')
 const peerListEl = $('peer-list')
+const peersEmptyEl = $('peers-empty')
+const callAddressEl = $('call-address')
 const admitEl = $('admit-ask')
 const shareAskEl = $('share-ask')
 const switchToldEl = $('switch-told')
@@ -124,7 +126,10 @@ const shortId = id => `${id.slice(0, 8)}…${id.slice(-6)}`
 
 /** Everyone the meeting place has turned up, and what can be done about them. */
 function showPeers (found) {
-  peersEl.hidden = found.length === 0
+  // Shown even when empty, because "nobody is out there yet" is an answer and a
+  // missing panel is not. The line underneath says how long to wait.
+  peersEl.hidden = false
+  peersEmptyEl.hidden = found.length > 0
   peerListEl.replaceChildren(...found.map(({ peerId, state }) => {
     const li = document.createElement('li')
     const name = document.createElement('code')
@@ -159,10 +164,51 @@ async function askToShare (peerId) {
   try {
     attach(await peer.openSyncStream(peerId), peerId).requestSync()
   } catch (error) {
-    // A refusal closes the stream, which arrives here as a failed dial. It is
-    // an answer rather than a fault, and saying "refused" is more use than the
-    // libp2p message underneath it.
-    setState(t('peers.refused', { id: shortId(peerId) }), 'idle')
+    // The stream would not open at all - unreachable, or gone since the list
+    // was drawn. Not a refusal: that one arrives as a message, because a stream
+    // that merely ends is indistinguishable from a connection that dropped.
+    setState(t('peers.unreachable', { id: shortId(peerId) }), 'idle')
+    report(error)
+  }
+}
+
+/**
+ * Call somebody who is not in the list.
+ *
+ * Two things are accepted and they are not equally useful, which the hint
+ * beside the field says rather than leaving somebody to find out:
+ *
+ * A **multiaddr** carries where to go, so it works for a device this app has
+ * never heard of - which is the case the field exists for.
+ *
+ * A bare **peer id** carries only who, and libp2p has to already know an
+ * address for them. That holds for somebody in the list a moment ago, and not
+ * for a stranger: there is no DHT here to look one up in.
+ */
+async function callDirectly (text) {
+  const typed = text.trim()
+
+  if (typed === '') return
+
+  const isAddress = typed.startsWith('/')
+  const peerId = isAddress ? typed.split('/p2p/').pop()?.split('/')[0] : typed
+
+  if (peerId == null || peerId === '') {
+    setState(t('peers.notAnAddress'), 'idle')
+    return
+  }
+
+  setState(t('peers.asking', { id: shortId(peerId) }), 'waiting')
+
+  try {
+    // Dialled first when an address was given, so the peer is reachable before
+    // the stream is asked for. Without this, `openSyncStream` has only a peer
+    // id and nowhere to send it.
+    if (isAddress) await peer.node.dial(multiaddr(typed))
+
+    attach(await peer.openSyncStream(peerId), peerId).requestSync()
+  } catch (error) {
+    setState(t('peers.unreachable', { id: shortId(peerId) }), 'idle')
     report(error)
   }
 }
@@ -446,6 +492,15 @@ function attach (stream, peerId) {
         continue
       }
 
+      // The other side said no. Reported as an answer rather than as the
+      // disconnection that follows it, which is the only thing this used to
+      // look like.
+      if (message.type === 'sync-refused') {
+        setState(t('peers.refused', { id: shortId(peerId) }), 'idle')
+        peers.drop(peerId)
+        return
+      }
+
       provider.receive(message)
       // A remote change is a reason to look at storage again.
       pass()
@@ -507,6 +562,7 @@ async function start () {
   myPeerEl.hidden = false
 
   peer.watchPeers(showPeers)
+  showPeers([])
 
   networkEl.hidden = false
   networkEl.probe?.()
@@ -788,6 +844,21 @@ function askToAdmit (stream, peerId) {
     admitEl.close()
 
     if (!admit) {
+      // Said, then closed. A stream that simply ends looks exactly like a
+      // connection that dropped, and the device on the other end is left
+      // waiting for an answer it already got.
+      try {
+        stream.send(encode(JSON.stringify({ type: 'sync-refused' })))
+      } catch {
+        // Already gone. Then the close below is redundant and harmless.
+      }
+
+      // Closed straight away. There was a delay here, on the theory that a
+      // refusal would race its own close - and the control says otherwise:
+      // closing immediately, the message still arrived three times out of
+      // three, because `close()` flushes what is written before it ends the
+      // stream. A pause with no reason behind it is a pause somebody has to
+      // work out later.
       stream.close?.().catch?.(() => {})
       setState(t('admit.refused'), 'idle')
       return
@@ -877,6 +948,14 @@ pickButton.addEventListener('click', async () => {
     // rather than a failure.
     if (error?.name !== 'AbortError') report(error)
   }
+})
+
+$('call').addEventListener('click', () => callDirectly(callAddressEl.value))
+
+callAddressEl.addEventListener('keydown', event => {
+  // Enter, because a field with a button beside it is a field somebody will
+  // press Enter in.
+  if (event.key === 'Enter') callDirectly(callAddressEl.value)
 })
 
 // ---- adding files ----------------------------------------------------------

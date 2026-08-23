@@ -91,6 +91,13 @@ export default {
     connected: 'connected',
     share: 'Ask to share',
     asking: ({ id }) => `Asked ${id} — waiting for an answer`,
+    empty: 'Nobody has called out yet. Devices appear here a few seconds after they connect to a relay.',
+    unreachable: ({ id }) => `${id} could not be reached`,
+    notAnAddress: 'That is neither a peer id nor an address.',
+    callSummary: 'Call a device that is not listed',
+    callPlaceholder: 'Peer id or multiaddress',
+    call: 'Call',
+    callHint: 'An address beginning with / works for a device this app has never heard of. A bare peer id only works for one it already knows an address for.',
     refused: ({ id }) => `${id} did not accept`
   },
   relay: {

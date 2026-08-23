@@ -89,6 +89,13 @@ export default {
     connected: 'verbunden',
     share: 'Teilen anfragen',
     asking: ({ id }) => `${id} gefragt — wartet auf Antwort`,
+    empty: 'Noch hat niemand gerufen. Geräte erscheinen hier ein paar Sekunden, nachdem sie ein Relay erreicht haben.',
+    unreachable: ({ id }) => `${id} war nicht erreichbar`,
+    notAnAddress: 'Das ist weder eine Peer-ID noch eine Adresse.',
+    callSummary: 'Ein Gerät anrufen, das nicht in der Liste steht',
+    callPlaceholder: 'Peer-ID oder Multiadresse',
+    call: 'Anrufen',
+    callHint: 'Eine Adresse, die mit / beginnt, erreicht auch ein Gerät, von dem diese App nie gehört hat. Eine blanke Peer-ID nur eines, zu dem sie schon eine Adresse kennt.',
     refused: ({ id }) => `${id} hat nicht angenommen`
   },
   relay: {

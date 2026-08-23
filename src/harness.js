@@ -160,6 +160,7 @@ window.__ablage = {
     let storage = await directoryStorage({ root: await scratch(name) })
 
     const peers = new Map()
+    const appMessages = []
     let lastInbound = null
     let pending = Promise.resolve()
 
@@ -176,19 +177,29 @@ window.__ablage = {
       const send = message => stream.send(encode(JSON.stringify(message)))
       const provider = new Provider(doc, send)
 
-      peers.get(peerId)?.destroy()
-      peers.set(peerId, provider)
+      peers.get(peerId)?.provider.destroy()
+      peers.set(peerId, { provider, send, stream })
 
       ;(async () => {
         for await (const data of stream) {
-          provider.receive(JSON.parse(decode(data.subarray?.() ?? data)))
+          const message = JSON.parse(decode(data.subarray?.() ?? data))
+
+          // The application's own messages, kept out of the provider - the same
+          // split `main.js` makes. Recorded here so a test can see that one
+          // arrived, rather than only that a stream ended.
+          if (message.type === 'sync-refused' || message.type === 'folder-switch') {
+            appMessages.push({ from: peerId, message })
+            continue
+          }
+
+          provider.receive(message)
           // A remote change is a reason to look at storage again.
           pass().catch(() => {})
         }
       })()
         .catch(() => {})
         .finally(() => {
-          if (peers.get(peerId) === provider) {
+          if (peers.get(peerId)?.provider === provider) {
             provider.destroy()
             peers.delete(peerId)
           }
@@ -217,6 +228,26 @@ window.__ablage = {
 
       /** How many peers this side is talking to right now. */
       syncPeers: () => peers.size,
+
+      /** Application messages that arrived on a sync stream. */
+      appMessages: () => [...appMessages],
+
+      /**
+       * Say no the way `main.js` does: send it, then close after a beat.
+       *
+       * The beat is the point. A refusal that races its own close arrives
+       * nowhere, and then it is a silence again - which is the state this
+       * message exists to replace.
+       */
+      refuse: peerId => {
+        const held = peers.get(peerId)
+
+        if (held == null) return false
+
+        held.send({ type: 'sync-refused' })
+        held.stream?.close?.().catch?.(() => {})
+        return true
+      },
 
       /** This folder's own id, written on first sight. */
       identity: async () => {
@@ -292,6 +323,6 @@ window.__ablage = {
 // One side per browser context, which is what a device is.
 let side = null
 
-for (const name of ['peerId', 'createOffer', 'acceptOffer', 'acceptAnswer', 'write', 'remove', 'read', 'list', 'paths', 'reconcile', 'connections', 'useFolder', 'syncPeers', 'identity', 'lastInbound']) {
+for (const name of ['peerId', 'createOffer', 'acceptOffer', 'acceptAnswer', 'write', 'remove', 'read', 'list', 'paths', 'reconcile', 'connections', 'useFolder', 'syncPeers', 'identity', 'lastInbound', 'appMessages', 'refuse']) {
   window.__ablage[name] = (...args) => side[name](...args)
 }

@@ -24,6 +24,7 @@ export default {
   link: {
     heading: 'Dieses Gerät und das andere',
     idle: 'Noch nicht verbunden.',
+    pairSummary: 'Per Code koppeln, ohne irgendetwas dazwischen',
     invite: 'Meinen Code zeigen',
     scan: 'Code des anderen scannen',
     fold: 'Oder als Link senden',
@@ -124,6 +125,7 @@ export default {
     kept: 'Diesen Ordner behalten — das andere Gerät arbeitet jetzt woanders.'
   },
   intro: {
+    start: 'Los geht\u2019s',
     start: 'Los geht\u2019s',
     experimental: '<strong>Hochgradig experimentell — benutzen Sie es für nichts, dessen Verlust weh tut.</strong> Es ist eine lauffähige Demonstration, keine Sicherung: das Format kann sich ändern, und ein Ordner hier ist keine Kopie von irgendetwas.',
     what: 'Dies ist ein Ordner, den zwei Ihrer Geräte teilen. Es gibt kein Konto, und keinen Server dazwischen, der Ihre Dateien hält.',

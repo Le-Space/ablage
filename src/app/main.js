@@ -23,6 +23,7 @@ import { elementStrings, initialLocale, locale, setLocale, t, translateDocument 
 import { fileIcon, folderIcon, mark } from './icons.js'
 import { looksLikeImage, previews } from './previews.js'
 import { tree } from './tree.js'
+import { foldDefault } from './fold-default.js'
 import { applyMusicChoice, musicWanted } from './music.js'
 import { multiaddr } from '@multiformats/multiaddr'
 import { findReachableRelays, readRelayOptIn } from '@le-space/libp2p-webrtc-qr'
@@ -77,6 +78,7 @@ const previewNameEl = $('preview-name')
 const folderDetailEl = $('folder-detail')
 const folderNoteEl = $('folder-note')
 const myPeerEl = $('my-peer')
+const pairByCodeEl = $('pair-by-code')
 const peersEl = $('peers')
 const peerListEl = $('peer-list')
 const peersEmptyEl = $('peers-empty')
@@ -569,6 +571,15 @@ async function start () {
   peer.watchPeers(showPeers)
   showPeers([])
 
+  // Open while the code is the only way in, folded once it is not - and taken
+  // over for good by anybody who touches it. The rule is its own module because
+  // it is the half worth testing, and a relay coming and going is not something
+  // a test can arrange.
+  const codeFold = foldDefault({ onChange: open => { pairByCodeEl.open = open } })
+
+  peer.watchRelay(up => codeFold.suggest(up))
+  pairByCodeEl.addEventListener('toggle', () => codeFold.decide())
+
   networkEl.hidden = false
   networkEl.probe?.()
 
@@ -693,6 +704,16 @@ introEl.addEventListener('relay-opt-in', event => {
 })
 
 const introPolicy = createIntroPolicy({ storageKey: 'ablage.introSeen' })
+
+/**
+ * The way to say "I have read this".
+ *
+ * Closed through the element's own `close`, so the "do not show again" box is
+ * read the same way it is when the × is used. A second path that forgot to
+ * check it would remember nothing, and nobody would find out until the dialog
+ * came back.
+ */
+$('intro-start').addEventListener('click', () => introEl.close())
 
 introEl.addEventListener('close', event => {
   if (event.detail.remember) introPolicy.remember()

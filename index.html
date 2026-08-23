@@ -137,10 +137,22 @@
           race to lose on a slow phone, and CI lost it on Firefox often enough
           to fail a run.
         -->
-        <div class="actions">
-          <button id="invite" class="primary" type="button" disabled data-i18n="link.invite">Show my code</button>
-          <button id="scan" type="button" disabled data-i18n="link.scan">Scan their code</button>
-        </div>
+        <!--
+          Folded away while a relay is up, and not removed.
+
+          With a relay there is a list of devices and a button beside each, so
+          the code is the second way in rather than the first. Without one it is
+          the only way in - and it is also the way that needs nobody at all, so
+          taking it off the screen for good would remove the thing this app was
+          built to do. It goes behind a summary that says what it is.
+        -->
+        <details id="pair-by-code" class="fold" open>
+          <summary data-i18n="link.pairSummary">Pair by code, with nothing in between</summary>
+          <div class="actions">
+            <button id="invite" class="primary" type="button" disabled data-i18n="link.invite">Show my code</button>
+            <button id="scan" type="button" disabled data-i18n="link.scan">Scan their code</button>
+          </div>
+        </details>
 
         <!--
           Off by default, and behind the technical view, because it is a
@@ -508,6 +520,16 @@
           </ul>
         </div>
 
+        <!--
+          Into the element's `footer` slot, beside "do not show again", which is
+          where a dialog's own action belongs. The × in the corner is a close,
+          not a confirmation - somebody who has read this wants a way to say so.
+
+          The slot arrived with 0.11.0. Before that this button rendered nowhere
+          at all: unassigned slotted content is simply not drawn, so it would
+          have shipped as markup nobody could see.
+        -->
+        <button slot="footer" id="intro-start" class="primary" type="button" data-i18n="intro.start">Let's go</button>
       </qr-intro>
 
       <qr-scanner id="scanner"></qr-scanner>

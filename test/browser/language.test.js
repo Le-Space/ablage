@@ -521,3 +521,42 @@ test('an empty peer list says what to switch on', async ({ page }) => {
   // to somebody who has not turned one on - which is everybody, by default.
   await expect(page.locator('#peers-empty')).toContainText(/switched off|introduction is where/i)
 })
+
+test.describe('the way out of the introduction', () => {
+  test('there is a button that says so, not only an ✕', async ({ page }) => {
+    await open(page)
+
+    // The × is a close, not a confirmation. The element has a `footer` slot for
+    // exactly this, which arrived with 0.11.0 - before that the button rendered
+    // nowhere, because unassigned slotted content is not drawn at all.
+    await expect(page.locator('#intro-start')).toBeVisible()
+    await expect(page.locator('#intro-start')).toHaveText("Let's go")
+  })
+
+  test('and it closes the dialog', async ({ page }) => {
+    await open(page)
+    await page.locator('#intro-start').click()
+
+    await expect
+      .poll(() => page.evaluate(() => document.getElementById('intro').shadowRoot.querySelector('dialog').open))
+      .toBe(false)
+  })
+
+  test('it remembers a ticked box, the same as the ✕ does', async ({ page }) => {
+    // Through the element's own `close`, so there is one path and not two. A
+    // second one that forgot to read the box would remember nothing, and nobody
+    // would find out until the dialog came back.
+    await open(page)
+    await page.locator('qr-intro').locator('input[part="dont-show"]').check()
+    await page.locator('#intro-start').click()
+
+    await expect.poll(() => page.evaluate(() => localStorage.getItem('ablage.introSeen'))).not.toBe(null)
+  })
+
+  test('it speaks German too', async ({ page }) => {
+    await open(page)
+    await page.locator('#intro-locale-de').click()
+
+    await expect(page.locator('#intro-start')).toHaveText('Los geht’s')
+  })
+})

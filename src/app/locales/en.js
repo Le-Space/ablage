@@ -27,6 +27,7 @@ export default {
   link: {
     heading: 'This device and the other one',
     idle: 'Not connected yet.',
+    pairSummary: 'Pair by code, with nothing in between',
     invite: 'Show my code',
     scan: 'Scan their code',
     fold: 'Or send it as a link',
@@ -126,6 +127,7 @@ export default {
     kept: 'Kept this folder — the other device is working somewhere else now.'
   },
   intro: {
+    start: "Let's go",
     start: "Let's go",
     experimental: '<strong>Highly experimental — do not use this for anything you cannot lose.</strong> It is a working demonstration, not a backup: the format may change, and a folder here is not a copy of anything.',
     what: 'This is a folder shared between two of your devices. There is no account, and no server in the middle holding your files.',

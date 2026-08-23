@@ -51,3 +51,39 @@ test('a topic the relay does not carry stays silent', async () => {
   expect(DISCOVERY_TOPICS).toContain('todo._peer-discovery._p2p._pubsub')
   expect(DISCOVERY_TOPICS.length).toBeGreaterThan(1)
 })
+
+test.describe('the code, once a relay is up', () => {
+  test('is open while it is the only way in', async ({ page }) => {
+    await page.goto('/?intro=off')
+    await expect(page.locator('#invite')).toBeEnabled({ timeout: 60_000 })
+
+    // No relay: a code held up to a camera is the only way anybody gets in, so
+    // it is not something to go looking for.
+    await expect(page.locator('#pair-by-code')).toHaveAttribute('open', '')
+    await expect(page.locator('#invite')).toBeVisible()
+  })
+
+  test('and folded away once there is a second way, not removed', async ({ page }) => {
+    await page.goto('/?intro=off')
+    await expect(page.locator('#invite')).toBeEnabled({ timeout: 60_000 })
+
+    // Driven directly: reaching a real relay from here would make this a test
+    // about the internet. What is asserted is the rule - a way in that is no
+    // longer the only one stops being the first thing on the card.
+    await page.evaluate(() => {
+      document.getElementById('pair-by-code').open = false
+    })
+
+    await expect(page.locator('#invite')).toBeHidden()
+    // Still there, and its summary says what it is. Taking the serverless way
+    // in off the screen for good would remove what this app was built to do.
+    await expect(page.locator('#pair-by-code summary')).toBeVisible()
+    await expect(page.locator('#pair-by-code summary')).toContainText(/nothing in between/i)
+  })
+
+  // The third half of the rule - that a person who touches it takes it over -
+  // is `fold-default.js` and is tested there. A relay coming and going is not
+  // something this suite can arrange, and a browser test that faked the event
+  // would only be confirming its own fake, which the first version of it did.
+
+})

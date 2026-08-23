@@ -82,6 +82,8 @@ const pairByCodeEl = $('pair-by-code')
 const peersEl = $('peers')
 const peerListEl = $('peer-list')
 const peersEmptyEl = $('peers-empty')
+const peerFilterEl = $('peer-filter')
+const peerNoneEl = $('peer-none')
 const callAddressEl = $('call-address')
 const admitEl = $('admit-ask')
 const shareAskEl = $('share-ask')
@@ -118,20 +120,53 @@ const peers = peerSet()
 const shared = sharing()
 
 /**
- * Short enough to read, long enough to tell two apart.
+ * The end, because that is the part that differs.
  *
- * A peer id is 52 characters of base58 and nobody reads it as a name. Both ends
- * kept rather than a prefix: ids from the same key type share their first
- * characters, so a prefix alone makes different devices look identical.
+ * A peer id is 52 characters of base58 and nobody reads it as a name. Every id
+ * of the same key type opens with `12D3KooW`, so a list shortened from the
+ * front is a column of identical text - it looked tidy and told nobody which
+ * device was which.
+ *
+ * The tail is where the entropy is, and it is also what the filter searches, so
+ * what is on screen is what somebody can type.
  */
-const shortId = id => `${id.slice(0, 8)}…${id.slice(-6)}`
+const shortId = id => `…${id.slice(-10)}`
+
+/**
+ * A search field is furniture over three rows and the only way through thirty.
+ *
+ * Ten because that is about where a list stops being something you read and
+ * starts being something you scan - and a peer id is not a name, so scanning
+ * does not work at all.
+ */
+const FILTER_FROM = 10
+
+/** What the search field is holding back. */
+let known = []
 
 /** Everyone the meeting place has turned up, and what can be done about them. */
 function showPeers (found) {
+  known = found
+
+  const needle = peerFilterEl.value.trim().toLowerCase()
+
+  peerFilterEl.hidden = found.length < FILTER_FROM
+
+  // Matched anywhere in the id, not only at the front. Ids of the same key type
+  // open with the same characters, so a prefix search would return everything
+  // until about the eighth letter - which is not a search.
+  const shown = needle === '' ? found : found.filter(({ peerId }) => peerId.toLowerCase().includes(needle))
+
+  peerNoneEl.hidden = !(found.length > 0 && shown.length === 0)
+
+  drawPeers(shown, found)
+}
+
+function drawPeers (found, all = found) {
   // Shown even when empty, because "nobody is out there yet" is an answer and a
   // missing panel is not. The line underneath says how long to wait.
   peersEl.hidden = false
-  peersEmptyEl.hidden = found.length > 0
+  peersEmptyEl.hidden = all.length > 0
   // Two different empty lists. Without a relay there is nowhere to be found, so
   // the line has to say what to switch on - "devices appear a few seconds after
   // they reach a relay" is true and useless to somebody who has not turned one
@@ -241,6 +276,18 @@ function showMyPeer () {
  * package cannot put its own namespace in somebody else's origin.
  */
 const RELAY_OPT_IN_KEY = 'ablage.relay'
+
+/**
+ * Peers this device let go of on purpose.
+ *
+ * Dropping one ends its read loop, and the loop's ending says "the connection
+ * ended" - true, and it overwrites the sentence explaining *why* it ended.
+ * Under load it won that race: "took 3 files" became "the connection ended",
+ * and the answer somebody had just chosen left no trace.
+ *
+ * A deliberate ending is not news. Only a surprise is.
+ */
+const letGo = new Set()
 
 /** Who may write into this folder. The QR scan is the only automatic yes. */
 const admitted = admission()
@@ -504,6 +551,7 @@ function attach (stream, peerId) {
       // look like.
       if (message.type === 'sync-refused') {
         setState(t('peers.refused', { id: shortId(peerId) }), 'idle')
+        letGo.add(peerId)
         peers.drop(peerId)
         return
       }
@@ -521,8 +569,10 @@ function attach (stream, peerId) {
       peers.dropIfCurrent(peerId, provider)
 
       // The others are still there; saying "gone" while two peers remain would
-      // be describing this stream rather than the state of the folder.
-      if (!connected()) setState(t('link.gone'), 'idle')
+      // be describing this stream rather than the state of the folder. And a
+      // peer this device let go of on purpose has already been explained -
+      // repeating it as an ending replaces the reason with the effect.
+      if (!connected() && !letGo.delete(peerId)) setState(t('link.gone'), 'idle')
     })
 
   return provider
@@ -569,6 +619,14 @@ async function start () {
   myPeerEl.hidden = false
 
   peer.watchPeers(showPeers)
+
+  // Redrawn as they type, from the list already held - a filter that waited for
+  // the next discovery event would feel broken for five seconds at a time.
+  peerFilterEl.addEventListener('input', () => showPeers(known))
+
+  // The one thing a test cannot arrange: twelve devices on a relay. Everything
+  // else about the list is the app's own code, and this hands it a cast.
+  window.__showPeersForTest = showPeers
   showPeers([])
 
   // Open while the code is the only way in, folded once it is not - and taken
@@ -699,7 +757,23 @@ introEl.relay = {
 // `/p2p-circuit` announcement and the gater are all fixed when the node is
 // created. Said out loud rather than left for somebody to notice that ticking
 // the box changed nothing today.
+/**
+ * Which story the introduction tells.
+ *
+ * Somebody who has just asked to be reached without a code should not then read
+ * about holding one up to a camera. The paragraph follows the box, and so does
+ * the pairing block behind the dialog - the introduction and the card underneath
+ * would otherwise disagree about how this works.
+ */
+function tellHow (viaRelay) {
+  $('intro-how-code').hidden = viaRelay
+  $('intro-how-relay').hidden = !viaRelay
+}
+
+tellHow(readRelayOptIn(globalThis.localStorage, RELAY_OPT_IN_KEY))
+
 introEl.addEventListener('relay-opt-in', event => {
+  tellHow(event.detail.optIn)
   setState(t(event.detail.optIn ? 'relay.onNextStart' : 'relay.off'), 'idle')
 })
 
@@ -944,6 +1018,7 @@ function toldAboutSwitch (peerId, message) {
     // Their folder is not this one. Stop describing this folder to them, keep
     // the connection: a dropped connection would read as a fault rather than
     // as an answer.
+    letGo.add(peerId)
     peers.drop(peerId)
     setState(t('switched.kept'), 'idle')
   }
@@ -1003,6 +1078,7 @@ function toldAboutSwitch (peerId, message) {
 
     // Dropped, not disconnected: the copying is finished, the acquaintance is
     // not. `drop` leaves the connection and stops describing this folder.
+    letGo.add(peerId)
     peers.drop(peerId)
     setState(t('switched.took', { count }), 'idle')
   }

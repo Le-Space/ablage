@@ -205,7 +205,17 @@
         -->
         <div id="peers" class="peers" hidden>
           <h3 data-i18n="peers.heading">Devices out there</h3>
+
+          <!--
+            Only once there are enough to lose one in. A search field over three
+            rows is furniture; over thirty it is the only way to find the device
+            you mean, because a peer id is not a name and nobody recognises one
+            at a glance.
+          -->
+          <input id="peer-filter" class="peer-filter" type="search" hidden
+                 data-i18n-attr="placeholder:peers.filter" />
           <ul id="peer-list" class="peer-list"></ul>
+          <p id="peer-none" class="hint quiet" hidden data-i18n="peers.noMatch"></p>
           <p id="peers-empty" class="hint quiet"></p>
         </div>
 
@@ -500,7 +510,14 @@
         <p class="warning" data-i18n-html="intro.experimental"></p>
 
         <p data-i18n="intro.what"></p>
-        <p data-i18n="intro.how"></p>
+
+        <!--
+          Two ways in, one paragraph. Which one is shown follows the relay
+          checkbox below it, because a story about holding up a code is the
+          wrong story for somebody who has just asked to be reached without one.
+        -->
+        <p id="intro-how-code" data-i18n="intro.how"></p>
+        <p id="intro-how-relay" data-i18n="intro.howRelay" hidden></p>
         <p data-i18n="intro.secure"></p>
         <p data-i18n="intro.who"></p>
 

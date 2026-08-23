@@ -560,3 +560,36 @@ test.describe('the way out of the introduction', () => {
     await expect(page.locator('#intro-start')).toHaveText('Los geht’s')
   })
 })
+
+test.describe('which story the introduction tells', () => {
+  const relayBox = page => page.locator('qr-intro').locator('input[part="relay-opt-in"]')
+
+  test('holding up a code, while that is the way in', async ({ page }) => {
+    await open(page)
+
+    await expect(page.locator('#intro-how-code')).toBeVisible()
+    await expect(page.locator('#intro-how-relay')).toBeHidden()
+  })
+
+  test('and a meeting place, once somebody asks to be reached without one', async ({ page }) => {
+    test.setTimeout(120_000)
+    await open(page)
+    await relayBox(page).check()
+
+    // Somebody who has just asked to be reached without a code should not then
+    // read about holding one up to a camera.
+    await expect(page.locator('#intro-how-relay')).toBeVisible()
+    await expect(page.locator('#intro-how-code')).toBeHidden()
+    await expect(page.locator('#intro-how-relay')).toContainText(/introduces the two devices|never sees what crosses/i)
+  })
+
+  test('and back again when it is unticked', async ({ page }) => {
+    test.setTimeout(120_000)
+    await open(page)
+    await relayBox(page).check()
+    await relayBox(page).uncheck()
+
+    await expect(page.locator('#intro-how-code')).toBeVisible()
+    await expect(page.locator('#intro-how-relay')).toBeHidden()
+  })
+})

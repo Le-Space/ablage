@@ -88,6 +88,8 @@ export default {
   },
   peers: {
     heading: 'Devices out there',
+    filter: 'Filter by peer id',
+    noMatch: 'No device here matches that.',
     heard: 'heard on the relay',
     connected: 'connected',
     share: 'Ask to share',
@@ -132,6 +134,7 @@ export default {
     experimental: '<strong>Highly experimental — do not use this for anything you cannot lose.</strong> It is a working demonstration, not a backup: the format may change, and a folder here is not a copy of anything.',
     what: 'This is a folder shared between two of your devices. There is no account, and no server in the middle holding your files.',
     how: 'Show the code on this screen to the other device, or send it the link. Once the two are connected, whatever you put in the folder appears on both.',
+    howRelay: 'A relay introduces the two devices to each other, and nothing else. Both call out on the same meeting place; each then appears in the other\u2019s list, and one asks the other to share. The relay never sees what crosses - it hands over an address and steps aside.',
     secure: 'The connection is encrypted end to end. Nobody in between can read what crosses it — not a network operator, not a gateway, and not us.',
     who: 'Both devices have to be open at the same time. Delivery when they are apart is not built yet, and the folder says so rather than pretending.'
   },

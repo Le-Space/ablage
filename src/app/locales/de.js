@@ -83,6 +83,14 @@ export default {
     another: 'Anderen Ordner wählen',
     resume: ({ name }) => `${name} wieder benutzen`
   },
+  peers: {
+    heading: 'Geräte da draußen',
+    heard: 'über das Relay gehört',
+    connected: 'verbunden',
+    share: 'Teilen anfragen',
+    asking: ({ id }) => `${id} gefragt — wartet auf Antwort`,
+    refused: ({ id }) => `${id} hat nicht angenommen`
+  },
   relay: {
     onNextStart: 'Ein Relay wird beim nächsten Öffnen dieser Seite benutzt — die Verbindungseinstellungen stehen fest, sobald die App startet.',
     off: 'Kein Relay. Dieses Gerät ist nur erreichbar, wenn jemand seinen Code scannt.'

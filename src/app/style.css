@@ -379,3 +379,47 @@ button.primary:hover:not(:disabled) { background: var(--ls-red-bright); border-c
   word-break: break-all;
   text-align: center;
 }
+
+/* The meeting place. A fixed height with its own scrollbar, so the card does
+   not grow with the number of devices - which is the actual requirement, and
+   what a dropdown would have solved badly. */
+.peers { margin-top: 1rem; }
+.peers h3 {
+  margin: 0 0 0.4rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ls-text-faint);
+}
+.peer-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 11rem;
+  overflow-y: auto;
+  border: 1px solid var(--ls-card-border);
+  border-radius: 10px;
+}
+.peer-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0.6rem;
+  border-top: 1px solid var(--ls-card-border);
+}
+.peer-list li:first-child { border-top: 0; }
+.peer-name { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.8rem; }
+.peer-how { flex: 1; font-size: 0.75rem; color: var(--ls-text-faint); }
+.peer-list button {
+  border: 1px solid var(--ls-card-border);
+  background: transparent;
+  color: var(--ls-text-dim);
+  border-radius: 999px;
+  padding: 0.2rem 0.7rem;
+  font: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+  flex: none;
+}
+.peer-list button:hover { color: var(--ls-text); border-color: var(--ls-accent); }

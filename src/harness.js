@@ -118,6 +118,30 @@ window.__ablage = {
     }
   },
 
+  /**
+   * A node that joined the meeting place, and what it has heard.
+   *
+   * The relay is a real one on the public internet, and that is the point: two
+   * peers finding each other is the claim, and a mock would confirm it whether
+   * or not it were true.
+   */
+  meetOverRelay: async () => {
+    const { createPeer } = await import('./peer.js')
+    const { bakedRelayAddresses } = await import('./relay-sources.js')
+
+    const peer = await createPeer({ relayOptIn: true, relayBootstrapAddrs: bakedRelayAddresses() })
+    const heard = new Set()
+
+    peer.node.addEventListener('peer:discovery', event => heard.add(event.detail.id.toString()))
+
+    return {
+      peerId: peer.peerId(),
+      heard: () => [...heard],
+      connections: () => peer.node.getConnections().length,
+      stop: () => peer.stop().catch(() => {})
+    }
+  },
+
   clear: async name => {
     const root = await navigator.storage.getDirectory()
     await root.removeEntry(name, { recursive: true }).catch(() => {})

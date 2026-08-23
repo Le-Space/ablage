@@ -85,6 +85,14 @@ export default {
     another: 'Choose another folder',
     resume: ({ name }) => `Use ${name} again`
   },
+  peers: {
+    heading: 'Devices out there',
+    heard: 'heard on the relay',
+    connected: 'connected',
+    share: 'Ask to share',
+    asking: ({ id }) => `Asked ${id} — waiting for an answer`,
+    refused: ({ id }) => `${id} did not accept`
+  },
   relay: {
     onNextStart: 'A relay will be used the next time this page is opened — the connection settings are fixed when the app starts.',
     off: 'No relay. This device can only be reached by somebody scanning its code.'

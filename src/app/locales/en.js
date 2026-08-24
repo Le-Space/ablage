@@ -71,7 +71,56 @@ export default {
     refused: 'Refused — that device was not let into this folder.',
     admitted: 'Syncing with a device that reached you through a relay.'
   },
-  foot: { legal: 'Imprint & privacy' },
+  privacy: {
+    title: 'What leaves this device',
+    sub: 'Answered honestly, including the part that is not solved yet.',
+    close: 'Close',
+
+    leaves: {
+      q: 'What actually leaves this device?',
+      a: `<p>Two things, and only to a device you agreed to sync with: <strong>the list of files</strong> — names, sizes and a content address for each — and <strong>the file contents themselves</strong>.</p>
+<p>There is no account, no server holding your folder and no copy kept anywhere for you. This page is a static bundle; it has nowhere to send anything to.</p>
+<p>Everything travels inside an encrypted connection. Over a scanned code that is WebRTC's own DTLS; over a relay it is Noise on top of a WebSocket. Neither the relay nor anything else in the path can read it.</p>`
+    },
+
+    relay: {
+      q: 'If I switch the relay on, what can it see?',
+      a: `<p><strong>Not your files.</strong> A relay forwards bytes it cannot decrypt — that is what makes it safe to use somebody else's.</p>
+<p>It does see <em>that you are there</em>, which is not nothing: your device's public key, the addresses it announces, which other device you talk to, when, for how long, and roughly how much. That is a record of your habits even without a single filename in it.</p>
+<p>Whenever the two devices can reach each other directly, they stop using the relay for the transfer and it drops out of the path. If they cannot, everything keeps working through it.</p>
+<p>With the relay switched off, none of this exists: the app makes no outbound call at all until somebody scans a code.</p>`
+    },
+
+    reading: {
+      q: 'Could somebody read or copy my files without permission?',
+      a: `<p><strong>Today, with the relay on: yes, in one narrow case — and we measured it rather than guessed.</strong></p>
+<p>A device that wants to sync has to be let in: it appears in a dialog and you answer it. That gate covers the syncing itself. It does <em>not</em> cover the separate channel the file contents travel on, which will hand a block to any device that asks for it by its content address.</p>
+<p>A content address is a hash of the file. So somebody would need either to have been let in once before, or to already have a copy of the exact file and be checking whether you have it too. They cannot browse, list or search your folder, and no address is published anywhere — this app deliberately leaves out the public gateways and lookup network that would make one findable.</p>
+<p>It is still a hole, it is ours, and it is tracked as <a href="https://github.com/Le-Space/ablage/issues/43" target="_blank" rel="noopener noreferrer">issue #43</a>.</p>`
+    },
+
+    meeting: {
+      q: 'How do two devices find each other, and who else is listening?',
+      a: `<p>Devices announce themselves on shared public channels — the same ones other apps built on this relay use. An announcement carries a public key and network addresses; it carries nothing about you, your folder or your files.</p>
+<p>Anyone on those channels can see who is present. That is how the device list you see is built, and everyone else on it can build the same list.</p>
+<p>Pairing by scanning a code uses none of this.</p>`
+    },
+
+    rest: {
+      q: 'Where do the files sit on my device?',
+      a: `<p>In the folder you picked, as ordinary files. If your browser cannot open a folder, they sit in the browser's own storage instead — and clearing your browser data deletes them, which the file card says out loud.</p>
+<p><strong>They are not encrypted at rest.</strong> Anyone with your unlocked device has them, exactly as with any other folder. Full-disk encryption is the thing that helps here, and it is your operating system's job rather than this app's.</p>
+<p>A few small settings live in the browser too: which devices you chose to remember, which relay answered last, and your language and view choices.</p>`
+    },
+
+    remember: {
+      q: 'What does "remember this device" do?',
+      a: `<p>It skips the question next time. The device is written down in this browser and is let in without asking again, for as long as the entry is there.</p>
+<p>The box is unticked on purpose — the safer answer is the one you get by not reading carefully.</p>
+<p>There is currently <strong>no screen that shows the list or takes a device back off it</strong>. Clearing the browser's data for this site clears it. That gap is part of <a href="https://github.com/Le-Space/ablage/issues/43" target="_blank" rel="noopener noreferrer">issue #43</a>.</p>`
+    }
+  },
+  foot: { legal: 'Imprint & privacy', privacy: 'Privacy' },
   folder: {
     // The distinction the code deliberately cannot make. Both are a
     // `FileSystemDirectoryHandle`, so the interface has to say which one this

@@ -210,6 +210,86 @@ window.__ablage = {
     }
   },
 
+  /**
+   * Two nodes on the relay, one holding bytes, and no admission between them.
+   *
+   * The admission dialog gates `/ablage/sync/1.0.0`. Bitswap is a *second*
+   * protocol on the same node, and nothing here has ever asked whether it is
+   * gated too. This measures it rather than reasoning about it: if the reader
+   * comes back with the bytes, an unadmitted peer can read a file whose address
+   * it knows.
+   */
+  bitswapAcrossTheRelay: async () => {
+    const { createPeer } = await import('./peer.js')
+    const { createContent } = await import('./content.js')
+    const { bakedRelayAddresses } = await import('./relay-sources.js')
+
+    const start = async () => {
+      const peer = await createPeer({ relayOptIn: true, relayBootstrapAddrs: bakedRelayAddresses() })
+      const heard = new Set()
+
+      peer.node.addEventListener('peer:discovery', event => heard.add(event.detail.id.toString()))
+
+      return { peer, content: await createContent(peer.node), heard }
+    }
+
+    const holder = await start()
+    const reader = await start()
+
+    return {
+      holderId: holder.peer.peerId(),
+      readerId: reader.peer.peerId(),
+      heardEachOther: () => reader.heard.has(holder.peer.peerId()),
+
+      /** @returns {Promise<string>} the address of some bytes only the holder has */
+      hold: text => holder.content.add(new TextEncoder().encode(text)),
+
+      /**
+       * Ask for it from the other node, having agreed to nothing.
+       *
+       * No sync stream is opened, so `onSyncStream` never fires and no dialog
+       * is ever shown. The only thing the reader was given is the address.
+       */
+      readWithoutAsking: async (cid, timeoutMs = 20000) => {
+        try {
+          const bytes = await Promise.race([
+            reader.content.get(cid),
+            new Promise((_, no) => setTimeout(() => no(new Error('timed out')), timeoutMs))
+          ])
+
+          return { got: new TextDecoder().decode(bytes), error: null }
+        } catch (error) {
+          return { got: null, error: String(error?.message ?? error).slice(0, 160) }
+        }
+      },
+
+      connect: async () => {
+        const address = holder.peer.node.getMultiaddrs()[0] ?? holder.peer.peerId()
+
+        try {
+          const connection = await reader.peer.node.dial(address)
+
+          // What kind of connection this turned out to be decides whether the
+          // read below proves anything: bitswap refuses limited connections by
+          // default, so a read over a circuit and a read over a direct link are
+          // two different findings.
+          return {
+            ok: true,
+            dialled: String(address),
+            address: String(connection.remoteAddr ?? ''),
+            limited: connection.limits != null
+          }
+        } catch (error) {
+          return { ok: false, dialled: String(address), error: String(error?.message ?? error).slice(0, 160) }
+        }
+      },
+
+      stop: async () => {
+        await Promise.all([holder.peer.stop(), reader.peer.stop()]).catch(() => {})
+      }
+    }
+  },
+
   clear: async name => {
     const root = await navigator.storage.getDirectory()
     await root.removeEntry(name, { recursive: true }).catch(() => {})

@@ -69,7 +69,56 @@ export default {
     refused: 'Abgelehnt — dieses Gerät kam nicht in den Ordner.',
     admitted: 'Gleicht mit einem Gerät ab, das Sie über ein Relay erreicht hat.'
   },
-  foot: { legal: 'Impressum & Datenschutz' },
+  privacy: {
+    title: 'Was dieses Gerät verlässt',
+    sub: 'Ehrlich beantwortet, einschließlich dessen, was noch nicht gelöst ist.',
+    close: 'Schließen',
+
+    leaves: {
+      q: 'Was verlässt dieses Gerät überhaupt?',
+      a: `<p>Zweierlei, und nur an ein Gerät, dem Sie zugestimmt haben: <strong>die Liste der Dateien</strong> — Namen, Größen und je eine Inhaltsadresse — und <strong>die Dateiinhalte selbst</strong>.</p>
+<p>Es gibt kein Konto, keinen Server, der Ihren Ordner hält, und keine Kopie, die irgendwo für Sie aufbewahrt wird. Diese Seite ist ein statisches Bündel; sie hat gar niemanden, an den sie etwas senden könnte.</p>
+<p>Alles läuft in einer verschlüsselten Verbindung. Über einen gescannten Code ist das WebRTCs eigenes DTLS, über ein Relay Noise auf einem WebSocket. Weder das Relay noch sonst jemand im Weg kann es lesen.</p>`
+    },
+
+    relay: {
+      q: 'Wenn ich das Relay einschalte — was sieht es?',
+      a: `<p><strong>Ihre Dateien nicht.</strong> Ein Relay reicht Bytes weiter, die es nicht entschlüsseln kann; genau das macht es unbedenklich, ein fremdes zu benutzen.</p>
+<p>Es sieht aber, <em>dass</em> Sie da sind, und das ist nicht nichts: den öffentlichen Schlüssel Ihres Geräts, die Adressen, die es ankündigt, mit welchem anderen Gerät Sie sprechen, wann, wie lange und ungefähr wie viel. Das ist eine Aufzeichnung Ihrer Gewohnheiten, auch ohne einen einzigen Dateinamen darin.</p>
+<p>Sobald sich die beiden Geräte direkt erreichen können, läuft die Übertragung nicht mehr über das Relay und es fällt aus dem Weg. Können sie es nicht, funktioniert alles weiter darüber.</p>
+<p>Mit ausgeschaltetem Relay existiert nichts davon: die App baut keine einzige Verbindung nach außen auf, bevor jemand einen Code scannt.</p>`
+    },
+
+    reading: {
+      q: 'Könnte jemand meine Dateien unberechtigt mitlesen oder kopieren?',
+      a: `<p><strong>Heute, mit eingeschaltetem Relay: ja, in einem engen Fall — und wir haben es gemessen, nicht vermutet.</strong></p>
+<p>Ein Gerät, das abgleichen will, muss eingelassen werden: es erscheint in einem Dialog und Sie antworten. Diese Schranke deckt den Abgleich ab. Sie deckt <em>nicht</em> den getrennten Kanal ab, auf dem die Dateiinhalte reisen — der gibt einen Block an jedes Gerät heraus, das ihn unter seiner Inhaltsadresse verlangt.</p>
+<p>Eine Inhaltsadresse ist ein Hash der Datei. Jemand müsste also entweder schon einmal eingelassen worden sein oder die betreffende Datei bereits genau so besitzen und prüfen wollen, ob Sie sie auch haben. Durchsuchen, auflisten oder stöbern kann niemand, und keine Adresse wird irgendwo veröffentlicht — diese App lässt die öffentlichen Gateways und das Nachschlagenetz bewusst weg, die eine auffindbar machen würden.</p>
+<p>Es bleibt ein Loch, es ist unseres, und es wird als <a href="https://github.com/Le-Space/ablage/issues/43" target="_blank" rel="noopener noreferrer">Issue #43</a> verfolgt.</p>`
+    },
+
+    meeting: {
+      q: 'Wie finden sich zwei Geräte, und wer hört dabei mit?',
+      a: `<p>Geräte kündigen sich auf gemeinsamen, öffentlichen Kanälen an — denselben, die andere Anwendungen auf diesem Relay benutzen. Eine Ankündigung trägt einen öffentlichen Schlüssel und Netzwerkadressen; sie trägt nichts über Sie, Ihren Ordner oder Ihre Dateien.</p>
+<p>Wer auf diesen Kanälen lauscht, sieht, wer anwesend ist. So entsteht die Geräteliste, die Sie sehen — und alle anderen können dieselbe Liste bauen.</p>
+<p>Die Kopplung über einen gescannten Code benutzt nichts davon.</p>`
+    },
+
+    rest: {
+      q: 'Wo liegen die Dateien auf meinem Gerät?',
+      a: `<p>In dem Ordner, den Sie gewählt haben, als ganz gewöhnliche Dateien. Kann Ihr Browser keinen Ordner öffnen, liegen sie stattdessen im Speicher des Browsers — und das Leeren der Browserdaten löscht sie, was die Dateikarte auch offen sagt.</p>
+<p><strong>Verschlüsselt sind sie dort nicht.</strong> Wer Ihr entsperrtes Gerät hat, hat sie, genau wie bei jedem anderen Ordner. Was hier hilft, ist Festplattenverschlüsselung, und die ist Sache Ihres Betriebssystems, nicht dieser App.</p>
+<p>Ein paar kleine Einstellungen liegen ebenfalls im Browser: welche Geräte Sie sich gemerkt haben, welches Relay zuletzt geantwortet hat, sowie Sprache und Ansicht.</p>`
+    },
+
+    remember: {
+      q: 'Was bewirkt „Dieses Gerät merken"?',
+      a: `<p>Es überspringt die Frage beim nächsten Mal. Das Gerät wird in diesem Browser vermerkt und ohne erneutes Nachfragen eingelassen, solange der Eintrag besteht.</p>
+<p>Das Kästchen ist mit Absicht leer — die sicherere Antwort ist die, die man bekommt, wenn man nicht genau liest.</p>
+<p>Es gibt derzeit <strong>keine Ansicht, die diese Liste zeigt oder ein Gerät wieder herausnimmt</strong>. Das Leeren der Browserdaten für diese Seite leert sie. Diese Lücke gehört zu <a href="https://github.com/Le-Space/ablage/issues/43" target="_blank" rel="noopener noreferrer">Issue #43</a>.</p>`
+    }
+  },
+  foot: { legal: 'Impressum & Datenschutz', privacy: 'Datenschutz' },
   folder: {
     // Die Unterscheidung, die der Code bewusst nicht trifft. Beides ist ein
     // `FileSystemDirectoryHandle`, also muss es die Oberfläche sagen - wer

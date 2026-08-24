@@ -84,6 +84,7 @@ export default {
     another: 'Anderen Ordner wählen',
     resume: ({ name }) => `${name} wieder benutzen`
   },
+  preview: { counted: ({ name, at, of }) => `${name} — ${at} von ${of}` },
   peers: {
     heading: 'Geräte da draußen',
     filter: 'Nach Peer-ID filtern',

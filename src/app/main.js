@@ -345,13 +345,49 @@ const whenVisible = new IntersectionObserver(entries => {
  * with `<dialog>`, and moving the pointer away from the row that opened it ends
  * a peek that was never asked to stay.
  */
-function showPreview (url, name) {
+/**
+ * The pictures in this folder, in the order the list draws them.
+ *
+ * Read when the preview opens rather than held: files arrive and leave while
+ * somebody is looking, and a list captured once would send them to a picture
+ * that is no longer there.
+ */
+const picturesHere = () =>
+  index.paths().sort().filter(path => looksLikeImage(path) && index.get(path)?.cid != null)
+
+/** Which picture is open, so left and right have somewhere to go from. */
+let openPicture = -1
+
+/**
+ * Show the picture at this position, without closing what is already open.
+ *
+ * Reached by tapping a thumbnail, by an arrow key, and by a swipe. Out of range
+ * does nothing at all: the ends of a folder are the ends, and wrapping around
+ * would leave somebody swiping forever without knowing they had passed the last
+ * one.
+ */
+async function showPreviewAt (position) {
+  const pictures = picturesHere()
+
+  if (position < 0 || position >= pictures.length) return
+
+  const path = pictures[position]
+  const url = await thumbnails.urlFor(path, index.get(path)?.cid, storage)
+
+  if (url == null) return
+
+  openPicture = position
   previewImageEl.src = url
-  previewImageEl.alt = name
-  previewNameEl.textContent = name
+  previewImageEl.alt = path
+  previewNameEl.textContent = pictures.length > 1
+    ? t('preview.counted', { name: path.split('/').pop(), at: position + 1, of: pictures.length })
+    : path.split('/').pop()
 
   if (!previewEl.open) previewEl.showModal()
 }
+
+/** @param {string} path the picture a thumbnail belongs to */
+const showPreviewOf = path => showPreviewAt(picturesHere().indexOf(path))
 
 /**
  * Put it away and let go of the picture.
@@ -364,9 +400,56 @@ function showPreview (url, name) {
 function hidePreview () {
   previewEl.close()
   previewImageEl.removeAttribute('src')
+  openPicture = -1
 }
 
-previewEl.addEventListener('click', hidePreview)
+/**
+ * A tap closes; a swipe moves. They arrive as the same click, so the two are
+ * told apart by what the pointer did before it.
+ */
+let dragFrom = null
+let swiped = false
+
+previewEl.addEventListener('pointerdown', event => {
+  dragFrom = { x: event.clientX, y: event.clientY }
+  swiped = false
+})
+
+previewEl.addEventListener('pointerup', event => {
+  if (dragFrom == null) return
+
+  const dx = event.clientX - dragFrom.x
+  const dy = event.clientY - dragFrom.y
+
+  dragFrom = null
+
+  // Far enough to be meant, and more sideways than not: a scroll or a shaky
+  // finger on the way to closing should not turn the page.
+  if (Math.abs(dx) < 40 || Math.abs(dx) <= Math.abs(dy)) return
+
+  swiped = true
+  showPreviewAt(openPicture + (dx < 0 ? 1 : -1))
+})
+
+previewEl.addEventListener('click', () => {
+  // The click that ends a swipe is not a tap. Without this, every swipe would
+  // also close the picture it had just turned to.
+  if (swiped) {
+    swiped = false
+    return
+  }
+
+  hidePreview()
+})
+
+previewEl.addEventListener('keydown', event => {
+  if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
+
+  // Otherwise the dialog scrolls under the picture on a narrow window.
+  event.preventDefault()
+  showPreviewAt(openPicture + (event.key === 'ArrowRight' ? 1 : -1))
+})
+
 previewEl.addEventListener('cancel', () => previewImageEl.removeAttribute('src'))
 
 /** Folders the person collapsed. Open is the default; closing is the choice. */
@@ -401,13 +484,13 @@ function attachThumbnail (li, node) {
     // A tap is unambiguous; a hover has to wait to be sure it was meant.
     img.addEventListener('click', event => {
       event.stopPropagation()
-      showPreview(url, node.name)
+      showPreviewOf(node.path)
     })
 
     img.addEventListener('pointerenter', event => {
       if (event.pointerType !== 'mouse') return
 
-      peek = setTimeout(() => showPreview(url, node.name), 400)
+      peek = setTimeout(() => showPreviewOf(node.path), 400)
     })
 
     const stop = () => {

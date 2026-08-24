@@ -46,3 +46,50 @@ test.describe('reaching a relay', () => {
     expect(out.reason).toMatch(/gater denied/i)
   })
 })
+
+test.describe('calling somebody met through a relay', () => {
+  test.setTimeout(240_000)
+
+  const meeting = async browser => {
+    const context = await browser.newContext()
+    const page = await context.newPage()
+
+    await page.goto('/harness.html')
+    await page.waitForFunction(() => window.__ablage != null)
+    await page.evaluate(async () => { window.__side = await window.__ablage.meetAndDial() })
+
+    return { page, context, id: await page.evaluate(() => window.__side.peerId) }
+  }
+
+  test('the sync stream opens, and arrives', async () => {
+    // The step between "they see each other" and "they sync", and the one that
+    // was never tested. It failed with "Cannot open protocol stream on limited
+    // connection": libp2p marks a circuit-relay connection as limited and
+    // refuses a protocol stream on one unless the protocol says it may. Both
+    // sides have to say so; either alone is still a refusal.
+    const { chromium } = await import('@playwright/test')
+    const browser = await chromium.launch()
+    const a = await meeting(browser)
+    const b = await meeting(browser)
+
+    try {
+      await expect
+        .poll(() => a.page.evaluate(id => window.__side.heard().includes(id), b.id), { timeout: 120_000 })
+        .toBe(true)
+
+      const call = await a.page.evaluate(id => window.__side.call(id), b.id)
+
+      expect(call.error).toBe(null)
+      expect(call.ok).toBe(true)
+
+      // And it landed where the application listens, rather than only leaving.
+      await expect
+        .poll(() => b.page.evaluate(() => window.__side.inbound()), { timeout: 30_000 })
+        .toContain(a.id)
+    } finally {
+      await a.context.close()
+      await b.context.close()
+      await browser.close()
+    }
+  })
+})

@@ -142,6 +142,56 @@ window.__ablage = {
     }
   },
 
+  /**
+   * A node on the meeting place that can also be asked to call somebody.
+   *
+   * Discovery was proven; dialling a discovered peer never was. That is the
+   * step between "they see each other" and "they sync", and it is where the
+   * report of two devices that find each other and do nothing points.
+   */
+  meetAndDial: async () => {
+    const { createPeer } = await import('./peer.js')
+    const { bakedRelayAddresses } = await import('./relay-sources.js')
+
+    const heard = new Set()
+    const inbound = []
+
+    // Through `createPeer`'s own hook, not a second `node.handle` - libp2p
+    // refuses a duplicate registration, and swallowing that error made an
+    // earlier measurement report an arrival that had simply been sent to the
+    // handler this one was trying to replace.
+    const peer = await createPeer({
+      relayOptIn: true,
+      relayBootstrapAddrs: bakedRelayAddresses(),
+      onSyncStream: (stream, peerId) => inbound.push(peerId)
+    })
+
+    peer.node.addEventListener('peer:discovery', event => heard.add(event.detail.id.toString()))
+
+    return {
+      peerId: peer.peerId(),
+      heard: () => [...heard],
+      inbound: () => [...inbound],
+
+      /** What `askToShare` does, and what it reports when it cannot. */
+      call: async peerId => {
+        try {
+          await peer.openSyncStream(peerId)
+          return { ok: true, error: null }
+        } catch (error) {
+          return { ok: false, error: String(error?.message ?? error).slice(0, 220) }
+        }
+      },
+
+      addresses: peerId => peer.node.peerStore.get(peerId).then(
+        p => p.addresses.map(a => a.multiaddr.toString()),
+        () => []
+      ),
+
+      stop: () => peer.stop().catch(() => {})
+    }
+  },
+
   clear: async name => {
     const root = await navigator.storage.getDirectory()
     await root.removeEntry(name, { recursive: true }).catch(() => {})

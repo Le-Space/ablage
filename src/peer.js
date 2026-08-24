@@ -179,12 +179,22 @@ export async function createPeer ({
   // Positional, like the demo. Destructuring `{ stream }` here reports itself as
   // "stream was reset right after opening", which reads like a transport fault
   // and is a wrong signature.
+  // `runOnLimitedConnection`, and without it none of the relay half works.
+  //
+  // libp2p marks a circuit-relay connection as *limited* and refuses to open a
+  // protocol stream on one unless the protocol says it may - so two devices
+  // that had found each other through the relay could see each other and do
+  // nothing at all. Measured: discovery reported the peer, and the dial came
+  // back "Cannot open protocol stream on limited connection".
+  //
+  // Both halves need it. This is the answering side; `sync-dial.js` carries the
+  // same flag on the dial, and either one alone still refuses.
   await node.handle(SYNC_PROTOCOL, (stream, connection) => {
     // The address says how this peer was reached, and that decides whether it
     // is asked about. A QR peer arrives over `/webrtc/p2p/<id>` - the scan was
     // the consent - while anything through a relay carries `/p2p-circuit`.
     onSyncStream?.(stream, connection.remotePeer.toString(), String(connection.remoteAddr ?? ''))
-  })
+  }, { runOnLimitedConnection: true })
 
   return {
     node,

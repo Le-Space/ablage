@@ -415,3 +415,97 @@ test.describe('only devices that could answer', () => {
     await expect(page.locator('#peer-filter')).toBeHidden()
   })
 })
+
+/**
+ * Being let in, and then actually getting the folder.
+ *
+ * The dialog appears and both devices say "connected" - and nothing arrives.
+ * Every piece was tested: the button, the question, the answer, the provider.
+ * What none of them covers is a folder that already has files in it crossing to
+ * a device that has none, which is the only thing anybody presses the button
+ * for.
+ */
+test.describe('what arrives after the answer', () => {
+  test.setTimeout(300_000)
+
+  const device = async browser => {
+    const context = await browser.newContext()
+    const page = await context.newPage()
+
+    await page.addInitScript(() => localStorage.setItem('ablage.relay', 'true'))
+    await page.goto('/?intro=off')
+
+    await expect(page.locator('#by-relay')).toBeVisible({ timeout: 60_000 })
+    await expect(page.locator('#my-peer')).not.toBeEmpty({ timeout: 60_000 })
+
+    return { page, context, id: await page.locator('#my-peer').getAttribute('title') }
+  }
+
+  const put = (page, name, text) => page.setInputFiles('#pick', {
+    name,
+    mimeType: 'text/plain',
+    buffer: Buffer.from(text)
+  })
+
+  test('a folder that was already full reaches the device that was let in', async () => {
+    const { chromium } = await import('@playwright/test')
+    const browser = await chromium.launch()
+    const a = await device(browser)
+    const b = await device(browser)
+
+    try {
+      // Full *before* anybody asks. This is the case people press the button
+      // for, and the one a live update can hide: a file written afterwards
+      // travels on the document's own change event and proves nothing about
+      // what was already there.
+      await put(a.page, 'vorher.txt', 'stand schon da')
+      await expect(a.page.locator('.tree')).toContainText('vorher.txt')
+
+      const row = a.page.locator('#peer-list li', { hasText: b.id.slice(-10) })
+
+      await expect(row).toBeVisible({ timeout: 150_000 })
+      await row.getByRole('button').click()
+
+      await expect(b.page.locator('#admit-ask')).toBeVisible({ timeout: 60_000 })
+      await b.page.locator('#admit-yes').click()
+
+      await expect(b.page.locator('.tree')).toContainText('vorher.txt', { timeout: 90_000 })
+
+      // And the contents, not only the name. An index entry without the bytes
+      // behind it is a row that cannot be opened.
+      await b.page.locator('.file .name', { hasText: 'vorher.txt' }).click({ trial: true })
+    } finally {
+      await a.context.close()
+      await b.context.close()
+      await browser.close()
+    }
+  })
+
+  test('and so does one written afterwards', async () => {
+    // The other half, told apart on purpose: if this passes while the one above
+    // fails, the channel works and only the catch-up is missing.
+    const { chromium } = await import('@playwright/test')
+    const browser = await chromium.launch()
+    const a = await device(browser)
+    const b = await device(browser)
+
+    try {
+      const row = a.page.locator('#peer-list li', { hasText: b.id.slice(-10) })
+
+      await expect(row).toBeVisible({ timeout: 150_000 })
+      await row.getByRole('button').click()
+
+      await expect(b.page.locator('#admit-ask')).toBeVisible({ timeout: 60_000 })
+      await b.page.locator('#admit-yes').click()
+
+      await put(a.page, 'danach.txt', 'kam später')
+      await expect(a.page.locator('.tree')).toContainText('danach.txt')
+
+      await expect(b.page.locator('.tree')).toContainText('danach.txt', { timeout: 90_000 })
+    } finally {
+      await a.context.close()
+      await b.context.close()
+      await browser.close()
+    }
+  })
+})

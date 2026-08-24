@@ -248,6 +248,11 @@ window.__ablage = {
       peers.get(peerId)?.provider.destroy()
       peers.set(peerId, { provider, send, stream })
 
+      // Both sides ask, the same as `main.js`. A `sync-request` is answered
+      // with what its *sender* lacks, so one request moves a folder one way
+      // and the side that was asked never catches up.
+      provider.requestSync()
+
       ;(async () => {
         for await (const data of stream) {
           const message = JSON.parse(decode(data.subarray?.() ?? data))
@@ -354,7 +359,8 @@ window.__ablage = {
       acceptAnswer: async answer => {
         const peerId = await peer.acceptAnswer(answer)
         const stream = await peer.openSyncStream(peerId)
-        await attach(stream, peerId).requestSync()
+
+        attach(stream, peerId)
         return peerId
       },
 

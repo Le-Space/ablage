@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { bakedRelayAddresses, relayProbe } from '../src/relay-sources.js'
+import { bakedRelayAddresses, recallRelays, relayProbe, rememberRelays, startupRelays } from '../src/relay-sources.js'
 
 /**
  * Where a relay address comes from.
@@ -86,4 +86,72 @@ test('the dial is given a deadline', async () => {
   await relayProbe(node, multiaddr, { timeoutMs: 1234 })(['/a'])
 
   assert.ok(seen?.signal instanceof AbortSignal)
+})
+
+/**
+ * Remembering which relay answered.
+ *
+ * The bug this exists for: `createPeer` fixes its bootstrap list when the node
+ * is made, so an app that only remembers *whether* a relay was wanted starts
+ * with an empty list - and an empty list means no discovery at all. Connected
+ * to a relay, and alone.
+ */
+
+const store = (initial = {}) => {
+  const held = { ...initial }
+
+  return {
+    getItem: key => held[key] ?? null,
+    setItem: (key, value) => { held[key] = String(value) },
+    held
+  }
+}
+
+const RELAY = '/dns4/example.test/tcp/443/tls/ws/p2p/12D3KooWL9UKRwGWE6GGxANhDZpJNyDphQcfBSApuXE1qTW5pkVh'
+
+test('what answered last time is what to try first', async () => {
+  const remembered = startupRelays(store({ k: JSON.stringify([RELAY]) }), 'k')
+
+  // Before the baked ones, not instead of them: this address answered a probe
+  // on this device, the baked list is only where to look when it stops.
+  assert.equal(remembered[0], RELAY)
+  assert.ok(remembered.length > 1, 'die eingebauten Adressen bleiben dahinter')
+})
+
+test('with nothing remembered, the baked list is the whole answer', async () => {
+  assert.deepEqual(startupRelays(store(), 'k'), bakedRelayAddresses())
+})
+
+test('a stored value that is not a list is nothing remembered, not a crash', async () => {
+  // Another origin, an older version, a half-written value. All of them have to
+  // land on "start from the baked list" rather than on a broken app.
+  for (const junk of ['not json', '"a string"', '{"a":1}', '[1, 2]', 'null']) {
+    assert.deepEqual(startupRelays(store({ k: junk }), 'k'), bakedRelayAddresses(), junk)
+  }
+})
+
+test('a store the browser refuses is not remembered and not fatal', async () => {
+  const refused = {
+    getItem: () => { throw new Error('blocked') },
+    setItem: () => { throw new Error('blocked') }
+  }
+
+  assert.deepEqual(startupRelays(refused, 'k'), bakedRelayAddresses())
+  assert.doesNotThrow(() => rememberRelays(refused, 'k', [RELAY]))
+})
+
+test('an empty answer does not erase the address that worked', async () => {
+  // A check that found nothing says nothing about the relay this device used
+  // last week. Overwriting on failure would turn one bad minute into a device
+  // that has to discover from scratch every time.
+  const held = store({ k: JSON.stringify([RELAY]) })
+
+  rememberRelays(held, 'k', [])
+  assert.deepEqual(recallRelays(held, 'k'), [RELAY])
+})
+
+test('and the same relay is not listed twice', async () => {
+  const baked = bakedRelayAddresses()[0]
+
+  assert.equal(startupRelays(store({ k: JSON.stringify([baked]) }), 'k').filter(a => a === baked).length, 1)
 })

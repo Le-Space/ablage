@@ -28,7 +28,7 @@ import { multiaddr } from '@multiformats/multiaddr'
 import { findReachableRelays, readRelayOptIn } from '@le-space/libp2p-webrtc-qr'
 
 import { admission, decide } from '../sync/admission.js'
-import { bakedRelayAddresses, discoverRelays, relayProbe } from '../relay-sources.js'
+import { bakedRelayAddresses, discoverRelays, relayProbe, rememberRelays, startupRelays } from '../relay-sources.js'
 import { peerSet } from '../sync/peer-set.js'
 import { sharing } from '../sync/sharing.js'
 import { folderIdentity } from '../storage/identity.js'
@@ -276,6 +276,9 @@ function showMyPeer () {
  * package cannot put its own namespace in somebody else's origin.
  */
 const RELAY_OPT_IN_KEY = 'ablage.relay'
+
+/** And which one, which is a separate question from whether. */
+const RELAY_ADDRESSES_KEY = 'ablage.relay.addresses'
 
 /**
  * Peers this device let go of on purpose.
@@ -677,6 +680,13 @@ async function start () {
     // ablage ships none. This is the half of the seam that does not need one:
     // without it, a choice made later would reach the interface and stop there.
     relayOptIn: readRelayOptIn(globalThis.localStorage, RELAY_OPT_IN_KEY),
+
+    // Without these the choice does nothing. `relayBootstrapList` needs both an
+    // opt-in *and* an address, and with an empty list `peerDiscovery` is `[]` -
+    // no bootstrap, no pubsub discovery. The app then connected to a relay
+    // during the introduction's check and heard nobody for ever, which is what
+    // "connected, and no peers anywhere" turned out to mean.
+    relayBootstrapAddrs: startupRelays(globalThis.localStorage, RELAY_ADDRESSES_KEY),
     onSyncStream: (stream, peerId, address) => {
       if (decide({ address, peerId, admitted }) === 'admit') {
         attach(stream, peerId)
@@ -822,9 +832,15 @@ introEl.relay = {
     peer?.allowRelayDials(true)
 
     return findReachableRelays({
-    baked: bakedRelayAddresses(),
+      baked: bakedRelayAddresses(),
       probe: relayProbe(peer.node, multiaddr),
       discover: discoverRelays
+    }).then(found => {
+      // Kept, because the next start needs an address and this one answered a
+      // probe from this device. Discovery can take a while and the baked list
+      // ages; a relay that replied a minute ago is the better first guess.
+      rememberRelays(globalThis.localStorage, RELAY_ADDRESSES_KEY, found.addresses)
+      return found
     })
   }
 }

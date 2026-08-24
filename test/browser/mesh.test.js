@@ -192,3 +192,60 @@ test.describe('one world at a time', () => {
     await expect(page.locator('#by-relay')).toBeHidden()
   })
 })
+
+/**
+ * The seam nothing covered, and the one that was broken.
+ *
+ * Everything above tests one half or the other: `meetOverRelay` proves two
+ * *nodes* find each other, and the filter tests draw a list from peers handed
+ * straight to `showPeers`. Neither carries a peer the app actually discovered
+ * into the list the app actually draws - so the app could connect to a relay,
+ * hear nobody for ever, and every test would stay green.
+ *
+ * It did exactly that. `createPeer` was called with `relayOptIn` and no
+ * addresses, `relayBootstrapList` turned that into an empty list, and an empty
+ * list meant `peerDiscovery: []` - no bootstrap and no pubsub discovery at all.
+ * The connection people could see came from the introduction's relay check,
+ * which uses the same node and only opens the gate.
+ *
+ * This reaches the real relay, and that is the point again: the app is the
+ * thing being asked, not a stand-in for it.
+ */
+test.describe('the list the app itself draws', () => {
+  test.setTimeout(240_000)
+
+  const device = async browser => {
+    const context = await browser.newContext()
+    const page = await context.newPage()
+
+    // Before the first line of the app runs: the choice is read once, at start,
+    // and setting it afterwards would test a different start than the one people
+    // get.
+    await page.addInitScript(() => localStorage.setItem('ablage.relay', 'true'))
+    await page.goto('/?intro=off')
+
+    await expect(page.locator('#by-relay')).toBeVisible({ timeout: 60_000 })
+    await expect(page.locator('#my-peer')).not.toBeEmpty({ timeout: 60_000 })
+
+    const mine = await page.locator('#my-peer').innerText()
+
+    return { page, context, id: mine.trim().split(/\s+/).pop() }
+  }
+
+  test('two devices on a relay end up in each other\'s list', async () => {
+    const { chromium } = await import('@playwright/test')
+    const browser = await chromium.launch()
+    const a = await device(browser)
+    const b = await device(browser)
+
+    try {
+      // The ids are shortened from the end, so that is what the rows carry.
+      await expect(a.page.locator('#peer-list')).toContainText(b.id.slice(-10), { timeout: 150_000 })
+      await expect(b.page.locator('#peer-list')).toContainText(a.id.slice(-10), { timeout: 150_000 })
+    } finally {
+      await a.context.close()
+      await b.context.close()
+      await browser.close()
+    }
+  })
+})

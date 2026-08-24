@@ -234,6 +234,17 @@ button.primary:hover:not(:disabled) { background: var(--ls-red-bright); border-c
 /* What the sound is, on the screen making it. */
 /* The same shape as the music block below, because it is the same kind of
    thing: one choice, and a sentence saying what it costs. */
+/* Reference text, so it is allowed to be taller than a question box - and it
+   scrolls rather than growing past the screen on a phone. */
+.privacy { max-width: 44rem; max-height: 82vh; overflow-y: auto; }
+.privacy details { border-top: 1px solid var(--ls-line, rgba(255,255,255,0.1)); padding: 0.7rem 0; }
+.privacy details:last-of-type { border-bottom: 1px solid var(--ls-line, rgba(255,255,255,0.1)); }
+.privacy summary { cursor: pointer; font-weight: 600; }
+.privacy details > div { margin-top: 0.5rem; color: var(--ls-text-dim); }
+.privacy details p { margin: 0 0 0.6rem; }
+.privacy details p:last-child { margin-bottom: 0; }
+.foot-button { background: none; border: 0; padding: 0; font: inherit; cursor: pointer; }
+
 .awake { margin-top: 0.9rem; }
 .awake .option { margin: 0; }
 .awake .hint { margin: 0.3rem 0 0; }

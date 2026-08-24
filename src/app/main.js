@@ -70,6 +70,7 @@ const viewModeEl = $('view-mode')
 const compactEl = $('compact-payload')
 const introViewEl = $('intro-view')
 const awakeEl = $('awake')
+const privacyEl = $('privacy')
 const awakeWhyEl = $('awake-why')
 const musicEl = $('music')
 const musicNowEl = $('music-now')
@@ -1417,6 +1418,18 @@ document.addEventListener('visibilitychange', () => {
 // every request, having no screen, so asserting on `held` would be asserting on
 // the platform rather than on this code.
 window.__wakeLockForTest = wakeLock
+
+/**
+ * What leaves this device, on request.
+ *
+ * A dialog rather than a page: this app is one page, and sending somebody to a
+ * hosted document to read about not needing a host would be a strange thing to
+ * do. The answers live in the locale files with everything else, so they are
+ * translated by the same switch and cannot drift out of step with the interface
+ * they describe.
+ */
+$('privacy-open').addEventListener('click', () => privacyEl.showModal())
+$('privacy-close').addEventListener('click', () => privacyEl.close())
 
 const keepAlive = createKeepAlive({
   track: 'audio/zauberfloete-dies-bildnis-cossira-1903.mp3',

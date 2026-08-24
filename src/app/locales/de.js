@@ -70,7 +70,56 @@ export default {
     refused: 'Abgelehnt — dieses Gerät kam nicht in den Ordner.',
     admitted: 'Gleicht mit einem Gerät ab, das Sie über ein Relay erreicht hat.'
   },
-  foot: { legal: 'Impressum & Datenschutz' },
+  privacy: {
+    title: 'Was dieses Gerät verlässt',
+    sub: 'Ehrlich beantwortet, einschließlich dessen, was noch nicht gelöst ist.',
+    close: 'Schließen',
+
+    leaves: {
+      q: 'Was verlässt dieses Gerät überhaupt?',
+      a: `<p>Zweierlei, und nur an ein Gerät, dem Sie zugestimmt haben: <strong>die Liste der Dateien</strong> — Namen, Größen und je eine Inhaltsadresse — und <strong>die Dateiinhalte selbst</strong>.</p>
+<p>Es gibt kein Konto, keinen Server, der Ihren Ordner hält, und keine Kopie, die irgendwo für Sie aufbewahrt wird. Diese Seite ist ein statisches Bündel; sie hat gar niemanden, an den sie etwas senden könnte.</p>
+<p>Alles läuft in einer verschlüsselten Verbindung, und die Schlüssel haben nur die beiden Geräte. Welches Verfahren die Arbeit tut, hängt vom Weg ab: WebRTCs eigenes DTLS, wenn sie direkt verbunden sind, Noise, wenn alles über ein Relay läuft. Nie beides — eine Schicht pro Verbindung.</p>`
+    },
+
+    relay: {
+      q: 'Wenn ich das Relay einschalte — was sieht es?',
+      a: `<p><strong>Ihre Dateien nicht.</strong> Ein Relay reicht Bytes weiter, die es nicht entschlüsseln kann; genau das macht es unbedenklich, ein fremdes zu benutzen.</p>
+<p>Es sieht aber, <em>dass</em> Sie da sind, und das ist nicht nichts: den öffentlichen Schlüssel Ihres Geräts, die Adressen, die es ankündigt, mit welchem anderen Gerät Sie sprechen, wann, wie lange und ungefähr wie viel. Das ist eine Aufzeichnung Ihrer Gewohnheiten, auch ohne einen einzigen Dateinamen darin.</p>
+<p>Sobald sich die beiden Geräte direkt erreichen können, läuft die Übertragung nicht mehr über das Relay und es fällt aus dem Weg. Können sie es nicht, funktioniert alles weiter darüber.</p>
+<p>Mit ausgeschaltetem Relay existiert nichts davon: die App baut keine einzige Verbindung nach außen auf, bevor jemand einen Code scannt.</p>`
+    },
+
+    reading: {
+      q: 'Könnte jemand meine Dateien unberechtigt mitlesen oder kopieren?',
+      a: `<p><strong>Heute, mit eingeschaltetem Relay: ja, in einem engen Fall — und wir haben es gemessen, nicht vermutet.</strong></p>
+<p>Ein Gerät, das abgleichen will, muss eingelassen werden: es erscheint in einem Dialog und Sie antworten. Diese Schranke deckt den Abgleich ab. Sie deckt <em>nicht</em> den getrennten Kanal ab, auf dem die Dateiinhalte reisen — der gibt einen Block an jedes Gerät heraus, das ihn unter seiner Inhaltsadresse verlangt.</p>
+<p>Eine Inhaltsadresse ist ein Hash der Datei. Jemand müsste also entweder schon einmal eingelassen worden sein oder die betreffende Datei bereits genau so besitzen und prüfen wollen, ob Sie sie auch haben. Durchsuchen, auflisten oder stöbern kann niemand, und keine Adresse wird irgendwo veröffentlicht — diese App lässt die öffentlichen Gateways und das Nachschlagenetz bewusst weg, die eine auffindbar machen würden.</p>
+<p>Es bleibt ein Loch, es ist unseres, und es wird als <a href="https://github.com/Le-Space/ablage/issues/43" target="_blank" rel="noopener noreferrer">Issue #43</a> verfolgt.</p>`
+    },
+
+    meeting: {
+      q: 'Wie finden sich zwei Geräte, und wer hört dabei mit?',
+      a: `<p>Geräte kündigen sich auf gemeinsamen, öffentlichen Kanälen an — denselben, die andere Anwendungen auf diesem Relay benutzen. Eine Ankündigung trägt einen öffentlichen Schlüssel und Netzwerkadressen; sie trägt nichts über Sie, Ihren Ordner oder Ihre Dateien.</p>
+<p>Wer auf diesen Kanälen lauscht, sieht, wer anwesend ist. So entsteht die Geräteliste, die Sie sehen — und alle anderen können dieselbe Liste bauen.</p>
+<p>Die Kopplung über einen gescannten Code benutzt nichts davon.</p>`
+    },
+
+    rest: {
+      q: 'Wo liegen die Dateien auf meinem Gerät?',
+      a: `<p>In dem Ordner, den Sie gewählt haben, als ganz gewöhnliche Dateien. Kann Ihr Browser keinen Ordner öffnen, liegen sie stattdessen im Speicher des Browsers — und das Leeren der Browserdaten löscht sie, was die Dateikarte auch offen sagt.</p>
+<p><strong>Verschlüsselt sind sie dort nicht.</strong> Wer Ihr entsperrtes Gerät hat, hat sie, genau wie bei jedem anderen Ordner. Was hier hilft, ist Festplattenverschlüsselung, und die ist Sache Ihres Betriebssystems, nicht dieser App.</p>
+<p>Ein paar kleine Einstellungen liegen ebenfalls im Browser: welche Geräte Sie sich gemerkt haben, welches Relay zuletzt geantwortet hat, sowie Sprache und Ansicht.</p>`
+    },
+
+    remember: {
+      q: 'Was bewirkt „Dieses Gerät merken"?',
+      a: `<p>Es überspringt die Frage beim nächsten Mal. Das Gerät wird in diesem Browser vermerkt und ohne erneutes Nachfragen eingelassen, solange der Eintrag besteht.</p>
+<p>Das Kästchen ist mit Absicht leer — die sicherere Antwort ist die, die man bekommt, wenn man nicht genau liest.</p>
+<p>Es gibt derzeit <strong>keine Ansicht, die diese Liste zeigt oder ein Gerät wieder herausnimmt</strong>. Das Leeren der Browserdaten für diese Seite leert sie. Diese Lücke gehört zu <a href="https://github.com/Le-Space/ablage/issues/43" target="_blank" rel="noopener noreferrer">Issue #43</a>.</p>`
+    }
+  },
+  foot: { legal: 'Impressum & Datenschutz', privacy: 'Datenschutz' },
   folder: {
     // Die Unterscheidung, die der Code bewusst nicht trifft. Beides ist ein
     // `FileSystemDirectoryHandle`, also muss es die Oberfläche sagen - wer
@@ -147,6 +196,9 @@ export default {
     heading: 'Woran das hängt',
     dtls: 'Verschlüsselt wird mit DTLS, derselben Schicht, die ein Browser für jede WebRTC-Verbindung benutzt. Das ist nichts Aufgesetztes und lässt sich nicht abschalten.',
     signed: 'Was der QR-Code trägt, ist mit dem eigenen Schlüssel dieses Geräts signiert, und die Signatur deckt den Zertifikats-Fingerabdruck der Verbindung ab. Der verschlüsselte Kanal ist damit an genau das Gerät gebunden, das Sie gescannt haben — ein untergeschobenes anderes macht die Signatur ungültig, bevor überhaupt gewählt wird.',
+    relay: `Über ein Relay handeln die beiden Geräte Noise untereinander aus, und das Relay reicht Bytes weiter, die es nicht entschlüsseln kann. Die Strom-Aufteilung liegt oberhalb dieser Verschlüsselung, es sieht also nicht einmal die Protokollnamen — es kann eine Dateiübertragung nicht von einer Listenänderung unterscheiden. Was es sieht: wer mit wem, wann, wie lange und ungefähr wie viel.`,
+    layers: `Nicht doppelt verschlüsselt: libp2p nimmt eine Schicht pro Verbindung. Auf WebRTC übergibt es skipEncryption und lässt Noise weg, weil DTLS die Arbeit schon getan hat — eine Verbindung meldet ihre Verschlüsselung dort als „native" und über ein Relay als „/noise". Das TLS zum Relay selbst ist ein drittes, davon getrenntes Ding: es verbirgt den Verkehr vor dem Netz zwischen Ihnen und dem Relay, und das Relay beendet es.`,
+    gap: `Der Dialog, der ein Gerät einlässt, bewacht den Abgleich — nicht den Kanal, auf dem die Bytes reisen: Bitswap gibt einen Block an jeden verbundenen Peer heraus, der seine Inhaltsadresse nennt. Gemessen, nicht vermutet, und offen als <a href="https://github.com/Le-Space/ablage/issues/43" target="_blank" rel="noopener noreferrer">Issue #43</a>.`,
     bytes: 'Die Dateiinhalte reisen per Bitswap über dieselbe Verbindung, adressiert über ihren Inhalts-Hash. Geteilt wird als Dokument nur die Liste aus Pfaden und Hashes; die Bytes stecken nie darin.',
     music: 'Beim Zeigen eines Codes läuft eine Mozart-Aufnahme von 1903. Das ist keine Deko: eine Seite, die hörbar Ton abspielt, wird vom Telefon nicht schlafen gelegt — und den Link zu verschicken heißt, diese App zu verlassen. Stille reichte nicht: was der Browser für unhörbar hält, zählt nicht als Wiedergabe.',
     open: 'Nichts davon müssen Sie uns glauben: es sind libp2p, WebRTC und Helia, und die Teile, die zu diesem Handschlag gehören, liegen offen unter NiKrause/libp2p-webrtc-qr.'

@@ -493,8 +493,58 @@
           · <a href="https://github.com/Le-Space/ablage/commit/__ABLAGE_COMMIT__" target="_blank" rel="noopener noreferrer"><code>__ABLAGE_COMMIT__</code></a>
           · <time datetime="__ABLAGE_BUILD_ISO__">__ABLAGE_BUILD_TIME__</time>
         </span>
+        <button id="privacy-open" class="foot-link foot-button" type="button" data-i18n="foot.privacy">Privacy</button>
         <a class="foot-link" href="https://le-space.de" target="_blank" rel="noopener noreferrer" data-i18n="foot.legal">Imprint &amp; privacy</a>
       </footer>
+
+      <!--
+        What leaves this device, and what does not.
+
+        Written as questions with answers rather than as a policy, because the
+        questions are the ones people actually have - and because a policy is
+        read as a promise while a question can be answered with "yes, and here
+        is the part that is not solved yet".
+
+        Every answer here was measured. `privacy.reading` in particular
+        describes a hole that is open today (issue #43); it is written down
+        rather than left out, because a privacy page that omits what it knows is
+        worse than no page.
+      -->
+      <dialog id="privacy" class="modal privacy">
+        <div class="modal-head">
+          <h3 data-i18n="privacy.title">What leaves this device</h3>
+        </div>
+        <p class="hint" data-i18n="privacy.sub"></p>
+
+        <details>
+          <summary data-i18n="privacy.leaves.q"></summary>
+          <div data-i18n-html="privacy.leaves.a"></div>
+        </details>
+        <details>
+          <summary data-i18n="privacy.relay.q"></summary>
+          <div data-i18n-html="privacy.relay.a"></div>
+        </details>
+        <details>
+          <summary data-i18n="privacy.reading.q"></summary>
+          <div data-i18n-html="privacy.reading.a"></div>
+        </details>
+        <details>
+          <summary data-i18n="privacy.meeting.q"></summary>
+          <div data-i18n-html="privacy.meeting.a"></div>
+        </details>
+        <details>
+          <summary data-i18n="privacy.rest.q"></summary>
+          <div data-i18n-html="privacy.rest.a"></div>
+        </details>
+        <details>
+          <summary data-i18n="privacy.remember.q"></summary>
+          <div data-i18n-html="privacy.remember.a"></div>
+        </details>
+
+        <div class="actions">
+          <button id="privacy-close" class="primary" type="button" data-i18n="privacy.close">Close</button>
+        </div>
+      </dialog>
 
       <dialog id="admit-ask" class="modal">
         <div class="modal-head">
@@ -599,7 +649,22 @@
           <ul>
             <li data-i18n="how.dtls"></li>
             <li data-i18n="how.signed"></li>
+            <!--
+              The relay half, and the one thing people ask first about it. Here
+              rather than only in the privacy dialog: somebody deciding whether
+              to tick the relay box is deciding it *in this dialog*, and an
+              answer they have to go looking for afterwards is an answer given
+              too late.
+
+              Technical only. In the simple view the sentence "the relay cannot
+              read your files" raises a question that was not being asked, and
+              the honest version of it needs three more sentences to stay
+              honest.
+            -->
+            <li data-i18n="how.relay"></li>
+            <li data-i18n="how.layers"></li>
             <li data-i18n="how.bytes"></li>
+            <li data-i18n-html="how.gap"></li>
             <li data-i18n="how.music"></li>
             <li data-i18n="how.open"></li>
           </ul>

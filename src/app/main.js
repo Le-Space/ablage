@@ -145,7 +145,18 @@ const FILTER_FROM = 10
 let known = []
 
 /** Everyone the meeting place has turned up, and what can be done about them. */
-function showPeers (found) {
+function showPeers (heard) {
+  // Out goes anything known not to answer. The meeting place is shared with
+  // other apps and carries the relay itself, and a row for something that does
+  // not offer `/ablage/sync/1.0.0` is an offer to press a button nothing will
+  // ever answer - which is how the relay came to be listed as a device out
+  // there, named by the last ten characters of its own id.
+  //
+  // `speaks === null` stays: a peer heard on the meeting place has never been
+  // connected to, so its protocols are unknown, and asking is what connects
+  // them. Dropping those emptied the list of the very devices it exists for.
+  const found = heard.filter(({ speaks }) => speaks !== false)
+
   known = found
 
   const needle = peerFilterEl.value.trim().toLowerCase()

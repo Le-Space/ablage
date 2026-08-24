@@ -9,7 +9,6 @@ import { webSockets } from '@libp2p/websockets'
 import { QRSession, webRTCQR } from '@le-space/libp2p-webrtc-qr'
 import { createLibp2p } from 'libp2p'
 
-import { arrivedByQr } from './sync/admission.js'
 import { denyDial, relayBootstrapList } from './relay-policy.js'
 import { openSyncStream } from './sync-dial.js'
 
@@ -269,24 +268,6 @@ export async function createPeer ({
 
     connections: () => node.getConnections().length,
 
-    /**
-     * Is there a way in that does not need a code held up to a camera?
-     *
-     * Any connection that did not arrive by QR is infrastructure - the relay,
-     * or a circuit through it. `arrivedByQr` is the same test the admission
-     * gate uses, and using it here rather than a second one means the two
-     * cannot come to disagree about what a relay connection is.
-     */
-    relayUp: () => node.getConnections().some(connection => !arrivedByQr(String(connection.remoteAddr ?? ''))),
-
-    /** Told when that changes, so the interface does not have to poll. */
-    watchRelay: onChange => {
-      const tell = () => onChange(node.getConnections().some(c => !arrivedByQr(String(c.remoteAddr ?? ''))))
-
-      node.addEventListener('peer:connect', tell)
-      node.addEventListener('peer:disconnect', tell)
-      tell()
-    },
 
     stop: () => node.stop()
   }

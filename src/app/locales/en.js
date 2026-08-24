@@ -80,7 +80,7 @@ export default {
       q: 'What actually leaves this device?',
       a: `<p>Two things, and only to a device you agreed to sync with: <strong>the list of files</strong> — names, sizes and a content address for each — and <strong>the file contents themselves</strong>.</p>
 <p>There is no account, no server holding your folder and no copy kept anywhere for you. This page is a static bundle; it has nowhere to send anything to.</p>
-<p>Everything travels inside an encrypted connection. Over a scanned code that is WebRTC's own DTLS; over a relay it is Noise on top of a WebSocket. Neither the relay nor anything else in the path can read it.</p>`
+<p>Everything travels inside an encrypted connection, and the two devices are the only ones holding the keys. Which cipher does the work depends on the path: WebRTC's own DTLS when they are connected directly, Noise when everything goes through a relay. It is never both — one layer per connection.</p>`
     },
 
     relay: {
@@ -197,6 +197,9 @@ export default {
     heading: 'How that holds up',
     dtls: 'The encryption is DTLS, the same layer a browser uses for any WebRTC connection. It is not something added on top and it cannot be switched off.',
     signed: 'What the QR code carries is signed with this device\u2019s own key, and the signature covers the certificate fingerprint of the connection. So the encrypted channel is bound to the device you scanned — swapping in another one invalidates the signature before anything is dialled.',
+    relay: `Through a relay, the two devices negotiate Noise between themselves and the relay forwards bytes it cannot decrypt. Multiplexing sits above that encryption, so it cannot see the protocol names either — it cannot tell a file transfer from a list update. What it does see is who talks to whom, when, for how long and roughly how much.`,
+    layers: `Not doubly encrypted: libp2p picks one layer per connection. On WebRTC it passes skipEncryption and leaves Noise out, because DTLS already did the work — a connection reports its encryption as 'native' there and '/noise' over a relayed WebSocket. The TLS to the relay itself is a third, separate thing: it hides the traffic from the network between you and the relay, and the relay terminates it.`,
+    gap: `The dialog that lets a device in gates the syncing, and not the channel the bytes travel on: bitswap will hand a block to any connected peer that names its content address. Measured, not assumed, and open as <a href="https://github.com/Le-Space/ablage/issues/43" target="_blank" rel="noopener noreferrer">issue #43</a>.`,
     bytes: 'The file contents travel over bitswap on that same connection, addressed by their content hash. Only the list of paths and hashes is shared as a document; the bytes are never inside it.',
     music: 'When you show a code, a 1903 recording of Mozart starts playing. It is not decoration: a page playing audible audio is one a phone will not suspend, and sending the link means leaving this app. Silence would not do — a stream the browser judges inaudible stops counting as playback.',
     open: 'None of this is ours to be trusted about: it is libp2p, WebRTC and Helia, and the parts specific to this handshake are in the open at NiKrause/libp2p-webrtc-qr.'

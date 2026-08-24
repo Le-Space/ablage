@@ -77,3 +77,30 @@ test('it does not promise encryption at rest, because there is none', async ({ p
   await rest.locator('summary').click()
   await expect(rest).toContainText(/not encrypted at rest|Verschlüsselt sind sie dort nicht/i)
 })
+
+test('the technical half of the intro carries the relay answer, and the simple half does not', async ({ page }) => {
+  // Somebody deciding whether to tick the relay box decides it *in the intro*.
+  // An answer they have to go looking for afterwards is one given too late -
+  // and in the simple view it raises a question nobody was asking.
+  await page.goto('/')
+
+  // The dialog lives in the element's shadow root; the host being present says
+  // nothing about whether it is up yet.
+  await page.waitForFunction(
+    () => document.getElementById('intro')?.shadowRoot?.querySelector('dialog')?.open === true,
+    undefined,
+    { timeout: 60_000 }
+  )
+
+  const tech = page.locator('#intro .intro-tech')
+
+  await expect(tech).toBeHidden()
+
+  await page.locator('#intro-view').click()
+  await expect(tech).toBeVisible()
+
+  await expect(tech).toContainText(/Noise/)
+  await expect(tech).toContainText(/who talks to whom|wer mit wem/i)
+  await expect(tech).toContainText(/skipEncryption/)
+  await expect(tech.locator('a[href*="issues/43"]')).toHaveCount(1)
+})

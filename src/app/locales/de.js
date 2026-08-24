@@ -78,7 +78,7 @@ export default {
       q: 'Was verlässt dieses Gerät überhaupt?',
       a: `<p>Zweierlei, und nur an ein Gerät, dem Sie zugestimmt haben: <strong>die Liste der Dateien</strong> — Namen, Größen und je eine Inhaltsadresse — und <strong>die Dateiinhalte selbst</strong>.</p>
 <p>Es gibt kein Konto, keinen Server, der Ihren Ordner hält, und keine Kopie, die irgendwo für Sie aufbewahrt wird. Diese Seite ist ein statisches Bündel; sie hat gar niemanden, an den sie etwas senden könnte.</p>
-<p>Alles läuft in einer verschlüsselten Verbindung. Über einen gescannten Code ist das WebRTCs eigenes DTLS, über ein Relay Noise auf einem WebSocket. Weder das Relay noch sonst jemand im Weg kann es lesen.</p>`
+<p>Alles läuft in einer verschlüsselten Verbindung, und die Schlüssel haben nur die beiden Geräte. Welches Verfahren die Arbeit tut, hängt vom Weg ab: WebRTCs eigenes DTLS, wenn sie direkt verbunden sind, Noise, wenn alles über ein Relay läuft. Nie beides — eine Schicht pro Verbindung.</p>`
     },
 
     relay: {
@@ -195,6 +195,9 @@ export default {
     heading: 'Woran das hängt',
     dtls: 'Verschlüsselt wird mit DTLS, derselben Schicht, die ein Browser für jede WebRTC-Verbindung benutzt. Das ist nichts Aufgesetztes und lässt sich nicht abschalten.',
     signed: 'Was der QR-Code trägt, ist mit dem eigenen Schlüssel dieses Geräts signiert, und die Signatur deckt den Zertifikats-Fingerabdruck der Verbindung ab. Der verschlüsselte Kanal ist damit an genau das Gerät gebunden, das Sie gescannt haben — ein untergeschobenes anderes macht die Signatur ungültig, bevor überhaupt gewählt wird.',
+    relay: `Über ein Relay handeln die beiden Geräte Noise untereinander aus, und das Relay reicht Bytes weiter, die es nicht entschlüsseln kann. Die Strom-Aufteilung liegt oberhalb dieser Verschlüsselung, es sieht also nicht einmal die Protokollnamen — es kann eine Dateiübertragung nicht von einer Listenänderung unterscheiden. Was es sieht: wer mit wem, wann, wie lange und ungefähr wie viel.`,
+    layers: `Nicht doppelt verschlüsselt: libp2p nimmt eine Schicht pro Verbindung. Auf WebRTC übergibt es skipEncryption und lässt Noise weg, weil DTLS die Arbeit schon getan hat — eine Verbindung meldet ihre Verschlüsselung dort als „native" und über ein Relay als „/noise". Das TLS zum Relay selbst ist ein drittes, davon getrenntes Ding: es verbirgt den Verkehr vor dem Netz zwischen Ihnen und dem Relay, und das Relay beendet es.`,
+    gap: `Der Dialog, der ein Gerät einlässt, bewacht den Abgleich — nicht den Kanal, auf dem die Bytes reisen: Bitswap gibt einen Block an jeden verbundenen Peer heraus, der seine Inhaltsadresse nennt. Gemessen, nicht vermutet, und offen als <a href="https://github.com/Le-Space/ablage/issues/43" target="_blank" rel="noopener noreferrer">Issue #43</a>.`,
     bytes: 'Die Dateiinhalte reisen per Bitswap über dieselbe Verbindung, adressiert über ihren Inhalts-Hash. Geteilt wird als Dokument nur die Liste aus Pfaden und Hashes; die Bytes stecken nie darin.',
     music: 'Beim Zeigen eines Codes läuft eine Mozart-Aufnahme von 1903. Das ist keine Deko: eine Seite, die hörbar Ton abspielt, wird vom Telefon nicht schlafen gelegt — und den Link zu verschicken heißt, diese App zu verlassen. Stille reichte nicht: was der Browser für unhörbar hält, zählt nicht als Wiedergabe.',
     open: 'Nichts davon müssen Sie uns glauben: es sind libp2p, WebRTC und Helia, und die Teile, die zu diesem Handschlag gehören, liegen offen unter NiKrause/libp2p-webrtc-qr.'

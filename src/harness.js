@@ -277,7 +277,13 @@ window.__ablage = {
             ok: true,
             dialled: String(address),
             address: String(connection.remoteAddr ?? ''),
-            limited: connection.limits != null
+            limited: connection.limits != null,
+            // Who can read what crosses this. The relay forwards the bytes of a
+            // relayed connection without being a party to it, so what matters
+            // is whether the two ends negotiated an encrypter between
+            // themselves - and this is the field that says so.
+            encryption: String(connection.encryption ?? 'none'),
+            multiplexer: String(connection.multiplexer ?? 'none')
           }
         } catch (error) {
           return { ok: false, dialled: String(address), error: String(error?.message ?? error).slice(0, 160) }

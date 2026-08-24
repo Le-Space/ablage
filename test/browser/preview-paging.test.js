@@ -27,11 +27,18 @@ const withPictures = async page => {
   await expect(page.locator('.tree')).toContainText('drei.png')
 
   // Each row swaps its own icon for its own picture, whenever that picture
-  // finishes decoding. So `.first()` clicked whichever one happened to win, and
-  // the helper that promised to open the first picture opened the third about
-  // one run in ten. Wait for all three, then name the one meant.
-  await expect(page.locator('.file .thumb')).toHaveCount(3)
-  await page.locator('.file', { hasText: 'drei.png' }).locator('.thumb').click()
+  // finishes decoding, so `.first()` used to click whichever won the race.
+  // Naming the row is what fixes that.
+  //
+  // Waiting for all three was the wrong guard. A row reads its picture only
+  // once it scrolls into view, so the count depends on how tall the page
+  // happens to be - adding one checkbox to the card above pushed the third row
+  // under the fold and took five tests with it.
+  const row = page.locator('.file', { hasText: 'drei.png' })
+
+  await row.scrollIntoViewIfNeeded()
+  await expect(row.locator('.thumb')).toBeVisible()
+  await row.locator('.thumb').click()
   await expect.poll(() => page.evaluate(() => document.getElementById('preview').open)).toBe(true)
 }
 

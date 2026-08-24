@@ -17,7 +17,7 @@ import { baseline } from '../sync/baseline.js'
 import { fileIndex } from '../sync/file-index.js'
 import { Provider } from '../sync/provider.js'
 import { openStorage } from '../storage/index.js'
-import { createKeepAlive } from '@le-space/libp2p-webrtc-qr'
+import { createKeepAlive, createWakeLock } from '@le-space/libp2p-webrtc-qr'
 import { createIntroPolicy } from '@le-space/libp2p-webrtc-qr/elements'
 import { elementStrings, initialLocale, locale, setLocale, t, translateDocument } from './i18n.js'
 import { fileIcon, folderIcon, mark } from './icons.js'
@@ -32,6 +32,7 @@ import { bakedRelayAddresses, discoverRelays, relayProbe, rememberRelays, startu
 import { peerSet } from '../sync/peer-set.js'
 import { sharing } from '../sync/sharing.js'
 import { folderIdentity } from '../storage/identity.js'
+import { applyAwakeChoice, awakeWanted } from './awake.js'
 import { applyViewMode, isSimple } from './view-mode.js'
 import { askForFolder, canPickFolder, pickFolder } from '../storage/handle.js'
 import { watchFolder } from '../storage/watch.js'
@@ -68,6 +69,8 @@ const introEl = $('intro')
 const viewModeEl = $('view-mode')
 const compactEl = $('compact-payload')
 const introViewEl = $('intro-view')
+const awakeEl = $('awake')
+const awakeWhyEl = $('awake-why')
 const musicEl = $('music')
 const musicNowEl = $('music-now')
 const musicWhyEl = $('music-why')
@@ -1369,6 +1372,52 @@ dropEl.addEventListener('drop', async event => {
  * Whether this actually survives an app switch on Android is still unsettled -
  * it is the experiment in AGENTS.md, and this is what makes it answerable.
  */
+/**
+ * Keep the screen awake, on request.
+ *
+ * The other half of `keepAlive` below and not a substitute for it: that one
+ * holds the *page* through an app switch with audio, this one holds the
+ * *screen* while the page is the thing being looked at. A phone left untouched
+ * dozes off and takes the connection with it, and a transfer in progress simply
+ * stops.
+ *
+ * Off unless asked - see `awake.js` for why the default is the other way round
+ * from the music.
+ */
+const wakeLock = createWakeLock()
+
+/**
+ * Both outcomes get a sentence, and only one of them is an offer.
+ *
+ * A browser without the API is told about rather than left with a checkbox that
+ * does nothing - the same reasoning as the music's blocked line: a control that
+ * silently fails is worse than one that says it cannot.
+ */
+function startAwake () {
+  awakeEl.checked = applyAwakeChoice()
+  awakeEl.disabled = !wakeLock.supported
+  awakeWhyEl.dataset.i18n = wakeLock.supported ? 'awake.why' : 'awake.unsupported'
+  awakeWhyEl.textContent = t(awakeWhyEl.dataset.i18n)
+
+  if (awakeEl.checked) wakeLock.sync(true).catch(() => {})
+}
+
+awakeEl.addEventListener('change', event => {
+  wakeLock.sync(applyAwakeChoice(event.target.checked)).catch(() => {})
+})
+
+// The browser drops the lock whenever the page stops being visible, so coming
+// back has to ask again. Without this the toggle stays on and the screen sleeps
+// anyway, which is the worst of the three possible states.
+document.addEventListener('visibilitychange', () => {
+  wakeLock.sync(awakeWanted()).catch(() => {})
+})
+
+// `wanted` rather than `held`: a headless browser exposes the API and refuses
+// every request, having no screen, so asserting on `held` would be asserting on
+// the platform rather than on this code.
+window.__wakeLockForTest = wakeLock
+
 const keepAlive = createKeepAlive({
   track: 'audio/zauberfloete-dies-bildnis-cossira-1903.mp3',
   metadata: {
@@ -1641,6 +1690,7 @@ if ('serviceWorker' in navigator) {
 }
 
 applyView()
+startAwake()
 musicEl.checked = applyMusicChoice()
 // Hidden only when the music is off, and decided before the first paint so the
 // dialog is never seen resizing itself.

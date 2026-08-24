@@ -215,7 +215,7 @@ async function askToShare (peerId) {
   setState(t('peers.asking', { id: shortId(peerId) }), 'waiting')
 
   try {
-    attach(await peer.openSyncStream(peerId), peerId).requestSync()
+    attach(await peer.openSyncStream(peerId), peerId)
   } catch (error) {
     // The stream would not open at all - unreachable, or gone since the list
     // was drawn. Not a refusal: that one arrives as a message, because a stream
@@ -259,7 +259,7 @@ async function callDirectly (text) {
     // id and nowhere to send it.
     if (isAddress) await peer.node.dial(multiaddr(typed))
 
-    attach(await peer.openSyncStream(peerId), peerId).requestSync()
+    attach(await peer.openSyncStream(peerId), peerId)
   } catch (error) {
     setState(t('peers.unreachable', { id: shortId(peerId) }), 'idle')
     report(error)
@@ -621,6 +621,21 @@ function attach (stream, peerId) {
   // only way to rebuild would be to drop the connection and hand somebody a QR
   // code again.
   peers.add(peerId, provider, send)
+
+  // **Both sides ask, and that is the whole of this fix.**
+  //
+  // Only the dialling side used to. `sync-request` carries a state vector and
+  // is answered with what the *sender* is missing - so one request moves a
+  // folder in one direction, and the side that was asked never learned what the
+  // asker already had.
+  //
+  // It looked like it worked, because a file written after the two met travels
+  // on the document's own change event. What never arrived was everything from
+  // before: somebody let a device in and watched an empty folder stay empty.
+  //
+  // Here rather than at the call sites, because every one of them wants it and
+  // the two that did not were the bug.
+  provider.requestSync()
 
   setState(t('link.connected'), 'connected')
 
@@ -1470,7 +1485,7 @@ async function acceptReply (text) {
 
   try {
     const peerId = await peer.acceptAnswer(payloadOf(text))
-    attach(await peer.openSyncStream(peerId), peerId).requestSync()
+    attach(await peer.openSyncStream(peerId), peerId)
   } catch (error) {
     report(error)
   }

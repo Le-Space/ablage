@@ -1,10 +1,11 @@
 {
   "name": "ablage",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "type": "module",
   "description": "A folder that stays the same on two devices. No account, nothing in the middle.",
   "scripts": {
+    "prepare": "git config core.hooksPath .githooks || true",
     "test": "npm run test:unit && npm run test:browser",
     "test:unit": "vite build --logLevel error && node --test test/*.test.js",
     "test:browser": "playwright test",

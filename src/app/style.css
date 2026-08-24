@@ -152,6 +152,8 @@ button.primary:hover:not(:disabled) { background: var(--ls-red-bright); border-c
 
 .brand { display: inline-flex; align-items: center; gap: 0.6rem; }
 .brand h1 { margin: 0; }
+.mark-link { display: inline-flex; border-radius: 6px; }
+.mark-link:focus-visible { outline: 2px solid var(--ls-accent); outline-offset: 3px; }
 .mark { display: inline-flex; width: 34px; height: 34px; }
 .mark svg { width: 100%; height: 100%; }
 

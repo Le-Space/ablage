@@ -14,19 +14,22 @@
  */
 
 /**
- * Was this peer reached by scanning a code?
+ * **The address used to answer this, and it cannot any more.**
  *
- * Both halves matter. `/webrtc/p2p/…` alone is not enough: a relayed WebRTC
- * connection carries it too, behind the circuit that got there. It is the
- * absence of `/p2p-circuit` that says nobody was routed here.
+ * The old rule read consent off the multiaddr: `/webrtc/p2p/…` without a
+ * `/p2p-circuit` in front of it meant nobody had been routed here, so a camera
+ * must have been pointed at a code in the physical world.
  *
- * @param {string} address the connection's remote multiaddr
+ * DCUtR ended that. A stranger who met this device through a relay punches a
+ * hole and continues on a direct WebRTC connection - whose address is
+ * `/webrtc/p2p/<id>` with no circuit in it, character for character what a scan
+ * produces. Measured, not feared: with the hole punch in, the admission dialog
+ * stopped appearing and unknown peers were attached in silence.
+ *
+ * So consent is recorded where it happens instead. `peer.js` remembers every
+ * peer id that completed a QR handshake *on this device*, and that set is what
+ * `decide` is given. An address is a description of a route; a scan is an act.
  */
-export function arrivedByQr (address) {
-  const addr = String(address ?? '')
-
-  return addr.includes('/webrtc/p2p/') && !addr.includes('/p2p-circuit')
-}
 
 const STORAGE_KEY = 'ablage.admitted'
 
@@ -87,10 +90,15 @@ export function admission ({ key = STORAGE_KEY } = {}) {
 /**
  * What to do with an arriving sync stream.
  *
+ * @param {object} options
+ * @param {boolean} options.scanned did somebody on this device scan this peer's
+ *   code? The act, not a route that resembles one.
+ * @param {string} options.peerId
+ * @param {{ remembered(peerId: string): boolean }} options.admitted
  * @returns {'admit' | 'ask'}
  */
-export function decide ({ address, peerId, admitted }) {
-  if (arrivedByQr(address)) return 'admit'
+export function decide ({ scanned, peerId, admitted }) {
+  if (scanned) return 'admit'
 
   return admitted.remembered(peerId) ? 'admit' : 'ask'
 }

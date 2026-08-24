@@ -227,9 +227,10 @@ test.describe('the list the app itself draws', () => {
     await expect(page.locator('#by-relay')).toBeVisible({ timeout: 60_000 })
     await expect(page.locator('#my-peer')).not.toBeEmpty({ timeout: 60_000 })
 
-    const mine = await page.locator('#my-peer').innerText()
-
-    return { page, context, id: mine.trim().split(/\s+/).pop() }
+    // From the title, not the text: the simple view prints the shortened id and
+    // the technical one prints the whole thing, so the text says different
+    // things in different views and the title says the same one in both.
+    return { page, context, id: await page.locator('#my-peer').getAttribute('title') }
   }
 
   test('two devices on a relay end up in each other\'s list', async () => {
@@ -242,6 +243,68 @@ test.describe('the list the app itself draws', () => {
       // The ids are shortened from the end, so that is what the rows carry.
       await expect(a.page.locator('#peer-list')).toContainText(b.id.slice(-10), { timeout: 150_000 })
       await expect(b.page.locator('#peer-list')).toContainText(a.id.slice(-10), { timeout: 150_000 })
+    } finally {
+      await a.context.close()
+      await b.context.close()
+      await browser.close()
+    }
+  })
+})
+
+/**
+ * Pressing the button, and what the other device does about it.
+ *
+ * The list was the first missing seam; this is the next one along. Every part
+ * of the request was tested apart from somebody pressing it: `openSyncStream`
+ * has its own tests, `decide` has its own tests, and the dialog has its own
+ * tests - and none of them start at the button on one device and end at the
+ * question on the other.
+ */
+test.describe('asking a device in the list to share', () => {
+  test.setTimeout(240_000)
+
+  const device = async browser => {
+    const context = await browser.newContext()
+    const page = await context.newPage()
+    const errors = []
+
+    page.on('pageerror', error => errors.push(String(error?.message ?? error)))
+
+    await page.addInitScript(() => localStorage.setItem('ablage.relay', 'true'))
+    await page.goto('/?intro=off')
+
+    await expect(page.locator('#by-relay')).toBeVisible({ timeout: 60_000 })
+    await expect(page.locator('#my-peer')).not.toBeEmpty({ timeout: 60_000 })
+
+    return { page, context, errors, id: await page.locator('#my-peer').getAttribute('title') }
+  }
+
+  test('the other device is asked, rather than nothing happening', async () => {
+    const { chromium } = await import('@playwright/test')
+    const browser = await chromium.launch()
+    const a = await device(browser)
+    const b = await device(browser)
+
+    try {
+      // Alice's own row for Bob, found by the shortened id the row carries -
+      // the list holds strangers from the shared topic too, and pressing one of
+      // those would prove nothing about this.
+      const row = a.page.locator('#peer-list li', { hasText: b.id.slice(-10) })
+
+      await expect(row).toBeVisible({ timeout: 150_000 })
+      await row.getByRole('button').click()
+
+      // The whole claim: a question on the other device.
+      await expect(b.page.locator('#admit-ask')).toBeVisible({ timeout: 60_000 })
+      await expect(b.page.locator('#admit-who')).toHaveText(a.id)
+
+      // And answering it connects them, rather than leaving a dialog that does
+      // nothing when pressed.
+      await b.page.locator('#admit-yes').click()
+      await expect(b.page.locator('#link-state')).toHaveClass(/is-connected/, { timeout: 30_000 })
+
+      expect(a.errors).toEqual([])
+      expect(b.errors).toEqual([])
     } finally {
       await a.context.close()
       await b.context.close()

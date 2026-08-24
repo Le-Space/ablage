@@ -432,11 +432,35 @@ test.describe("this device's own address", () => {
     await expect(page.locator('#my-peer')).toContainText(/12D3Koo|Qm/)
   })
 
-  test('and not in the simple view, because a peer id is not a name', async ({ page }) => {
+  test('shortened in the simple view, because you still have to find your own row', async ({ page }) => {
+    // This asserted `toBeHidden()`, on the reasoning that a peer id is not a
+    // name. True, and beside the point once there is a list of devices out
+    // there: the rows are named by their last ten characters and so is the
+    // admission dialog, so somebody who cannot see their own name cannot tell
+    // which row is theirs or whether the question on screen is about them.
     await open(page)
     await shut(page)
 
-    await expect(page.locator('#my-peer')).toBeHidden()
+    await expect(page.locator('#my-peer')).toBeVisible()
+
+    const shown = await page.locator('#my-peer').innerText()
+    const whole = await page.locator('#my-peer').getAttribute('title')
+
+    // Shortened from the end, the same end the rows are shortened from - and
+    // the whole id is still one hover away.
+    expect(whole).toMatch(/12D3Koo|Qm/)
+    expect(shown).toContain(whole.slice(-10))
+    expect(shown).not.toContain(whole)
+  })
+
+  test('and whole in the technical view', async ({ page }) => {
+    await open(page)
+    await page.locator('#intro-view').click()
+    await shut(page)
+
+    const whole = await page.locator('#my-peer').getAttribute('title')
+
+    await expect(page.locator('#my-peer')).toContainText(whole)
   })
 
   test('it says whose it is, in German too', async ({ page }) => {

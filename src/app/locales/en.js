@@ -19,6 +19,11 @@ export default {
       blocked: 'This browser would not start the audio, so this page has nothing keeping it awake — leaving the app to send the link may end the invite before the other device answers.',
       why: 'It is not decoration. A phone suspends a silent page within seconds of you leaving for a messenger, and that would close the connection you are setting up — audible playback is what keeps this page running while you send the link.'
     },
+  awake: {
+    toggle: 'Keep the screen awake',
+    why: 'A phone that dozes off drops the connection, and a transfer in progress simply stops. While this is on and this page is on screen, the screen stays lit — which costs battery, so it is off until you ask.',
+    unsupported: 'This browser cannot hold the screen awake. Leaving the page open and the screen lit by hand is the only thing that keeps a long transfer going here.'
+  },
   lang: { label: 'Language' },
   view: {
     switchToTechnical: 'Show the technical detail',

@@ -13,6 +13,21 @@ falls on whoever reads it next.
 This is about what gets written into the repository and into GitHub. Talk to
 whoever you are working with in whatever language suits them.
 
+## One commit, one version
+
+`.githooks/pre-commit` bumps the patch version and stages `package.json` and
+`package-lock.json` with the commit. `npm install` points git at that directory
+through the `prepare` script, so a fresh clone gets it without being told.
+
+Patch only, and never during a rebase, merge, cherry-pick or `--amend` - those
+replay commits that already counted. `npm version minor|major` is still how a
+person makes that decision.
+
+The reason is not bookkeeping. This app deploys to IPFS on every push to `main`,
+and a fix has more than once been tested against a build that did not contain
+it. A version that moves with every commit is what makes *is this the one with
+the fix in it?* answerable.
+
 ## Connecting: relay-optional by construction
 
 Measured on 2026-08-21, written down because the wrong version of it was in the

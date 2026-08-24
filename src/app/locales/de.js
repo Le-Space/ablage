@@ -16,6 +16,7 @@ export default {
       blocked: 'Dieser Browser hat den Ton nicht gestartet, diese Seite wird also von nichts wachgehalten — die App zum Verschicken des Links zu verlassen kann die Einladung beenden, bevor das andere Gerät antwortet.',
       why: 'Das ist keine Deko. Ein Telefon legt eine stille Seite Sekunden nach dem Wechsel in den Messenger schlafen, und das würde die Verbindung beenden, die Sie gerade aufbauen — hörbare Wiedergabe hält diese Seite am Laufen, während Sie den Link verschicken.'
     },
+  brand: { home: 'Le-Space — von wem das ist (öffnet einen neuen Tab, damit diese Seite ihre Verbindungen behält)' },
   awake: {
     toggle: 'Bildschirm anlassen',
     why: 'Ein Telefon, das einschläft, trennt die Verbindung, und eine laufende Übertragung bricht einfach ab. Solange dies an ist und diese Seite auf dem Bildschirm steht, bleibt er hell — das kostet Akku, deshalb ist es aus, bis Sie es einschalten.',

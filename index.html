@@ -93,7 +93,25 @@
     <main>
       <header class="top">
         <span class="brand">
-          <span id="mark" class="mark"></span>
+          <!--
+            The mark links home, and it opens a new tab.
+            **That is not decoration.** This page holds live libp2p connections
+            and a document being synced; navigating away closes every one of
+            them, and somebody who tapped a logo did not ask to end a transfer.
+
+            The mark and not the title: `ablage` is this app's own name, and a
+            name that navigates to a different site is a trapdoor. The small
+            thing beside it is the one that means "who made this".
+          -->
+          <a
+            class="mark-link"
+            href="https://le-space.de"
+            target="_blank"
+            rel="noopener noreferrer"
+            data-i18n-attr="title:brand.home, aria-label:brand.home"
+          >
+            <span id="mark" class="mark"></span>
+          </a>
           <h1 data-i18n="page.title">ablage</h1>
         </span>
         <!--

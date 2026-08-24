@@ -1,0 +1,63 @@
+#!/bin/sh
+#
+# One commit, one version.
+#
+# The reason is not bookkeeping: this app deploys to IPFS on every push to
+# main, and twice in one afternoon a fix was tested against a build that did not
+# contain it. A version that moves with every commit is what makes "is this the
+# one with the fix in it?" answerable at all.
+#
+# Patch only. A commit does not know whether it broke anything, so it must not
+# claim a minor or a major - those are decisions somebody makes, and `npm
+# version minor` is still there for making them.
+
+# Not during a rebase, a merge, a cherry-pick or an amend. Those replay or
+# rewrite commits that already counted, and bumping again would count them
+# twice - or, on a rebase of twenty commits, twenty times.
+git_dir=$(git rev-parse --git-dir)
+
+for busy in rebase-merge rebase-apply MERGE_HEAD CHERRY_PICK_HEAD; do
+  if [ -e "$git_dir/$busy" ]; then
+    exit 0
+  fi
+done
+
+case " $(ps -o args= -p $PPID 2>/dev/null) " in
+  *" --amend "*) exit 0 ;;
+esac
+
+node -e '
+const fs = require("fs")
+
+// The lock file carries the version twice - the top level and the root package
+// entry - and npm rewrites both. Leaving either behind makes `npm ci` complain
+// about a lock file out of date with package.json, which is a confusing way to
+// find out about a git hook.
+const bump = version => {
+  const [major, minor, patch] = version.split(".")
+  return [major, minor, Number(patch) + 1].join(".")
+}
+
+const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"))
+const next = bump(pkg.version)
+
+pkg.version = next
+fs.writeFileSync("package.json", JSON.stringify(pkg, null, 2) + "\n")
+
+try {
+  const lock = JSON.parse(fs.readFileSync("package-lock.json", "utf8"))
+
+  lock.version = next
+  if (lock.packages?.[""]) lock.packages[""].version = next
+  fs.writeFileSync("package-lock.json", JSON.stringify(lock, null, 2) + "\n")
+} catch {
+  // No lock file, or one this cannot read. The version in package.json is the
+  // one that matters; a mismatch here is not worth refusing a commit over.
+}
+
+process.stdout.write(next + "\n")
+' > /dev/null || exit 0
+
+git add package.json package-lock.json 2>/dev/null
+
+exit 0

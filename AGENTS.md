@@ -3,6 +3,16 @@
 Files, carried between devices that met by scanning a code. `README.md` says
 what it is; this file is what is expensive to learn twice.
 
+## Issues and pull requests are written in English
+
+Always, whatever language the conversation that produced them was in. The code,
+the comments and this file are English; a description in another language splits
+the record of *why* something was done from the thing itself, and the split
+falls on whoever reads it next.
+
+This is about what gets written into the repository and into GitHub. Talk to
+whoever you are working with in whatever language suits them.
+
 ## Connecting: relay-optional by construction
 
 Measured on 2026-08-21, written down because the wrong version of it was in the

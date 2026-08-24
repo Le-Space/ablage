@@ -408,8 +408,19 @@
         picture rather than to the screen, so a portrait photo does not become a
         letterbox on a phone.
       -->
-      <dialog id="preview" class="preview">
-        <img id="preview-image" alt="" />
+      <dialog id="preview" class="preview" tabindex="-1">
+        <!--
+          `tabindex` so the dialog itself takes the arrow keys. Without it the
+          key lands on whatever was focused before the picture opened, and the
+          keyboard half simply does nothing.
+        -->
+        <!--
+          Not draggable. An `<img>` is by default, so a finger or a mouse that
+          moves after pressing starts a native drag - which shows a ghost of the
+          picture and swallows the `pointerup` that a swipe is measured by. The
+          gesture simply did nothing, and nothing said why.
+        -->
+        <img id="preview-image" alt="" draggable="false" />
         <p id="preview-name" class="preview-name"></p>
       </dialog>
 

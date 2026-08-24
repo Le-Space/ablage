@@ -442,3 +442,7 @@ button.primary:hover:not(:disabled) { background: var(--ls-red-bright); border-c
   background: var(--ls-bg);
   color: var(--ls-text);
 }
+
+/* Same reason as `draggable="false"` on the element: a drag started here would
+   swallow the gesture a swipe is measured by. */
+.preview img { -webkit-user-drag: none; user-select: none; }

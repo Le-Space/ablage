@@ -42,7 +42,11 @@ export async function openSyncStream (node, peerId, protocol, options = {}) {
 
   for (let attempt = 0; attempt < attempts; attempt++) {
     try {
-      const stream = await node.dialProtocol(id, protocol)
+      // The dialling half of the same rule. A relayed connection is *limited*,
+      // and a protocol stream on one is refused unless both sides say it may -
+      // the handler in `peer.js` carries the same flag, and either alone is
+      // still a refusal.
+      const stream = await node.dialProtocol(id, protocol, { runOnLimitedConnection: true })
 
       await new Promise(resolve => setTimeout(resolve, settleDelay))
 

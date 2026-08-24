@@ -4,7 +4,9 @@ import { gossipsub } from '@libp2p/gossipsub'
 import { pubsubPeerDiscovery } from '@libp2p/pubsub-peer-discovery'
 import { bootstrap } from '@libp2p/bootstrap'
 import { circuitRelayTransport } from '@libp2p/circuit-relay-v2'
+import { dcutr } from '@libp2p/dcutr'
 import { identify } from '@libp2p/identify'
+import { webRTC } from '@libp2p/webrtc'
 import { webSockets } from '@libp2p/websockets'
 import { QRSession, webRTCQR } from '@le-space/libp2p-webrtc-qr'
 import { createLibp2p } from 'libp2p'
@@ -110,9 +112,24 @@ export async function createPeer ({
   const hasRelay = relays.length > 0
 
   const node = await createLibp2p({
-    ...(hasRelay ? { addresses: { listen: ['/p2p-circuit'] } } : {}),
+    //
+    // `/webrtc` is what the hole-punch listens on, and it is the address the
+    // transport actually claims: `/p2p-circuit/webrtc` reads like the right
+    // one and is claimed by no transport at all, so listening on it fails
+    // quietly. Measured against both filters rather than copied from a guess.
+    ...(hasRelay ? { addresses: { listen: ['/p2p-circuit', '/webrtc'] } } : {}),
     transports: [
+      // **First, and that is load-bearing.** libp2p returns the first transport
+      // whose `dialFilter` claims an address, in the order this array is
+      // written. `@libp2p/webrtc` filters with `WebRTC.exactMatch`, and that
+      // matches the bare `/webrtc/p2p/<id>` a scan produces - measured, not
+      // assumed. Below `webRTC()`, every QR dial would go to a transport that
+      // has no session and knows nothing of what the scan agreed.
       webRTCQR({ getOutboundSession: remotePeerId => session?.getOutboundSession(remotePeerId) ?? null }),
+      // The way out of the relay. Two devices that met over a circuit try to
+      // connect directly here; if they cannot, the circuit carries them and
+      // nothing above this line notices the difference.
+      webRTC(),
       circuitRelayTransport(),
       webSockets()
     ],
@@ -169,7 +186,26 @@ export async function createPeer ({
        * no pubsub peers, and making the service conditional would mean a
        * different node the moment somebody ticks the box.
        */
-      pubsub: gossipsub({ emitSelf: false, allowPublishToZeroTopicPeers: true, runOnLimitedConnection: true })
+      pubsub: gossipsub({ emitSelf: false, allowPublishToZeroTopicPeers: true, runOnLimitedConnection: true }),
+
+      /**
+       * Get off the relay when the two ends can reach each other.
+       *
+       * A circuit is metered - this one allows 10 GiB and twenty minutes - and
+       * every byte crosses somebody else's machine. DCUtR uses the relayed
+       * connection to agree on a moment and both sides dial at once, which is
+       * how two devices behind ordinary routers meet directly.
+       *
+       * An optimisation, not a requirement. When the hole punch fails the
+       * circuit stays and the app keeps working, which is why this is safe to
+       * add: nothing above depends on it succeeding.
+       *
+       * No `autoNAT` alongside it, though the plan called for one. Its own
+       * README: it "does not implement NAT hole punching" - it confirms that
+       * addresses a node listens on are dialable from outside, and a browser
+       * has none to confirm.
+       */
+      dcutr: dcutr()
     }
   })
 

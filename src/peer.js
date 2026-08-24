@@ -257,11 +257,35 @@ export async function createPeer ({
      * Discovery and connection are different events and both matter: a peer
      * heard on the meeting place can be called, and one already connected is
      * further along than that. The caller gets both and decides what to draw.
+     *
+     * `speaks` is the third thing, and it is the one that stops the list
+     * lying. The meeting place is shared - this app listens on orbitdb-relay's
+     * topic and universal-connectivity's, so everything on them is heard,
+     * including the relay itself and every simple-todo browser. None of them
+     * offer `/ablage/sync/1.0.0`, so asking one to share does nothing at all.
+     *
+     * Which protocols a peer offers is not guessable and not announced on the
+     * meeting place: identify exchanges it over a connection, and `peer:identify`
+     * is where it arrives. So there are three answers, not two, and the third
+     * one matters - a peer merely *heard* has never been connected to, so
+     * nothing is known about it either way.
+     *
+     * `speaks` is therefore `true`, `false`, or `null` for "not yet known", and
+     * only `false` is grounds for hiding a row. Measured the hard way: filtering
+     * down to `true` emptied the list, because two devices on the meeting place
+     * hear each other long before either dials, and asking is what connects
+     * them in the first place.
      */
     watchPeers: onChange => {
       const seen = new Map()
+      /** @type {Map<string, boolean>} peer id -> does it offer the sync protocol */
+      const speaks = new Map()
 
-      const publish = () => onChange([...seen].map(([peerId, state]) => ({ peerId, state })))
+      const publish = () => onChange([...seen].map(([peerId, state]) => ({
+        peerId,
+        state,
+        speaks: speaks.has(peerId) ? speaks.get(peerId) : null
+      })))
 
       const remember = (id, how) => {
         if (seen.get(id) === how) return
@@ -271,19 +295,42 @@ export async function createPeer ({
       }
 
       const forget = id => {
+        speaks.delete(id)
+
         if (!seen.delete(id)) return
 
+        publish()
+      }
+
+      const heardProtocols = (id, protocols) => {
+        if (protocols == null) return
+
+        const offers = protocols.includes(SYNC_PROTOCOL)
+
+        if (speaks.get(id) === offers) return
+
+        speaks.set(id, offers)
         publish()
       }
 
       node.addEventListener('peer:discovery', event => remember(event.detail.id.toString(), 'heard'))
       node.addEventListener('peer:connect', event => remember(event.detail.toString(), 'connected'))
       node.addEventListener('peer:disconnect', event => forget(event.detail.toString()))
+      node.addEventListener('peer:identify', event =>
+        heardProtocols(event.detail.peerId.toString(), event.detail.protocols))
 
       // Whatever is already there. A list that only fills on the next event
       // looks empty for as long as nothing happens, which is most of the time.
+      //
+      // The peer store is asked too: a peer identified before this watcher
+      // existed has its protocols on record and would otherwise wait for an
+      // identify that already happened.
       for (const connection of node.getConnections()) {
-        remember(connection.remotePeer.toString(), 'connected')
+        const id = connection.remotePeer.toString()
+
+        remember(id, 'connected')
+        node.peerStore.get(connection.remotePeer)
+          .then(known => heardProtocols(id, known?.protocols), () => {})
       }
     },
 

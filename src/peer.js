@@ -8,7 +8,7 @@ import { dcutr } from '@libp2p/dcutr'
 import { identify } from '@libp2p/identify'
 import { webRTC } from '@libp2p/webrtc'
 import { webSockets } from '@libp2p/websockets'
-import { QRSession, webRTCQR } from '@le-space/libp2p-webrtc-qr'
+import { decodePayload, QRSession, QR_TYPE_OFFER, webRTCQR } from '@le-space/libp2p-webrtc-qr'
 import { createLibp2p } from 'libp2p'
 
 import { denyDial, relayBootstrapList } from './relay-policy.js'
@@ -96,6 +96,21 @@ export async function createPeer ({
   relayBootstrapAddrs = []
 } = {}) {
   let session = null
+
+  /**
+   * Peer ids somebody on this device scanned a code for.
+   *
+   * The admission gate used to read this off the multiaddr - `/webrtc/p2p/…`
+   * with no circuit in front of it. DCUtR produces exactly that address for a
+   * stranger who hole-punched out of a relay, so the gate opened for anyone.
+   *
+   * A scan is an act, and this is where the act happens, so this is where it is
+   * written down. Both halves of the handshake, because either one is somebody
+   * holding a camera up to somebody else's screen.
+   *
+   * @type {Set<string>}
+   */
+  const scanned = new Set()
 
   // Live, not captured. The checkbox in the introduction checks the moment it
   // is ticked - that is the element's promise, and a good one - but the gate
@@ -284,14 +299,49 @@ export async function createPeer ({
     /** The offering half of the handshake. */
     createOffer: options => session.createOffer(options),
 
-    /** The answering half: read their offer, produce a reply. */
-    acceptOffer: offer => session.acceptOffer(offer),
+    /**
+     * The answering half: read their offer, produce a reply.
+     *
+     * This side is the one the gate protects - whoever accepted the *answer*
+     * opens the sync stream, so this device receives it. Decoded a second time
+     * because `acceptOffer` hands back the reply and not the peer behind it,
+     * and only after it succeeded: an offer that failed to verify is not
+     * consent to anything.
+     */
+    acceptOffer: async offer => {
+      const answer = await session.acceptOffer(offer)
+
+      try {
+        const { peerId } = await decodePayload(offer, QR_TYPE_OFFER)
+
+        scanned.add(String(peerId))
+      } catch {
+        // It decoded a moment ago inside `acceptOffer`, so this is close to
+        // unreachable. If it ever happens the peer is asked about rather than
+        // admitted, which is the direction to fail in.
+      }
+
+      return answer
+    },
 
     /** Back on the offering side: read the reply and connect. */
     acceptAnswer: async answer => {
       const { peerId } = await session.acceptAnswer(answer)
+
+      scanned.add(peerId.toString())
       return peerId.toString()
     },
+
+    /**
+     * Did somebody here scan this peer's code?
+     *
+     * What `decide` is given in place of the address. `false` for a peer met
+     * over the relay, and it stays `false` after DCUtR moves that peer onto a
+     * direct connection - which is the whole point.
+     *
+     * @param {string} peerId
+     */
+    arrivedByScan: peerId => scanned.has(String(peerId)),
 
     /** Open the sync stream. Whoever dialled the answer opens it. */
     // By peer id, not through the QR session: `QRSession.dialProtocol` builds

@@ -255,11 +255,14 @@
           This device's own address, for whoever has to be told it.
 
           Technical, because a peer id is not a name and nobody who chose the
-          simple view has anything to do with one. But it has to be *somewhere*:
-          the admission dialog names the device asking, and without this there
-          is no way to tell somebody which name is yours.
+          simple view has anything to do with one. But it has to be *somewhere*,
+          and the argument for hiding it was answered by the peer list: rows out
+          there are named by their last ten characters, the admission dialog
+          names the device asking, and somebody who cannot see their own name
+          cannot tell which row is theirs or whether the question is about them.
+          Shortened here in the simple view, whole in the technical one.
         -->
-        <p class="peer-id" id="my-peer" data-view="technical" hidden></p>
+        <p class="peer-id" id="my-peer" hidden></p>
       </section>
 
       <section class="card">

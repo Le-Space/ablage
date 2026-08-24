@@ -266,7 +266,13 @@ async function callDirectly (text) {
 function showMyPeer () {
   if (peer == null) return
 
-  myPeerEl.textContent = t('link.myPeer', { id: peer.peerId() })
+  const id = peer.peerId()
+
+  // Shortened the same way the rows out there are, and from the same end, so
+  // the two can be compared by eye. The whole id is one hover away, and the
+  // technical view prints it outright.
+  myPeerEl.textContent = t('link.myPeer', { id: isSimple() ? shortId(id) : id })
+  myPeerEl.title = id
 }
 
 /**
@@ -687,8 +693,12 @@ async function start () {
     // during the introduction's check and heard nobody for ever, which is what
     // "connected, and no peers anywhere" turned out to mean.
     relayBootstrapAddrs: startupRelays(globalThis.localStorage, RELAY_ADDRESSES_KEY),
-    onSyncStream: (stream, peerId, address) => {
-      if (decide({ address, peerId, admitted }) === 'admit') {
+    onSyncStream: (stream, peerId) => {
+      // `peer.arrivedByScan`, not the address. A peer that hole-punched out of
+      // the relay has a `/webrtc/p2p/<id>` address with no circuit in it -
+      // character for character what a scan produces - and reading consent off
+      // that let strangers in without a question.
+      if (decide({ scanned: peer.arrivedByScan(peerId), peerId, admitted }) === 'admit') {
         attach(stream, peerId)
         return
       }

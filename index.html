@@ -146,6 +146,18 @@
           taking it off the screen for good would remove the thing this app was
           built to do. It goes behind a summary that says what it is.
         -->
+        <!--
+          One world or the other, decided by the relay choice.
+
+          With a relay, a code is not how anybody gets in - the list below is -
+          so none of this appears, not even folded. Without one, the relay half
+          appears nowhere: an empty device list and a field for a multiaddress
+          are furniture for somebody who has not asked to be found.
+
+          Grouped so the switch is one attribute rather than four, and so
+          nothing can be left showing from the other world by accident.
+        -->
+        <div id="by-code">
         <details id="pair-by-code" class="fold" open>
           <summary data-i18n="link.pairSummary">Pair by code, with nothing in between</summary>
           <div class="actions">
@@ -203,6 +215,9 @@
           A fixed height with its own scrollbar is what keeps the card from
           growing, not the choice of control.
         -->
+        </div>
+
+        <div id="by-relay" hidden>
         <div id="peers" class="peers" hidden>
           <h3 data-i18n="peers.heading">Devices out there</h3>
 
@@ -232,6 +247,7 @@
           </div>
           <p class="hint quiet" data-i18n="peers.callHint"></p>
         </details>
+        </div>
 
         <qr-status id="network" rows="ipv4 ipv6 overall" data-view="technical" hidden></qr-status>
 

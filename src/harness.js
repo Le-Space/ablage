@@ -188,6 +188,24 @@ window.__ablage = {
         () => []
       ),
 
+      /**
+       * Every connection to this peer, and how it is carried.
+       *
+       * This is what tells a hole punch from a hope. A relayed connection
+       * carries `/p2p-circuit` in its address and libp2p marks it limited; a
+       * direct one has neither. DCUtR does not replace the connection in
+       * place - it opens a second, so the question is whether an unlimited one
+       * ever appears beside the circuit, not whether the first one changed.
+       */
+      connectionsTo: async peerId => {
+        const { peerIdFromString } = await import('@libp2p/peer-id')
+
+        return peer.node.getConnections(peerIdFromString(peerId)).map(c => ({
+          address: String(c.remoteAddr ?? ''),
+          limited: c.limits != null
+        }))
+      },
+
       stop: () => peer.stop().catch(() => {})
     }
   },

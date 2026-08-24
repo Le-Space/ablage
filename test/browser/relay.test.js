@@ -92,4 +92,42 @@ test.describe('calling somebody met through a relay', () => {
       await browser.close()
     }
   })
+
+  test('and then the two of them get off the relay', async () => {
+    // A circuit is metered - this one allows 10 GiB and twenty minutes - and
+    // every byte crosses a stranger's machine. DCUtR uses the relayed
+    // connection to agree on a moment, both sides dial at once, and if the
+    // routers let it through the two continue directly.
+    //
+    // The upgrade is a *second* connection, not a changed one, so the question
+    // is whether an unlimited connection appears beside the circuit.
+    const { chromium } = await import('@playwright/test')
+    const browser = await chromium.launch()
+    const a = await meeting(browser)
+    const b = await meeting(browser)
+
+    try {
+      await expect
+        .poll(() => a.page.evaluate(id => window.__side.heard().includes(id), b.id), { timeout: 120_000 })
+        .toBe(true)
+
+      expect((await a.page.evaluate(id => window.__side.call(id), b.id)).ok).toBe(true)
+
+      // What it started as, so an upgrade cannot be confused with never having
+      // needed one.
+      const carried = await a.page.evaluate(id => window.__side.connectionsTo(id), b.id)
+
+      expect(carried.some(c => c.address.includes('/p2p-circuit'))).toBe(true)
+
+      await expect
+        .poll(() => a.page.evaluate(id => window.__side.connectionsTo(id), b.id), { timeout: 90_000 })
+        .toEqual(expect.arrayContaining([
+          expect.objectContaining({ limited: false })
+        ]))
+    } finally {
+      await a.context.close()
+      await b.context.close()
+      await browser.close()
+    }
+  })
 })

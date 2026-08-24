@@ -52,49 +52,17 @@ test('a topic the relay does not carry stays silent', async () => {
   expect(DISCOVERY_TOPICS.length).toBeGreaterThan(1)
 })
 
-test.describe('the code, once a relay is up', () => {
-  test('is open while it is the only way in', async ({ page }) => {
-    await page.goto('/?intro=off')
-    await expect(page.locator('#invite')).toBeEnabled({ timeout: 60_000 })
-
-    // No relay: a code held up to a camera is the only way anybody gets in, so
-    // it is not something to go looking for.
-    await expect(page.locator('#pair-by-code')).toHaveAttribute('open', '')
-    await expect(page.locator('#invite')).toBeVisible()
-  })
-
-  test('and folded away once there is a second way, not removed', async ({ page }) => {
-    await page.goto('/?intro=off')
-    await expect(page.locator('#invite')).toBeEnabled({ timeout: 60_000 })
-
-    // Driven directly: reaching a real relay from here would make this a test
-    // about the internet. What is asserted is the rule - a way in that is no
-    // longer the only one stops being the first thing on the card.
-    await page.evaluate(() => {
-      document.getElementById('pair-by-code').open = false
-    })
-
-    await expect(page.locator('#invite')).toBeHidden()
-    // Still there, and its summary says what it is. Taking the serverless way
-    // in off the screen for good would remove what this app was built to do.
-    await expect(page.locator('#pair-by-code summary')).toBeVisible()
-    await expect(page.locator('#pair-by-code summary')).toContainText(/nothing in between/i)
-  })
-
-  // The third half of the rule - that a person who touches it takes it over -
-  // is `fold-default.js` and is tested there. A relay coming and going is not
-  // something this suite can arrange, and a browser test that faked the event
-  // would only be confirming its own fake, which the first version of it did.
-
-})
-
 test.describe('finding one device among many', () => {
   const twelve = () => Array.from({ length: 12 }, (_, i) =>
     ({ peerId: `12D3KooW${'abcdefgh'[i % 8]}${String(i).padStart(2, '0')}Xy7Qm4TzR2vN8pL${i}`, state: 'heard' }))
 
   const withPeers = async (page, peers) => {
+    // The relay world has to be the one on screen: the list lives in it, and
+    // without the choice there is nothing to show a list of.
     await page.goto('/?intro=off')
-    await expect(page.locator('#invite')).toBeEnabled({ timeout: 60_000 })
+    await page.evaluate(() => localStorage.setItem('ablage.relay', 'true'))
+    await page.reload()
+    await expect(page.locator('#by-relay')).toBeVisible({ timeout: 60_000 })
 
     // Drawn directly: turning up twelve real devices would need twelve
     // browsers and a relay, and none of that is what this asserts.
@@ -156,7 +124,9 @@ test('two devices do not look alike in the list', async ({ page }) => {
   // Shortened from the front, every row read `12D3KooW…` and the list was a
   // column of identical text. This is the assertion that would have caught it.
   await page.goto('/?intro=off')
-  await expect(page.locator('#invite')).toBeEnabled({ timeout: 60_000 })
+  await page.evaluate(() => localStorage.setItem('ablage.relay', 'true'))
+  await page.reload()
+  await expect(page.locator('#by-relay')).toBeVisible({ timeout: 60_000 })
 
   await page.evaluate(() => window.__showPeersForTest([
     { peerId: '12D3KooWDpJ7As7BWAwRMfu1VU2WCqNjvq387JEYKDBj4kx6nXTA', state: 'heard' },
@@ -167,4 +137,58 @@ test('two devices do not look alike in the list', async ({ page }) => {
 
   expect(names).toHaveLength(2)
   expect(names[0]).not.toBe(names[1])
+})
+
+test.describe('one world at a time', () => {
+  const relayBox = page => page.locator('qr-intro').locator('input[part="relay-opt-in"]')
+
+  const ready = async page => {
+    await page.goto('/')
+    await page.waitForFunction(
+      () => document.getElementById('intro')?.shadowRoot?.querySelector('dialog')?.open === true,
+      null,
+      { timeout: 60_000 }
+    )
+  }
+
+  test('without a relay: a code, and nothing about devices out there', async ({ page }) => {
+    await ready(page)
+    await page.evaluate(() => document.getElementById('intro').close())
+
+    await expect(page.locator('#by-code')).toBeVisible()
+    await expect(page.locator('#invite')).toBeVisible()
+
+    // An empty device list and a field for a multiaddress are furniture for
+    // somebody who never asked to be found.
+    await expect(page.locator('#by-relay')).toBeHidden()
+    await expect(page.locator('#peers')).toBeHidden()
+    await expect(page.locator('#call-fold')).toBeHidden()
+  })
+
+  test('with a relay: devices, and no code anywhere', async ({ page }) => {
+    test.setTimeout(120_000)
+    await ready(page)
+    await relayBox(page).check()
+    await page.evaluate(() => document.getElementById('intro').close())
+
+    await expect(page.locator('#by-relay')).toBeVisible()
+
+    // Not folded - gone. A code is not how anybody gets in here.
+    await expect(page.locator('#by-code')).toBeHidden()
+    await expect(page.locator('#invite')).toBeHidden()
+    await expect(page.locator('#scan')).toBeHidden()
+    // The short code belongs to the code world too.
+    await expect(page.locator('#compact-payload')).toBeHidden()
+  })
+
+  test('and back again when the choice is undone', async ({ page }) => {
+    test.setTimeout(120_000)
+    await ready(page)
+    await relayBox(page).check()
+    await relayBox(page).uncheck()
+    await page.evaluate(() => document.getElementById('intro').close())
+
+    await expect(page.locator('#by-code')).toBeVisible()
+    await expect(page.locator('#by-relay')).toBeHidden()
+  })
 })

@@ -25,7 +25,13 @@ const withPictures = async page => {
   })))
 
   await expect(page.locator('.tree')).toContainText('drei.png')
-  await page.locator('.file .thumb').first().click()
+
+  // Each row swaps its own icon for its own picture, whenever that picture
+  // finishes decoding. So `.first()` clicked whichever one happened to win, and
+  // the helper that promised to open the first picture opened the third about
+  // one run in ten. Wait for all three, then name the one meant.
+  await expect(page.locator('.file .thumb')).toHaveCount(3)
+  await page.locator('.file', { hasText: 'drei.png' }).locator('.thumb').click()
   await expect.poll(() => page.evaluate(() => document.getElementById('preview').open)).toBe(true)
 }
 

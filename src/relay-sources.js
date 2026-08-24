@@ -105,3 +105,62 @@ export function relayProbe (node, toMultiaddr, { timeoutMs = 8000 } = {}) {
     return answered
   }
 }
+
+/**
+ * Which relay to start with, and why the answer has to be remembered.
+ *
+ * `createPeer` fixes the bootstrap list when the node is made, so the addresses
+ * have to exist *before* the first line of networking runs. The introduction's
+ * check finds a reachable relay and used to throw the answer away, which left
+ * the next start knowing that a relay was wanted and not which one - and an
+ * empty list is `peerDiscovery: []`, so the app connected to nothing and heard
+ * nobody while looking entirely healthy.
+ *
+ * Remembered first, baked second. The remembered one answered a probe on this
+ * device; the baked ones are only where to look when it stops.
+ *
+ * @param {Pick<Storage, 'getItem'> | null | undefined} storage
+ * @param {string} key
+ * @returns {string[]}
+ */
+export function startupRelays (storage, key) {
+  const seen = new Set()
+
+  return [...recallRelays(storage, key), ...bakedRelayAddresses()]
+    .filter(address => address && !seen.has(address) && seen.add(address))
+}
+
+/**
+ * @param {Pick<Storage, 'getItem'> | null | undefined} storage
+ * @param {string} key
+ * @returns {string[]}
+ */
+export function recallRelays (storage, key) {
+  try {
+    const stored = JSON.parse(storage?.getItem(key) ?? '[]')
+
+    return Array.isArray(stored) ? stored.filter(a => typeof a === 'string' && a !== '') : []
+  } catch {
+    // Absent, unparsable, or a storage the browser refused. All of them mean
+    // the same thing here: nothing remembered, fall back to the baked list.
+    return []
+  }
+}
+
+/**
+ * @param {Pick<Storage, 'setItem'> | null | undefined} storage
+ * @param {string} key
+ * @param {readonly string[]} addresses
+ */
+export function rememberRelays (storage, key, addresses) {
+  const keep = [...(addresses ?? [])].filter(a => typeof a === 'string' && a !== '')
+
+  if (keep.length === 0) return
+
+  try {
+    storage?.setItem(key, JSON.stringify(keep))
+  } catch {
+    // A full or blocked store. The app works without the memory - it just
+    // starts from the baked list next time.
+  }
+}

@@ -230,6 +230,13 @@ button.primary:hover:not(:disabled) { background: var(--ls-red-bright); border-c
 }
 
 /* What the sound is, on the screen making it. */
+/* The same shape as the music block below, because it is the same kind of
+   thing: one choice, and a sentence saying what it costs. */
+.awake { margin-top: 0.9rem; }
+.awake .option { margin: 0; }
+.awake .hint { margin: 0.3rem 0 0; }
+.awake input:disabled + span { color: var(--ls-text-faint); }
+
 .music { margin-top: 0.9rem; }
 .music .option { margin: 0; }
 .music-now {

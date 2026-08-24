@@ -263,6 +263,26 @@
           Shortened here in the simple view, whole in the technical one.
         -->
         <p class="peer-id" id="my-peer" hidden></p>
+
+        <!--
+          Keeping the screen awake, where the connection is described.
+
+          Here rather than in a settings panel because it is about *this*
+          connection: a phone that dozes off drops it, and the person watching
+          sees a transfer that simply stopped. The place to offer the remedy is
+          the place that reports the symptom.
+
+          Not folded away for the technical view either. It is the one thing on
+          this card somebody with a phone in their hand needs to reach quickly,
+          and the label says what it costs rather than only what it does.
+        -->
+        <div class="awake">
+          <label class="option">
+            <input id="awake" type="checkbox" />
+            <span data-i18n="awake.toggle">Keep the screen awake</span>
+          </label>
+          <p class="hint" id="awake-why" data-i18n="awake.why"></p>
+        </div>
       </section>
 
       <section class="card">

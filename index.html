@@ -360,7 +360,14 @@
           folder at all is the first thing to know, and finding out by pressing
           something that does nothing is the worst way to learn it.
         -->
-        <p id="folder-note" class="hint quiet"></p>
+        <!--
+          Not `quiet`. This says what choosing a folder *grants* - read and
+          write, in that folder and nowhere else, withdrawable in the browser's
+          settings. A permission explanation in the faintest colour on the card
+          is one nobody reads, and it sits directly above the button it is
+          about.
+        -->
+        <p id="folder-note" class="hint"></p>
         <button id="pick-folder" type="button" hidden data-i18n="folder.choose">Choose a folder</button>
 
         <div id="drop" class="drop">
@@ -748,6 +755,14 @@
             <li data-i18n="how.bytes"></li>
             <li data-i18n-html="how.gap"></li>
             <li class="how-code" data-i18n="how.music"></li>
+            <!--
+              The long form of what the wake lock is for. It used to be the
+              whole of it, printed under the checkbox on the first card - six
+              lines of body text for a control that is off, above anything
+              somebody had connected. The card keeps the reason and the price;
+              the working of it belongs here with the rest of the mechanism.
+            -->
+            <li data-i18n="how.awake"></li>
             <li data-i18n="how.open"></li>
           </ul>
         </div>

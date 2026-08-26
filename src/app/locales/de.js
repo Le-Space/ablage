@@ -20,7 +20,7 @@ export default {
   brand: { home: 'Le-Space — von wem das ist (öffnet einen neuen Tab, damit diese Seite ihre Verbindungen behält)' },
   awake: {
     toggle: 'Bildschirm anlassen',
-    why: 'Ein Telefon, das einschläft, trennt die Verbindung, und eine laufende Übertragung bricht einfach ab. Solange dies an ist und diese Seite auf dem Bildschirm steht, bleibt er hell — das kostet Akku, deshalb ist es aus, bis Sie es einschalten.',
+    why: 'Ein schlafendes Telefon trennt die Verbindung. Kostet Akku, deshalb aus, bis Sie es einschalten.',
     unsupported: 'Dieser Browser kann den Bildschirm nicht wachhalten. Hier hilft nur, die Seite offen und den Bildschirm von Hand hell zu lassen, damit eine lange Übertragung durchläuft.'
   },
   lang: { label: 'Sprache' },
@@ -120,7 +120,7 @@ export default {
 <p>Es gibt derzeit <strong>keine Ansicht, die diese Liste zeigt oder ein Gerät wieder herausnimmt</strong>. Das Leeren der Browserdaten für diese Seite leert sie. Diese Lücke gehört zu <a href="https://github.com/Le-Space/ablage/issues/43" target="_blank" rel="noopener noreferrer">Issue #43</a>.</p>`
     }
   },
-  foot: { legal: 'Impressum & Datenschutz', privacy: 'Datenschutz' },
+  foot: { legal: 'Impressum', privacy: 'Datenschutz' },
   folder: {
     // Die Unterscheidung, die der Code bewusst nicht trifft. Beides ist ein
     // `FileSystemDirectoryHandle`, also muss es die Oberfläche sagen - wer
@@ -228,6 +228,7 @@ export default {
     gap: `Der Dialog, der ein Gerät einlässt, bewacht den Abgleich — nicht den Kanal, auf dem die Bytes reisen: Bitswap gibt einen Block an jeden verbundenen Peer heraus, der seine Inhaltsadresse nennt. Gemessen, nicht vermutet, und offen als <a href="https://github.com/Le-Space/ablage/issues/43" target="_blank" rel="noopener noreferrer">Issue #43</a>.`,
     bytes: 'Die Dateiinhalte reisen per Bitswap über dieselbe Verbindung, adressiert über ihren Inhalts-Hash. Geteilt wird als Dokument nur die Liste aus Pfaden und Hashes; die Bytes stecken nie darin.',
     music: 'Beim Zeigen eines Codes läuft eine Mozart-Aufnahme von 1903. Das ist keine Deko: eine Seite, die hörbar Ton abspielt, wird vom Telefon nicht schlafen gelegt — und den Link zu verschicken heißt, diese App zu verlassen. Stille reichte nicht: was der Browser für unhörbar hält, zählt nicht als Wiedergabe.',
+    awake: 'Den Bildschirm anzulassen hält eine Wake-Lock, die der Browser nur vergibt, solange diese Seite die betrachtete ist, und in dem Moment fallen lässt, in dem sie es nicht mehr ist — die Rückkehr muss also erneut fragen. Wer sein Telefon absichtlich sperrt, ist davon nicht erfasst, und das sollte es auch nicht vorgeben. Die Wartemusik ist die andere Hälfte: eine Seite, die hörbar Ton abspielt, legt ein Telefon beim Wechsel in eine andere App nicht schlafen.',
     open: 'Nichts davon müssen Sie uns glauben: es sind libp2p, WebRTC und Helia, und die Teile, die zu diesem Handschlag gehören, liegen offen unter NiKrause/libp2p-webrtc-qr.'
   }
 }

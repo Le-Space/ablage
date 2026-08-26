@@ -84,6 +84,12 @@ test('a browser that cannot do it says so, rather than offering a dead switch', 
   // Two different sentences, and the wrong one would be a promise this page
   // cannot keep.
   expect(await hint.innerText()).toMatch(can ? /battery|Akku/i : /cannot|nicht/i)
+
+  // Short on the card, and it has to stay short. The long form is six lines of
+  // body text for a control that is off, above anything somebody has connected
+  // - it lives in the technical half of the introduction now, with the rest of
+  // the mechanism.
+  expect((await hint.innerText()).length).toBeLessThan(140)
 })
 
 test('the label says what it costs, not only what it does', async ({ page }) => {

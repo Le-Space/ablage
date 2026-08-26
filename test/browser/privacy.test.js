@@ -104,3 +104,58 @@ test('the technical half of the intro carries the relay answer, and the simple h
   await expect(tech).toContainText(/skipEncryption/)
   await expect(tech.locator('a[href*="issues/43"]')).toHaveCount(1)
 })
+
+test.describe('one world at a time, in the technical half too', () => {
+  const intro = async page => {
+    await page.goto('/')
+    await page.waitForFunction(
+      () => document.getElementById('intro')?.shadowRoot?.querySelector('dialog')?.open === true,
+      undefined,
+      { timeout: 60_000 }
+    )
+    await page.locator('#intro-view').click()
+  }
+
+  const tick = page => page.evaluate(on => {
+    localStorage.setItem('ablage.relay', String(on))
+    document.getElementById('intro').dispatchEvent(new CustomEvent('relay-opt-in', { detail: { optIn: on } }))
+  }, true)
+
+  test('with a relay on, the code explanations go with the code', async ({ page }) => {
+    // The simple half got this when the either-or landed; the technical half
+    // did not, and went on describing a handshake nobody was about to make.
+    await intro(page)
+
+    await expect(page.locator('.how-code').first()).toBeVisible()
+    await expect(page.locator('.how-relay').first()).toBeHidden()
+
+    await tick(page)
+
+    await expect(page.locator('.how-code').first()).toBeHidden()
+    await expect(page.locator('.how-relay').first()).toBeVisible()
+  })
+
+  test('and the first sentence stops claiming there is nothing in between', async ({ page }) => {
+    await page.goto('/')
+    await expect(page.locator('#lede-code')).toBeVisible({ timeout: 60_000 })
+    await expect(page.locator('#lede-code')).toContainText(/nothing in the middle|nichts dazwischen/i)
+
+    await page.waitForFunction(
+      () => document.getElementById('intro')?.shadowRoot?.querySelector('dialog')?.open === true,
+      undefined,
+      { timeout: 60_000 }
+    )
+    await tick(page)
+
+    await expect(page.locator('#lede-code')).toBeHidden()
+    await expect(page.locator('#lede-relay')).toBeVisible()
+    await expect(page.locator('#lede-relay')).toContainText(/cannot read|nicht mitlesen/i)
+  })
+
+  test('the technical half says the identity is new on every start', async ({ page }) => {
+    // True today, and it is the answer to "why does it ask me again?".
+    await intro(page)
+
+    await expect(page.locator('#intro .intro-tech')).toContainText(/new key pair on every start|jedem Start ein neues Schlüsselpaar/i)
+  })
+})

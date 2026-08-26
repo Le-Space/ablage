@@ -4,7 +4,8 @@
 export default {
   page: {
     title: 'ablage',
-    lede: 'Ein Ordner, der auf zwei Geräten derselbe bleibt. Kein Konto, nichts dazwischen.'
+    lede: 'Ein Ordner, der auf zwei Geräten derselbe bleibt. Kein Konto, nichts dazwischen.',
+    ledeRelay: 'Ein Ordner, der auf zwei Geräten derselbe bleibt. Kein Konto — ein Relay hilft den beiden, sich zu finden, und kann nicht mitlesen.'
   },
   compact: {
     label: 'Kurzcode — ein Code statt einer Bilderfolge. Experimentell.',
@@ -226,6 +227,7 @@ export default {
     layers: `Nicht doppelt verschlüsselt: libp2p nimmt eine Schicht pro Verbindung. Auf WebRTC übergibt es skipEncryption und lässt Noise weg, weil DTLS die Arbeit schon getan hat — eine Verbindung meldet ihre Verschlüsselung dort als „native" und über ein Relay als „/noise". Das TLS zum Relay selbst ist ein drittes, davon getrenntes Ding: es verbirgt den Verkehr vor dem Netz zwischen Ihnen und dem Relay, und das Relay beendet es.`,
     gap: `Der Dialog, der ein Gerät einlässt, bewacht den Abgleich — nicht den Kanal, auf dem die Bytes reisen: Bitswap gibt einen Block an jeden verbundenen Peer heraus, der seine Inhaltsadresse nennt. Gemessen, nicht vermutet, und offen als <a href="https://github.com/Le-Space/ablage/issues/43" target="_blank" rel="noopener noreferrer">Issue #43</a>.`,
     bytes: 'Die Dateiinhalte reisen per Bitswap über dieselbe Verbindung, adressiert über ihren Inhalts-Hash. Geteilt wird als Dokument nur die Liste aus Pfaden und Hashes; die Bytes stecken nie darin.',
+    identity: 'Dieses Gerät bekommt bei jedem Start ein neues Schlüsselpaar, seine Peer-Id ist also jedes Mal eine andere und das andere Gerät sieht jemanden, den es nie getroffen hat — deshalb fragt es erneut. Benannte Freigaben, die eine Identität behalten, je Freigabe eine eigene, damit zwei nicht miteinander verknüpfbar sind, sind als Issue #50 geplant. Was das nicht brächte: verschiedene Peer-Ids verbergen keine gemeinsame IP-Adresse, und ein Relay sieht beide von einem Ort kommen.',
     music: 'Beim Zeigen eines Codes läuft eine Mozart-Aufnahme von 1903. Das ist keine Deko: eine Seite, die hörbar Ton abspielt, wird vom Telefon nicht schlafen gelegt — und den Link zu verschicken heißt, diese App zu verlassen. Stille reichte nicht: was der Browser für unhörbar hält, zählt nicht als Wiedergabe.',
     open: 'Nichts davon müssen Sie uns glauben: es sind libp2p, WebRTC und Helia, und die Teile, die zu diesem Handschlag gehören, liegen offen unter NiKrause/libp2p-webrtc-qr.'
   }

@@ -1118,6 +1118,19 @@ function tellHow (viaRelay) {
   $('intro-how-code').hidden = viaRelay
   $('intro-how-relay').hidden = !viaRelay
 
+  // The technical half needs the same either-or, and did not have it: with a
+  // relay on it went on explaining what a scanned code carries and which
+  // encrypter a QR connection uses, neither of which is the connection about to
+  // be made.
+  for (const el of document.querySelectorAll('.how-code')) el.hidden = viaRelay
+  for (const el of document.querySelectorAll('.how-relay')) el.hidden = !viaRelay
+
+  // And the first sentence on the page. "Nothing in between" is the whole
+  // promise of the QR path, and a relay is something in between - said in the
+  // opening line, an untrue claim makes everything after it worth less.
+  $('lede-code').hidden = viaRelay
+  $('lede-relay').hidden = !viaRelay
+
   // And the card behind the dialog, so the two never describe different apps.
   // One world or the other: with a relay a code is not how anybody gets in, and
   // without one an empty device list is furniture for somebody who never asked

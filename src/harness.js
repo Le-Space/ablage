@@ -264,10 +264,19 @@ window.__ablage = {
       },
 
       connect: async () => {
-        const address = holder.peer.node.getMultiaddrs()[0] ?? holder.peer.peerId()
+        // **By peer id, not by an address picked out of a list.**
+        //
+        // `getMultiaddrs()[0]` is whichever address happened to be announced
+        // first, and on a CI runner that is regularly one nothing can dial -
+        // the reservation is not ready, or the interface behind it is not
+        // reachable from the other side of the same container. libp2p already
+        // knows every address discovery published for this peer, and asking it
+        // to choose is what the application itself does.
+        const { peerIdFromString } = await import('@libp2p/peer-id')
+        const address = peerIdFromString(holder.peer.peerId())
 
         try {
-          const connection = await reader.peer.node.dial(address)
+          const connection = await reader.peer.node.dial(address, { signal: AbortSignal.timeout(45000) })
 
           // What kind of connection this turned out to be decides whether the
           // read below proves anything: bitswap refuses limited connections by
@@ -286,7 +295,19 @@ window.__ablage = {
             multiplexer: String(connection.multiplexer ?? 'none')
           }
         } catch (error) {
-          return { ok: false, dialled: String(address), error: String(error?.message ?? error).slice(0, 160) }
+          // What the peer store held, because a dial that found no address and a
+          // dial that was refused are different failures and read alike.
+          const known = await reader.peer.node.peerStore.get(address).then(
+            p => p.addresses.map(a => a.multiaddr.toString()),
+            () => []
+          )
+
+          return {
+            ok: false,
+            dialled: String(address),
+            known,
+            error: String(error?.message ?? error).slice(0, 200)
+          }
         }
       },
 

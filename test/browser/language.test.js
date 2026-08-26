@@ -537,13 +537,16 @@ test('ticking the relay box finds one, rather than reporting silence', async ({ 
   await expect(page.locator('qr-intro')).not.toContainText(/no relay answered|Kein Relay hat geantwortet/i, { timeout: 60_000 })
 })
 
-test('an empty peer list says what to switch on', async ({ page }) => {
+test('without a relay there is no peer panel to write a line in', async ({ page }) => {
+  // This asserted that the empty panel said what to switch on. Written for a
+  // card that folded away; the checkbox hides the whole relay half now, so a
+  // line telling somebody to switch a relay on could only ever be read by
+  // somebody who already had. The string went with the branch.
   await open(page)
   await shut(page)
 
-  // "Devices appear a few seconds after they reach a relay" is true and useless
-  // to somebody who has not turned one on - which is everybody, by default.
-  await expect(page.locator('#peers-empty')).toContainText(/switched off|introduction is where/i)
+  await expect(page.locator('#peers')).toBeHidden()
+  await expect(page.locator('#peers-empty')).toBeHidden()
 })
 
 test.describe('the way out of the introduction', () => {

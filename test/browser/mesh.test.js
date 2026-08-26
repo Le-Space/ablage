@@ -509,3 +509,52 @@ test.describe('what arrives after the answer', () => {
     }
   })
 })
+
+/**
+ * Empty, and which kind of empty.
+ *
+ * Hiding everything that cannot answer made this list empty far more often -
+ * correctly - and a panel that says "devices appear a few seconds after they
+ * reach a relay" reads as *nothing here works* to somebody whose relay is
+ * working perfectly and who is simply the only one here.
+ *
+ * The list already knows the difference: the relay is in it, filtered out of
+ * the rows because it does not speak the sync protocol.
+ */
+test.describe('an empty list says which empty', () => {
+  const show = async (page, peers) => {
+    await page.goto('/?intro=off')
+    await page.evaluate(() => localStorage.setItem('ablage.relay', 'true'))
+    await page.reload()
+    await expect(page.locator('#peers')).toBeVisible({ timeout: 60_000 })
+    await page.evaluate(list => window.__showPeersForTest(list), peers)
+  }
+
+  test('there is no "switch a relay on" case left, because the panel goes with it', async ({ page }) => {
+    // Written for a card that folded. It disappears now, so a line telling
+    // somebody to switch the relay on could only ever be read by somebody who
+    // already had - and the string it used has gone with the branch.
+    await page.goto('/?intro=off')
+    await expect(page.locator('#by-code')).toBeVisible({ timeout: 60_000 })
+
+    await expect(page.locator('#peers')).toBeHidden()
+    await expect(page.locator('#peers-empty')).toBeHidden()
+  })
+
+  test('with a relay but nothing reached, it says it is still looking', async ({ page }) => {
+    await show(page, [])
+
+    await expect(page.locator('#peers-empty')).toContainText(/Looking for a relay|Suche ein Relay/i)
+  })
+
+  test('and once a relay answered, it says you are simply the only one here', async ({ page }) => {
+    // The relay itself, connected and not speaking the sync protocol - exactly
+    // what `watchPeers` reports for it. No rows, and a different sentence.
+    await show(page, [
+      { peerId: '12D3KooWL9UKRwGWE6GGxANhDZpJNyDphQcfBSApuXE1qTW5pkVh', state: 'connected', speaks: false }
+    ])
+
+    await expect(page.locator('#peer-list')).toBeEmpty()
+    await expect(page.locator('#peers-empty')).toContainText(/nobody else is here|sonst ist noch niemand da/i)
+  })
+})

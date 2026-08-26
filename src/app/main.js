@@ -161,6 +161,12 @@ function showPeers (heard) {
   // them. Dropping those emptied the list of the very devices it exists for.
   const found = heard.filter(({ speaks }) => speaks !== false)
 
+  // Whether this device got anywhere at all. Anything connected means a relay
+  // answered - it is the first thing this node connects to, and it is in this
+  // list too, filtered out of the rows above because it does not speak the sync
+  // protocol. So the same list that has nothing to show still knows *why*.
+  const onRelay = heard.some(({ state }) => state === 'connected')
+
   known = found
 
   const needle = peerFilterEl.value.trim().toLowerCase()
@@ -174,10 +180,10 @@ function showPeers (heard) {
 
   peerNoneEl.hidden = !(found.length > 0 && shown.length === 0)
 
-  drawPeers(shown, found)
+  drawPeers(shown, found, onRelay)
 }
 
-function drawPeers (found, all = found) {
+function drawPeers (found, all = found, onRelay = false) {
   // Shown even when empty, because "nobody is out there yet" is an answer and a
   // missing panel is not. The line underneath says how long to wait.
   peersEl.hidden = false
@@ -186,7 +192,18 @@ function drawPeers (found, all = found) {
   // the line has to say what to switch on - "devices appear a few seconds after
   // they reach a relay" is true and useless to somebody who has not turned one
   // on, which is everybody by default.
-  peersEmptyEl.textContent = t(readRelayOptIn(globalThis.localStorage, RELAY_OPT_IN_KEY) ? 'peers.empty' : 'peers.noRelay')
+  // Two states, and the difference is the whole point of the line.
+  //
+  // Filtering out everything that cannot answer made this list empty far more
+  // often - correctly - and one sentence covering both cases reads as *nothing
+  // here works* to somebody whose relay is working perfectly and who is simply
+  // the only one here.
+  //
+  // There is no third branch for "no relay". This panel lives inside
+  // `#by-relay`, which the checkbox hides outright, so `peers.noRelay` had
+  // become a string nothing could ever display - written for a version of this
+  // card that folded rather than disappeared.
+  peersEmptyEl.textContent = t(onRelay ? 'peers.aloneOnRelay' : 'peers.searching')
   peerListEl.replaceChildren(...found.map(({ peerId, state }) => {
     const li = document.createElement('li')
     const name = document.createElement('code')

@@ -88,10 +88,15 @@ export const DISCOVERY_TOPICS = [
  *   outbound call.
  * @param {readonly string[]} [options.relayBootstrapAddrs] relay addresses,
  *   ignored entirely unless `relayOptIn` is true
+ * @param {import('@libp2p/interface').PrivateKey} [options.privateKey] the
+ *   identity to start as. Omitted, libp2p makes a new one - which is what every
+ *   start did until shares arrived, and the reason the other device saw a
+ *   stranger each time and asked again.
  */
 export async function createPeer ({
   onSyncStream,
   rtcConfiguration,
+  privateKey,
   relayOptIn = false,
   relayBootstrapAddrs = []
 } = {}) {
@@ -127,6 +132,9 @@ export async function createPeer ({
   const hasRelay = relays.length > 0
 
   const node = await createLibp2p({
+    // Spread rather than handed over as `undefined`: libp2p reads whether the
+    // field is there, and an explicit `undefined` is not the same as silence.
+    ...(privateKey != null ? { privateKey } : {}),
     //
     // `/webrtc` is what the hole-punch listens on, and it is the address the
     // transport actually claims: `/p2p-circuit/webrtc` reads like the right

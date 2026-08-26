@@ -136,6 +136,22 @@
         A folder that stays the same on two devices. No account, nothing in the middle.
       </p>
 
+      <!--
+        Which share is open, above everything it decides.
+
+        A share owns an identity, a folder and a list of devices, so it is the
+        context the two cards below are read in - and a context that is not on
+        screen is one people get wrong. One line, not a card: naming what you
+        are looking at should not cost as much room as the thing itself.
+      -->
+      <section class="card share-bar">
+        <div class="share-now">
+          <span class="share-label" data-i18n="shares.label">Share</span>
+          <strong id="share-name"></strong>
+        </div>
+        <button id="shares-open" type="button" data-i18n="shares.manage">Shares…</button>
+      </section>
+
       <section class="card">
         <h2 data-i18n="link.heading">This device and the other one</h2>
 
@@ -525,6 +541,33 @@
         rather than left out, because a privacy page that omits what it knows is
         worse than no page.
       -->
+      <!--
+        The book.
+
+        Choosing a share reloads the page, and the dialog says so rather than
+        doing it silently: the identity, the folder and the admission list are
+        all fixed when the node is built, which is the same seam the relay
+        choice already needs. A switch that looked instant and then behaved like
+        a restart would be worse than one that says what it is.
+      -->
+      <dialog id="shares" class="modal shares">
+        <div class="modal-head">
+          <h3 data-i18n="shares.title">Shares</h3>
+        </div>
+        <p class="hint" data-i18n="shares.blurb"></p>
+
+        <ul id="share-list" class="share-list"></ul>
+
+        <form id="share-new" class="share-new">
+          <input id="share-new-name" type="text" data-i18n-attr="placeholder:shares.namePlaceholder" />
+          <button type="submit" data-i18n="shares.add">Add a share</button>
+        </form>
+
+        <div class="actions">
+          <button id="shares-close" class="primary" type="button" data-i18n="shares.close">Close</button>
+        </div>
+      </dialog>
+
       <dialog id="privacy" class="modal privacy">
         <div class="modal-head">
           <h3 data-i18n="privacy.title">What leaves this device</h3>

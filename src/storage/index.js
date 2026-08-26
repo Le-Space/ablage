@@ -15,24 +15,41 @@ import { canPickFolder, restoreFolder } from './handle.js'
  * before saying why. The application offers it instead, and falls back to the
  * private folder until then.
  */
-export async function openStorage ({ root } = {}) {
+export async function openStorage ({ root, folderKey, privateName = null } = {}) {
   if (root != null) {
     return { store: await directoryStorage({ root }), kind: 'given' }
   }
 
-  const restored = canPickFolder() ? await restoreFolder() : null
+  const restored = canPickFolder() ? await restoreFolder(folderKey) : null
 
   if (restored?.granted) {
     return { store: await directoryStorage({ root: restored.handle }), kind: 'picked', handle: restored.handle }
   }
 
   return {
-    store: await directoryStorage(),
+    store: await directoryStorage(privateName == null ? {} : { root: await privateFolder(privateName) }),
     kind: 'private',
     // So the interface can offer the folder back rather than making somebody
     // pick it again.
     pending: restored?.handle ?? null
   }
+}
+
+/**
+ * A private folder of this share's own.
+ *
+ * Without a picker there is one private folder per origin, and two shares would
+ * quietly be the same folder under two names - the worst kind of wrong, because
+ * everything looks right until somebody wonders why their invoices are in with
+ * their photos.
+ *
+ * `privateName` is null for the share that existed before shares did, so its
+ * files stay exactly where they are: at the root, where they were written.
+ */
+async function privateFolder (name) {
+  const root = await navigator.storage.getDirectory()
+
+  return root.getDirectoryHandle(`share-${name}`, { create: true })
 }
 
 export { directoryStorage }

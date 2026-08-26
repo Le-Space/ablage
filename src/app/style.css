@@ -493,3 +493,38 @@ button.primary:hover:not(:disabled) { background: var(--ls-red-bright); border-c
   border: 0; border-radius: 6px; cursor: pointer;
   color: var(--ls-text-dim); font-size: 0.8rem; line-height: 1; padding: 0;
 }
+
+/* ---------- shares ---------- */
+
+/*
+  One line above the two cards it decides, and shaped like a label rather than
+  a card of its own: naming what you are looking at should not cost as much
+  room as the thing itself.
+*/
+.share-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 1rem; padding: 0.7rem 1rem;
+}
+.share-now { display: flex; align-items: baseline; gap: 0.5rem; min-width: 0; }
+.share-label {
+  color: var(--ls-text-faint); font-size: 0.75rem;
+  letter-spacing: 0.08em; text-transform: uppercase;
+}
+.share-now strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.shares { max-width: 34rem; }
+.share-list { list-style: none; margin: 0.8rem 0; padding: 0; }
+.share {
+  display: grid; grid-template-columns: 1fr auto; gap: 0.2rem 1rem;
+  align-items: center; padding: 0.7rem 0;
+  border-top: 1px solid var(--ls-line, rgba(255, 255, 255, 0.1));
+}
+.share:last-child { border-bottom: 1px solid var(--ls-line, rgba(255, 255, 255, 0.1)); }
+/* The open one is marked rather than hidden: it is the row people look for
+   first, and a list that omits it makes them count. */
+.share.open strong { color: var(--ls-accent); }
+.share-about { grid-column: 1; color: var(--ls-text-dim); font-size: 0.85rem; }
+.share-actions { grid-column: 2; grid-row: 1 / span 2; display: flex; gap: 0.4rem; }
+.share-new { display: flex; gap: 0.5rem; margin-top: 0.9rem; }
+.share-new input { flex: 1; min-width: 0; }
+.share-open { border-color: var(--ls-accent); color: var(--ls-accent); }

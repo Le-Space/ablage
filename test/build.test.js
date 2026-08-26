@@ -197,7 +197,11 @@ test('the relay choice is read from a key of our own', () => {
   const source = readFileSync(fileURLToPath(new URL('../src/app/main.js', import.meta.url)), 'utf8')
 
   assert.match(source, /const RELAY_OPT_IN_KEY = 'ablage\./)
-  assert.match(source, /relayOptIn: readRelayOptIn\(globalThis\.localStorage, RELAY_OPT_IN_KEY\)/)
+  // `localStore` rather than `globalThis.localStorage`: reaching the store
+  // throws in some browsers, and a default parameter or a call-site read is
+  // outside every `try` there is. What this asserts is the key, which is the
+  // part the library must not be allowed to choose.
+  assert.match(source, /relayOptIn: readRelayOptIn\(localStore, RELAY_OPT_IN_KEY\)/)
 })
 
 test('the file input ships disabled, like the controls that need a node', () => {

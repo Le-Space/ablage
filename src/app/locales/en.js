@@ -150,6 +150,8 @@ export default {
     connected: 'connected',
     share: 'Ask to share',
     asking: ({ id }) => `Asked ${id} — waiting for an answer`,
+    afterReload: 'The relay is switched on but not in use yet — which relay to reach is decided when the app starts. Load the page again and devices appear here within a few seconds.',
+    reload: 'Reload to use it',
     searching: 'Looking for a relay. Devices appear here a few seconds after this one gets through.',
     aloneOnRelay: 'A relay answered and nobody else is here yet. Open ablage on your other device and it appears within a few seconds.',
     empty: 'Nobody has called out yet. Devices appear here a few seconds after they connect to a relay.',

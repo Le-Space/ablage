@@ -392,6 +392,17 @@ button.primary:hover:not(:disabled) { background: var(--ls-red-bright); border-c
   border-radius: 6px;
   cursor: zoom-out;
 }
+.preview video {
+  display: block;
+  max-width: 100%;
+  max-height: calc(88dvh - 3rem);
+  border-radius: 6px;
+  /* Not `zoom-out`: a video is played rather than dismissed, and the controls
+     under the pointer are the thing being aimed at. */
+  cursor: default;
+}
+.preview video[hidden] { display: none; }
+.preview img[hidden] { display: none; }
 .preview-name {
   margin: 0.5rem 0 0;
   font-size: 0.8rem;
@@ -465,4 +476,20 @@ button.primary:hover:not(:disabled) { background: var(--ls-red-bright); border-c
 
 /* Same reason as `draggable="false"` on the element: a drag started here would
    swallow the gesture a swipe is measured by. */
-.preview img { -webkit-user-drag: none; user-select: none; }
+/*
+  `touch-action` is the line that makes a swipe possible on a phone at all.
+  Without it the browser claims a horizontal drag as its own gesture and
+  cancels the pointer sequence, so `pointerup` never arrives and the swipe
+  silently does nothing - which is exactly how this shipped. `pan-y` keeps
+  vertical scrolling, which is somebody reading a tall picture.
+*/
+.preview img, .preview video { -webkit-user-drag: none; user-select: none; touch-action: pan-y; }
+
+/* The same footprint as a thumbnail, so a mixed folder does not step up and
+   down as it is read. */
+.play-mark {
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--ls-surface-2, rgba(255, 255, 255, 0.06));
+  border: 0; border-radius: 6px; cursor: pointer;
+  color: var(--ls-text-dim); font-size: 0.8rem; line-height: 1; padding: 0;
+}

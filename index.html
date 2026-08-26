@@ -250,6 +250,14 @@
           <ul id="peer-list" class="peer-list"></ul>
           <p id="peer-none" class="hint quiet" hidden data-i18n="peers.noMatch"></p>
           <p id="peers-empty" class="hint quiet"></p>
+          <!--
+            The way out of the one empty state that is not a matter of waiting.
+            Ticking the relay box reveals this list at once and leaves the node
+            running without a relay until the page is loaded again - so the line
+            above says so, and this ends it in one tap rather than leaving
+            somebody to work out that they should reload.
+          -->
+          <button id="peers-reload" class="primary" type="button" hidden data-i18n="peers.reload">Reload to use it</button>
         </div>
 
         <!--
@@ -477,7 +485,14 @@
           picture and swallows the `pointerup` that a swipe is measured by. The
           gesture simply did nothing, and nothing said why.
         -->
+        <!--
+          Both kinds live here, and exactly one is shown. Two elements rather
+          than one that is rebuilt: a `<video>` created on every page turn loses
+          its buffer and starts loading from nothing, and swapping `src` on a
+          surviving element is what a viewer is supposed to do.
+        -->
         <img id="preview-image" alt="" draggable="false" />
+        <video id="preview-video" controls preload="metadata" hidden playsinline></video>
         <p id="preview-name" class="preview-name"></p>
       </dialog>
 

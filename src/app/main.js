@@ -21,7 +21,7 @@ import { createKeepAlive, createWakeLock } from '@le-space/libp2p-webrtc-qr'
 import { createIntroPolicy } from '@le-space/libp2p-webrtc-qr/elements'
 import { elementStrings, initialLocale, locale, setLocale, t, translateDocument } from './i18n.js'
 import { fileIcon, folderIcon, mark } from './icons.js'
-import { looksLikeImage, previews } from './previews.js'
+import { looksLikeImage, looksLikeMedia, looksLikeVideo, previews } from './previews.js'
 import { tree } from './tree.js'
 import { applyMusicChoice, musicWanted } from './music.js'
 import { multiaddr } from '@multiformats/multiaddr'
@@ -70,13 +70,27 @@ const viewModeEl = $('view-mode')
 const compactEl = $('compact-payload')
 const introViewEl = $('intro-view')
 const awakeEl = $('awake')
+const peersReloadEl = $('peers-reload')
 const privacyEl = $('privacy')
+
+/**
+ * Whether the node that is *running* has a relay - not whether the box is
+ * ticked.
+ *
+ * The two come apart for a whole page load, and that gap is what an empty
+ * device list kept describing wrongly. Ticking the box reveals the list and
+ * says "a relay will be used the next time this page is opened", while the list
+ * underneath invited a wait that could not end: this node has no bootstrap
+ * list, no discovery, and nothing will ever call out to it.
+ */
+let relayAtStart = false
 const awakeWhyEl = $('awake-why')
 const musicEl = $('music')
 const musicNowEl = $('music-now')
 const musicWhyEl = $('music-why')
 const previewEl = $('preview')
 const previewImageEl = $('preview-image')
+const previewVideoEl = $('preview-video')
 const previewNameEl = $('preview-name')
 const folderDetailEl = $('folder-detail')
 const folderNoteEl = $('folder-note')
@@ -192,18 +206,24 @@ function drawPeers (found, all = found, onRelay = false) {
   // the line has to say what to switch on - "devices appear a few seconds after
   // they reach a relay" is true and useless to somebody who has not turned one
   // on, which is everybody by default.
-  // Two states, and the difference is the whole point of the line.
+  // Three situations, and only one of them is worth waiting in.
   //
-  // Filtering out everything that cannot answer made this list empty far more
-  // often - correctly - and one sentence covering both cases reads as *nothing
-  // here works* to somebody whose relay is working perfectly and who is simply
-  // the only one here.
+  // The one that caused this: ticking the box reveals this list immediately and
+  // the node keeps running without a relay until the page is reloaded. "Devices
+  // appear a few seconds after they connect to a relay" is then an invitation
+  // to wait for something that cannot happen, and the reload button below is
+  // the only thing that ends it.
   //
-  // There is no third branch for "no relay". This panel lives inside
-  // `#by-relay`, which the checkbox hides outright, so `peers.noRelay` had
-  // become a string nothing could ever display - written for a version of this
-  // card that folded rather than disappeared.
-  peersEmptyEl.textContent = t(onRelay ? 'peers.aloneOnRelay' : 'peers.searching')
+  // There is no branch for "no relay wanted". This panel lives inside
+  // `#by-relay`, which the checkbox hides outright, so a line telling somebody
+  // to switch a relay on could only be read by somebody who already had.
+  peersEmptyEl.textContent = t(
+    !relayAtStart ? 'peers.afterReload' : onRelay ? 'peers.aloneOnRelay' : 'peers.searching'
+  )
+
+  // Only where it is the answer. A reload button beside "nobody is here yet"
+  // would be an invitation to throw away a working connection.
+  peersReloadEl.hidden = relayAtStart || all.length > 0
   peerListEl.replaceChildren(...found.map(({ peerId, state }) => {
     const li = document.createElement('li')
     const name = document.createElement('code')
@@ -394,7 +414,7 @@ const whenVisible = new IntersectionObserver(entries => {
  * that is no longer there.
  */
 const picturesHere = () =>
-  index.paths().sort().filter(path => looksLikeImage(path) && index.get(path)?.cid != null)
+  index.paths().sort().filter(path => looksLikeMedia(path) && index.get(path)?.cid != null)
 
 /** Which picture is open, so left and right have somewhere to go from. */
 let openPicture = -1
@@ -418,8 +438,34 @@ async function showPreviewAt (position) {
   if (url == null) return
 
   openPicture = position
-  previewImageEl.src = url
-  previewImageEl.alt = path
+
+  // One element is shown and the other is emptied. Leaving a `src` on the
+  // hidden one means a video that goes on downloading behind a photo, and a
+  // playing one that goes on talking after the page has turned.
+  const video = looksLikeVideo(path)
+
+  // Whichever element is about to be hidden must not be the one holding the
+  // keyboard, or focus lands on `<body>` and the modal stops being modal.
+  const hiding = video ? previewImageEl : previewVideoEl
+
+  if (hiding.contains(document.activeElement) || hiding === document.activeElement) {
+    previewEl.focus()
+  }
+
+  previewImageEl.hidden = video
+  previewVideoEl.hidden = !video
+
+  if (video) {
+    previewImageEl.removeAttribute('src')
+    previewVideoEl.pause()
+    previewVideoEl.src = url
+  } else {
+    previewVideoEl.pause()
+    previewVideoEl.removeAttribute('src')
+    previewImageEl.src = url
+    previewImageEl.alt = path
+  }
+
   previewNameEl.textContent = pictures.length > 1
     ? t('preview.counted', { name: path.split('/').pop(), at: position + 1, of: pictures.length })
     : path.split('/').pop()
@@ -441,19 +487,47 @@ const showPreviewOf = path => showPreviewAt(picturesHere().indexOf(path))
 function hidePreview () {
   previewEl.close()
   previewImageEl.removeAttribute('src')
+  // Paused as well as emptied: a video whose element merely lost its source can
+  // still be heard for as long as it takes the browser to notice.
+  previewVideoEl.pause()
+  previewVideoEl.removeAttribute('src')
   openPicture = -1
 }
 
 /**
  * A tap closes; a swipe moves. They arrive as the same click, so the two are
  * told apart by what the pointer did before it.
+ *
+ * **A fraction of the dialog, not a count of pixels.** This was 40px, which was
+ * measured on whichever device was to hand: the same flick is a long way across
+ * a phone and a short way across a laptop.
+ *
+ * Vertical movement disqualifies it. Somebody scrolling a tall picture is not
+ * asking for the next one, and treating that as a swipe is how a viewer starts
+ * skipping ahead while you are looking at something.
  */
+const SWIPE_FRACTION = 0.18
+const SWIPE_MAX_SLOPE = 0.6
+
 let dragFrom = null
 let swiped = false
 
 previewEl.addEventListener('pointerdown', event => {
+  // Not the controls. Dragging a video's scrubber is a drag and it is not this
+  // one - without this, seeking through a video turns the page instead.
+  // `closest` rather than a tag test, because the controls live in a shadow
+  // root and what arrives here is the `<video>` itself.
+  if (event.target.closest?.('video') != null) return
+
   dragFrom = { x: event.clientX, y: event.clientY }
   swiped = false
+})
+
+// The browser taking the gesture over, which is what happens without
+// `touch-action` on the picture. Left unhandled, `dragFrom` stayed set and the
+// next unrelated pointerup was measured from a stale starting point.
+previewEl.addEventListener('pointercancel', () => {
+  dragFrom = null
 })
 
 previewEl.addEventListener('pointerup', event => {
@@ -464,15 +538,18 @@ previewEl.addEventListener('pointerup', event => {
 
   dragFrom = null
 
-  // Far enough to be meant, and more sideways than not: a scroll or a shaky
-  // finger on the way to closing should not turn the page.
-  if (Math.abs(dx) < 40 || Math.abs(dx) <= Math.abs(dy)) return
+  if (Math.abs(dx) < previewEl.clientWidth * SWIPE_FRACTION) return
+  if (Math.abs(dy) > Math.abs(dx) * SWIPE_MAX_SLOPE) return
 
   swiped = true
   showPreviewAt(openPicture + (dx < 0 ? 1 : -1))
 })
 
-previewEl.addEventListener('click', () => {
+previewEl.addEventListener('click', event => {
+  // Pressing play is not asking to leave. Every control a video has is a click
+  // inside the element, and closing on it would make a video unplayable.
+  if (event.target.closest?.('video') != null) return
+
   // The click that ends a swipe is not a tap. Without this, every swipe would
   // also close the picture it had just turned to.
   if (swiped) {
@@ -483,7 +560,23 @@ previewEl.addEventListener('click', () => {
   hidePreview()
 })
 
-previewEl.addEventListener('keydown', event => {
+/**
+ * On the document, not on the dialog, and that is not tidiness.
+ *
+ * A `<dialog>` hands focus to its first focusable descendant, which since
+ * videos arrived is the `<video>` - even while a picture is the thing on
+ * screen. Turning to a picture hides that element, focus falls out to `<body>`,
+ * and a listener on the dialog stops being reached: the first arrow key worked
+ * and every one after it did nothing.
+ *
+ * Measured, not reasoned about - `document.activeElement` read `preview-video`
+ * on open and `BODY` one key later.
+ *
+ * `previewEl.open` is the guard. The dialog is modal, so nothing else on the
+ * page can have the keyboard while it is up.
+ */
+document.addEventListener('keydown', event => {
+  if (!previewEl.open) return
   if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
 
   // Otherwise the dialog scrolls under the picture on a narrow window.
@@ -548,6 +641,30 @@ function attachThumbnail (li, node) {
   whenVisible.observe(li)
 }
 
+/**
+ * Something to tap on a video row.
+ *
+ * Deliberately not a poster frame: reading and decoding every video in a folder
+ * to draw a list is how an app becomes the reason a phone gets warm. The mark
+ * costs nothing and says the same thing - there is something to open here.
+ */
+function attachPlayMark (li, node) {
+  if (index.get(node.path)?.cid == null) return
+
+  const mark = document.createElement('button')
+
+  mark.type = 'button'
+  mark.className = 'thumb play-mark'
+  mark.textContent = '▶'
+  mark.title = node.name
+  mark.addEventListener('click', event => {
+    event.stopPropagation()
+    showPreviewOf(node.path)
+  })
+
+  li.querySelector('svg')?.replaceWith(mark)
+}
+
 function fileRow (node) {
   const li = document.createElement('li')
   const name = document.createElement('span')
@@ -558,6 +675,10 @@ function fileRow (node) {
   li.insertAdjacentHTML('afterbegin', fileIcon())
 
   if (looksLikeImage(node.path)) attachThumbnail(li, node)
+  // A video has no thumbnail without decoding a frame, which is a lot of work
+  // for a list. It gets a mark that says "this opens" instead - without it a
+  // video is a row of text with no way into the viewer at all.
+  if (looksLikeVideo(node.path)) attachPlayMark(li, node)
   name.className = 'name'
   name.textContent = node.name
   size.className = 'size'
@@ -722,6 +843,11 @@ async function start () {
 
   storage = opened.store
   showFolder(opened)
+  // Both halves of what `createPeer` is about to decide, so the interface can
+  // say which of the three situations somebody is actually in.
+  relayAtStart = readRelayOptIn(globalThis.localStorage, RELAY_OPT_IN_KEY) &&
+    startupRelays(globalThis.localStorage, RELAY_ADDRESSES_KEY).length > 0
+
   peer = await createPeer({
     // Read here and nowhere else. `relayOptIn` decides the bootstrap list,
     // whether a `/p2p-circuit` is announced, and what the gater refuses - all
@@ -1445,6 +1571,8 @@ window.__wakeLockForTest = wakeLock
  * translated by the same switch and cannot drift out of step with the interface
  * they describe.
  */
+peersReloadEl.addEventListener('click', () => globalThis.location.reload())
+
 $('privacy-open').addEventListener('click', () => privacyEl.showModal())
 $('privacy-close').addEventListener('click', () => privacyEl.close())
 

@@ -523,9 +523,11 @@ test.describe('what arrives after the answer', () => {
  */
 test.describe('an empty list says which empty', () => {
   const show = async (page, peers) => {
+    // Set *before* the first line runs and then loaded, because the node reads
+    // the choice once at start. Ticking it afterwards is a different state, and
+    // it has its own test above.
+    await page.addInitScript(() => localStorage.setItem('ablage.relay', 'true'))
     await page.goto('/?intro=off')
-    await page.evaluate(() => localStorage.setItem('ablage.relay', 'true'))
-    await page.reload()
     await expect(page.locator('#peers')).toBeVisible({ timeout: 60_000 })
     await page.evaluate(list => window.__showPeersForTest(list), peers)
   }
@@ -539,6 +541,37 @@ test.describe('an empty list says which empty', () => {
 
     await expect(page.locator('#peers')).toBeHidden()
     await expect(page.locator('#peers-empty')).toBeHidden()
+  })
+
+  test('ticked but not running yet, it says to reload and offers the button', async ({ page }) => {
+    // The state somebody actually lands in. Ticking the box reveals this list
+    // at once and leaves the node running without a relay - so "devices appear
+    // a few seconds after they connect to a relay" invited a wait that could
+    // not end. This is what a first-time reader sees.
+    await page.goto('/?intro=off')
+    await expect(page.locator('#by-code')).toBeVisible({ timeout: 60_000 })
+
+    // What ticking the box does: the element stores the choice and announces
+    // it, and the app reveals the relay half on the spot. The node it is
+    // running is still the one built without a relay.
+    await page.evaluate(() => {
+      localStorage.setItem('ablage.relay', 'true')
+      document.getElementById('intro').dispatchEvent(
+        new CustomEvent('relay-opt-in', { detail: { optIn: true } })
+      )
+    })
+
+    await expect(page.locator('#by-relay')).toBeVisible()
+    await expect(page.locator('#peers-empty')).toContainText(/Load the page again|Laden Sie die Seite neu/i)
+    await expect(page.locator('#peers-reload')).toBeVisible()
+  })
+
+  test('and once it is running, the reload button is gone', async ({ page }) => {
+    // A reload button beside "nobody is here yet" is an invitation to throw
+    // away a working connection.
+    await show(page, [])
+
+    await expect(page.locator('#peers-reload')).toBeHidden()
   })
 
   test('with a relay but nothing reached, it says it is still looking', async ({ page }) => {

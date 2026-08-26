@@ -13,13 +13,30 @@
  */
 
 const IMAGE = /\.(?:png|jpe?g|gif|webp|avif|bmp|svg)$/i
+const VIDEO = /\.(?:mp4|m4v|mov|webm|ogv)$/i
 
 /** By extension rather than by sniffing: this decides whether to *read* at all. */
 export const looksLikeImage = path => IMAGE.test(String(path ?? ''))
 
+/**
+ * A phone puts videos in the same folder as photos, so a viewer that only knows
+ * about pictures leaves half of a camera roll as rows of text.
+ *
+ * Kept apart from `looksLikeImage` rather than folded into it, because the two
+ * answer different questions: whether to read a file for a *thumbnail* - which
+ * a video has none of without decoding a frame - and whether the viewer can
+ * show it at all.
+ */
+export const looksLikeVideo = path => VIDEO.test(String(path ?? ''))
+
+/** What the viewer can open, which is the union. */
+export const looksLikeMedia = path => looksLikeImage(path) || looksLikeVideo(path)
+
 const TYPES = {
   png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif',
-  webp: 'image/webp', avif: 'image/avif', bmp: 'image/bmp', svg: 'image/svg+xml'
+  webp: 'image/webp', avif: 'image/avif', bmp: 'image/bmp', svg: 'image/svg+xml',
+  mp4: 'video/mp4', m4v: 'video/mp4', mov: 'video/quicktime',
+  webm: 'video/webm', ogv: 'video/ogg'
 }
 
 export const mediaType = path =>
@@ -40,7 +57,7 @@ export function previews () {
      * @param {{ read(path: string): Promise<Uint8Array> }} storage
      */
     async urlFor (path, cid, storage) {
-      if (!looksLikeImage(path) || cid == null) return null
+      if (!looksLikeMedia(path) || cid == null) return null
       if (urls.has(cid)) return urls.get(cid)
 
       if (!loading.has(cid)) {

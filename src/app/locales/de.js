@@ -148,6 +148,8 @@ export default {
     connected: 'verbunden',
     share: 'Teilen anfragen',
     asking: ({ id }) => `${id} gefragt — wartet auf Antwort`,
+    afterReload: 'Das Relay ist eingeschaltet, aber noch nicht in Betrieb — welches Relay erreicht wird, entscheidet sich beim Start der App. Laden Sie die Seite neu, dann erscheinen Geräte hier binnen weniger Sekunden.',
+    reload: 'Neu laden und benutzen',
     searching: 'Suche ein Relay. Geräte erscheinen hier ein paar Sekunden, nachdem dieses hier durchgekommen ist.',
     aloneOnRelay: 'Ein Relay hat geantwortet, sonst ist noch niemand da. Öffnen Sie ablage auf Ihrem anderen Gerät — es erscheint dann binnen weniger Sekunden.',
     empty: 'Noch hat niemand gerufen. Geräte erscheinen hier ein paar Sekunden, nachdem sie ein Relay erreicht haben.',

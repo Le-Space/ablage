@@ -1,6 +1,6 @@
 {
   "name": "ablage",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "private": true,
   "type": "module",
   "description": "A folder that stays the same on two devices. No account, nothing in the middle.",

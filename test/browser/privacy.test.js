@@ -152,10 +152,20 @@ test.describe('one world at a time, in the technical half too', () => {
     await expect(page.locator('#lede-relay')).toContainText(/cannot read|nicht mitlesen/i)
   })
 
-  test('the technical half says the identity is new on every start', async ({ page }) => {
-    // True today, and it is the answer to "why does it ask me again?".
+  test('the technical half says what each kind of share does to an identity', async ({ page }) => {
+    // Three claims, and the caveat is one of them. Running them together is how
+    // a limit gets read as a feature - so each is asserted separately rather
+    // than as one match somewhere in the block.
     await intro(page)
 
-    await expect(page.locator('#intro .intro-tech')).toContainText(/new key pair on every start|jedem Start ein neues Schlüsselpaar/i)
+    const tech = page.locator('#intro .intro-tech')
+
+    // What a named share buys.
+    await expect(tech).toContainText(/key pair of its own|eigenes Schlüsselpaar/i)
+    // What the one-off share buys instead.
+    await expect(tech).toContainText(/new key pair on every start|jedem Start ein neues Schlüsselpaar/i)
+    await expect(tech).toContainText(/no relay can tell|kein Relay kann erkennen/i)
+    // And what neither of them buys, which is the sentence most easily left out.
+    await expect(tech).toContainText(/do not hide a shared IP|verbergen keine gemeinsame IP/i)
   })
 })

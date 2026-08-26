@@ -11,6 +11,8 @@ import '@le-space/libp2p-webrtc-qr/elements'
 import * as Y from 'yjs'
 
 import { createContent } from '../content.js'
+import { keyFor } from '../device-key.js'
+import { FIRST_SHARE, ONE_OFF_SHARE, scoped, shares } from './shares.js'
 import { createPeer } from '../peer.js'
 import { reconcile } from '../reconcile.js'
 import { baseline } from '../sync/baseline.js'
@@ -70,6 +72,9 @@ const viewModeEl = $('view-mode')
 const compactEl = $('compact-payload')
 const introViewEl = $('intro-view')
 const awakeEl = $('awake')
+const shareNameEl = $('share-name')
+const sharesEl = $('shares')
+const shareListEl = $('share-list')
 const peersReloadEl = $('peers-reload')
 const privacyEl = $('privacy')
 
@@ -109,13 +114,62 @@ const switchToldEl = $('switch-told')
 const switchToldBodyEl = $('switch-told-body')
 const markEl = $('mark')
 
+/**
+ * The store, or nothing, read once.
+ *
+ * Every module that takes a store already survives one that refuses - they all
+ * catch around `getItem`. What none of them can help with is a browser where
+ * *reaching* `localStorage` throws, which some privacy settings and some
+ * private windows do: the property access happens at the call site, outside any
+ * `try`, and the app then fails to start at all rather than starting without
+ * its remembered choices.
+ *
+ * Read once and passed around, so there is one place this is handled instead of
+ * seven that each have to remember.
+ */
+const localStore = (() => {
+  try {
+    return globalThis.localStorage ?? null
+  } catch {
+    return null
+  }
+})()
+
+const book = shares(localStore)
+
+/**
+ * The share this start belongs to, fixed for its whole life.
+ *
+ * Read once and never re-read. The identity, the folder and the admission list
+ * are all chosen from it before the node exists, and a value that could change
+ * underneath them would mean a node running as one share while writing into
+ * another's folder. Choosing a different share reloads the page, which is the
+ * same seam the relay choice already needs.
+ */
+const shareId = book.currentId()
+
+/** Where this share's folder is kept, in both of the two places a folder can be. */
+/**
+ * Whether this start remembers who it is.
+ *
+ * The one-off share stores no key and reads none, so libp2p makes a fresh one
+ * and this device is a stranger to everybody - including to the device it
+ * synced with an hour ago. That is what stops a relay recognising the same peer
+ * id turning up from wherever you happen to be, and it is the behaviour every
+ * start had before shares existed.
+ */
+const oneOff = shareId === ONE_OFF_SHARE
+
+const folderKey = scoped('folder', shareId)
+const privateName = shareId === FIRST_SHARE ? null : shareId
+
 // Both are replaced when the folder changes: the index describes *a* folder,
 // and after a switch it describes the wrong one. See `switchToFolder` below.
 let doc = new Y.Doc()
 let index = fileIndex(doc)
 // What this device last agreed with the other one about - the third value
 // that tells "I edited it" apart from "we both edited it".
-const base = baseline()
+const base = baseline({ key: scoped('ablage.baseline', shareId) })
 
 let storage = null
 let content = null
@@ -135,7 +189,7 @@ let peer = null
 const peers = peerSet()
 
 /** What this device decided to send to whom. Per peer - see `sharing.js`. */
-const shared = sharing()
+const shared = sharing({ key: scoped('ablage.sharing', shareId) })
 
 /**
  * The end, because that is the part that differs.
@@ -339,6 +393,17 @@ const RELAY_OPT_IN_KEY = 'ablage.relay'
 const RELAY_ADDRESSES_KEY = 'ablage.relay.addresses'
 
 /**
+ * The share this start belongs to.
+ *
+ * One for now, and named rather than implied: everything an identity, an
+ * admission list and a folder hang off is about to be per-share, and a literal
+ * `'default'` scattered through the file is the version of that which nobody
+ * can find later. What exists today becomes this entry, so nobody's folder or
+ * remembered devices go missing when the book arrives.
+ */
+
+
+/**
  * Peers this device let go of on purpose.
  *
  * Dropping one ends its read loop, and the loop's ending says "the connection
@@ -351,7 +416,7 @@ const RELAY_ADDRESSES_KEY = 'ablage.relay.addresses'
 const letGo = new Set()
 
 /** Who may write into this folder. The QR scan is the only automatic yes. */
-const admitted = admission()
+const admitted = admission({ key: scoped('ablage.admitted', shareId) })
 
 /** This folder's id and name, for the message a switch sends. */
 let folder = { id: null, name: null }
@@ -839,16 +904,25 @@ function attach (stream, peerId) {
 }
 
 async function start () {
-  const opened = await openStorage()
+  const opened = await openStorage({ folderKey, privateName })
 
   storage = opened.store
   showFolder(opened)
   // Both halves of what `createPeer` is about to decide, so the interface can
   // say which of the three situations somebody is actually in.
-  relayAtStart = readRelayOptIn(globalThis.localStorage, RELAY_OPT_IN_KEY) &&
-    startupRelays(globalThis.localStorage, RELAY_ADDRESSES_KEY).length > 0
+  relayAtStart = readRelayOptIn(localStore, RELAY_OPT_IN_KEY) &&
+    startupRelays(localStore, RELAY_ADDRESSES_KEY).length > 0
 
   peer = await createPeer({
+    // **The same identity as last time.** Every start used to make a new key
+    // pair, so this device's peer id changed on every reload, the other one saw
+    // somebody it had never met, and the admission dialog asked again. Pairing
+    // was something people redid rather than something they had.
+    // Nothing passed for the one-off share, so libp2p makes its own and
+    // nothing is written down. `keyFor` would store one, which is the whole
+    // difference between the two.
+    ...(oneOff ? {} : { privateKey: await keyFor(localStore, shareId) }),
+
     // Read here and nowhere else. `relayOptIn` decides the bootstrap list,
     // whether a `/p2p-circuit` is announced, and what the gater refuses - all
     // of them fixed when the node is created, so the choice takes effect at the
@@ -858,14 +932,14 @@ async function start () {
     // but it wants a `relay.check` and only the app knows its addresses -
     // ablage ships none. This is the half of the seam that does not need one:
     // without it, a choice made later would reach the interface and stop there.
-    relayOptIn: readRelayOptIn(globalThis.localStorage, RELAY_OPT_IN_KEY),
+    relayOptIn: readRelayOptIn(localStore, RELAY_OPT_IN_KEY),
 
     // Without these the choice does nothing. `relayBootstrapList` needs both an
     // opt-in *and* an address, and with an empty list `peerDiscovery` is `[]` -
     // no bootstrap, no pubsub discovery. The app then connected to a relay
     // during the introduction's check and heard nobody for ever, which is what
     // "connected, and no peers anywhere" turned out to mean.
-    relayBootstrapAddrs: startupRelays(globalThis.localStorage, RELAY_ADDRESSES_KEY),
+    relayBootstrapAddrs: startupRelays(localStore, RELAY_ADDRESSES_KEY),
     onSyncStream: (stream, peerId) => {
       // `peer.arrivedByScan`, not the address. A peer that hole-punched out of
       // the relay has a `/webrtc/p2p/<id>` address with no circuit in it -
@@ -904,7 +978,6 @@ async function start () {
   // else about the list is the app's own code, and this hands it a cast.
   window.__showPeersForTest = showPeers
   showPeers([])
-
 
 
   networkEl.hidden = false
@@ -956,6 +1029,7 @@ function applyLocale (next) {
   // never reaches them.
   showFolder()
   showMyPeer()
+  showShares()
 
   // Rows carry their own text and are not repainted by anything else.
   render()
@@ -1022,7 +1096,7 @@ introEl.relay = {
       // Kept, because the next start needs an address and this one answered a
       // probe from this device. Discovery can take a while and the baked list
       // ages; a relay that replied a minute ago is the better first guess.
-      rememberRelays(globalThis.localStorage, RELAY_ADDRESSES_KEY, found.addresses)
+      rememberRelays(localStore, RELAY_ADDRESSES_KEY, found.addresses)
       return found
     })
   }
@@ -1044,6 +1118,19 @@ function tellHow (viaRelay) {
   $('intro-how-code').hidden = viaRelay
   $('intro-how-relay').hidden = !viaRelay
 
+  // The technical half needs the same either-or, and did not have it: with a
+  // relay on it went on explaining what a scanned code carries and which
+  // encrypter a QR connection uses, neither of which is the connection about to
+  // be made.
+  for (const el of document.querySelectorAll('.how-code')) el.hidden = viaRelay
+  for (const el of document.querySelectorAll('.how-relay')) el.hidden = !viaRelay
+
+  // And the first sentence on the page. "Nothing in between" is the whole
+  // promise of the QR path, and a relay is something in between - said in the
+  // opening line, an untrue claim makes everything after it worth less.
+  $('lede-code').hidden = viaRelay
+  $('lede-relay').hidden = !viaRelay
+
   // And the card behind the dialog, so the two never describe different apps.
   // One world or the other: with a relay a code is not how anybody gets in, and
   // without one an empty device list is furniture for somebody who never asked
@@ -1052,7 +1139,7 @@ function tellHow (viaRelay) {
   byRelayEl.hidden = !viaRelay
 }
 
-tellHow(readRelayOptIn(globalThis.localStorage, RELAY_OPT_IN_KEY))
+tellHow(readRelayOptIn(localStore, RELAY_OPT_IN_KEY))
 
 introEl.addEventListener('relay-opt-in', event => {
   tellHow(event.detail.optIn)
@@ -1323,9 +1410,9 @@ function toldAboutSwitch (peerId, message) {
     close()
 
     try {
-      const handle = await pickFolder()
+      const handle = await pickFolder(folderKey)
 
-      storage = (await openStorage()).store
+      storage = (await openStorage({ folderKey, privateName })).store
       folder = { id: (await folderIdentity(storage)).id, name: handle.name }
 
       followPeer(peerId)
@@ -1373,7 +1460,7 @@ pickButton.addEventListener('click', async () => {
     // Both paths need the gesture this handler is: picking opens a dialog, and
     // re-granting permission on a remembered handle does too.
     const restored = pickButton.dataset.resume === 'yes' ? (await openStorage()).pending : null
-    const handle = restored != null && await askForFolder(restored) ? restored : await pickFolder()
+    const handle = restored != null && await askForFolder(restored) ? restored : await pickFolder(folderKey)
 
     // Asked before anything changes, so "keep it to this device" leaves the
     // folder as it was rather than half-switched.
@@ -1575,6 +1662,121 @@ peersReloadEl.addEventListener('click', () => globalThis.location.reload())
 
 $('privacy-open').addEventListener('click', () => privacyEl.showModal())
 $('privacy-close').addEventListener('click', () => privacyEl.close())
+
+/**
+ * The book, drawn.
+ *
+ * Rebuilt from scratch on every change rather than patched. The list is a
+ * handful of rows read once in a while, and a patched list is where a stale
+ * `open` marker or a button still wired to a deleted share comes from.
+ */
+function showShares () {
+  const named = entry => entry.oneOff ? t('shares.oneOff') : entry.name ?? t('shares.unnamed')
+
+  shareNameEl.textContent = named(book.current())
+  shareNameEl.title = named(book.current())
+
+  shareListEl.replaceChildren(...book.all().map(entry => {
+    const li = document.createElement('li')
+    const name = document.createElement('strong')
+    const about = document.createElement('span')
+    const actions = document.createElement('div')
+
+    li.className = entry.id === shareId ? 'share open' : 'share'
+    name.textContent = named(entry)
+    about.className = 'share-about'
+    // Read from `admission.js`, which is the one list of who a share lets in
+    // without asking - the book keeps no copy, so the two cannot disagree.
+    const says = entry.oneOff
+      ? t('shares.oneOffAbout')
+      : t('shares.members', { count: admission({ key: scoped('ablage.admitted', entry.id) }).snapshot().length })
+
+    about.textContent = entry.id === shareId ? `${t('shares.current')} · ${says}` : says
+
+    actions.className = 'share-actions'
+
+    if (entry.id !== shareId) {
+      const open = document.createElement('button')
+
+      open.type = 'button'
+      // Not `primary`. In a list of three, three accent buttons compete with
+      // each other and with the dialog's own action - and the colour is more
+      // use marking which share is *open* than repeating "you could open this"
+      // on every row that is not.
+      open.className = 'share-open'
+      open.textContent = t('shares.openNow')
+      open.addEventListener('click', () => {
+        book.choose(entry.id)
+        setState(t('shares.switching'), 'waiting')
+        // Reloaded rather than rebuilt in place: the identity, the folder and
+        // the admission list are all read once, before the node exists.
+        globalThis.location.reload()
+      })
+
+      actions.append(open)
+    }
+
+    // Nothing to rename and nothing to remove: the one-off share is built in,
+    // has no name of its own and stores nothing. Drawing the buttons anyway
+    // would be two controls that quietly do nothing, which is worse than two
+    // that are not there.
+    if (entry.oneOff) {
+      li.append(name, about, actions)
+      return li
+    }
+
+    const rename = document.createElement('button')
+
+    rename.type = 'button'
+    rename.textContent = t('shares.rename')
+    rename.addEventListener('click', () => {
+      const asked = globalThis.prompt(t('shares.namePlaceholder'), entry.name ?? '')
+
+      if (asked == null) return
+
+      book.rename(entry.id, asked.trim())
+      showShares()
+    })
+
+    actions.append(rename)
+
+    if (book.all().length > 1) {
+      const remove = document.createElement('button')
+
+      remove.type = 'button'
+      remove.textContent = t('shares.remove')
+      remove.addEventListener('click', () => {
+        book.remove(entry.id)
+        // Said out loud, because "remove" beside a folder reads like a
+        // threat to the files and is not one.
+        setState(t('shares.keptFiles'), 'idle')
+        showShares()
+      })
+
+      actions.append(remove)
+    }
+
+    li.append(name, about, actions)
+    return li
+  }))
+}
+
+$('shares-open').addEventListener('click', () => {
+  showShares()
+  sharesEl.showModal()
+})
+
+$('shares-close').addEventListener('click', () => sharesEl.close())
+
+$('share-new').addEventListener('submit', event => {
+  event.preventDefault()
+
+  const field = $('share-new-name')
+
+  book.create(field.value.trim())
+  field.value = ''
+  showShares()
+})
 
 const keepAlive = createKeepAlive({
   track: 'audio/zauberfloete-dies-bildnis-cossira-1903.mp3',

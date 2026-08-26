@@ -7,7 +7,8 @@
 export default {
   page: {
     title: 'ablage',
-    lede: 'A folder that stays the same on two devices. No account, nothing in the middle.'
+    lede: 'A folder that stays the same on two devices. No account, nothing in the middle.',
+    ledeRelay: 'A folder that stays the same on two devices. No account — a relay helps the two find each other and cannot read what they send.'
   },
   compact: {
     label: 'Short code — one code instead of a sequence. Experimental.',
@@ -142,6 +143,27 @@ export default {
     resume: ({ name }) => `Use ${name} again`
   },
   preview: { counted: ({ name, at, of }) => `${name} — ${at} of ${of}` },
+  shares: {
+    label: 'Share',
+    manage: 'Shares…',
+    title: 'Shares',
+    blurb: 'A share is a folder, the devices allowed into it, and an identity of its own. Two shares look like two unrelated devices to everybody else — which is why choosing one starts the app again.',
+    unnamed: 'This folder',
+    oneOff: 'One-off',
+    oneOffAbout: 'a new identity every start — nothing to recognise',
+    namePlaceholder: 'Name for a new share',
+    add: 'Add a share',
+    close: 'Close',
+    open: 'Open',
+    openNow: 'Open now',
+    current: 'open',
+    rename: 'Rename',
+    remove: 'Remove',
+    members: ({ count }) => count === 0 ? 'no devices yet' : count === 1 ? 'one device' : `${count} devices`,
+    switching: 'Starting again with that share…',
+    removeLast: 'The only share cannot be removed.',
+    keptFiles: 'Removed from the list. The folder and its files are untouched.'
+  },
   peers: {
     heading: 'Devices out there',
     filter: 'Filter by peer id',
@@ -189,7 +211,6 @@ export default {
   },
   intro: {
     start: "Let's go",
-    start: "Let's go",
     experimental: '<strong>Highly experimental — do not use this for anything you cannot lose.</strong> It is a working demonstration, not a backup: the format may change, and a folder here is not a copy of anything.',
     what: 'This is a folder shared between two of your devices. There is no account, and no server in the middle holding your files.',
     how: 'Show the code on this screen to the other device, or send it the link. Once the two are connected, whatever you put in the folder appears on both.',
@@ -200,6 +221,9 @@ export default {
   how: {
     heading: 'How that holds up',
     dtls: 'The encryption is DTLS, the same layer a browser uses for any WebRTC connection. It is not something added on top and it cannot be switched off.',
+    identity: 'A named share keeps a key pair of its own, so this device turns up as the same peer id next time and the other one recognises it instead of asking again. One key per share, so two shares of yours look like two unrelated devices to everybody else.',
+    identityOnce: 'The one-off share stores nothing: a new key pair on every start, so the peer id is different each time and no relay can tell that two visits were the same device. The other device cannot tell either, and will ask again \u2014 that is the trade, and it is how every start worked before shares existed.',
+    identityLimit: 'What separate identities do not buy: they do not hide a shared IP address. A relay sees whichever peer id you arrive as, from wherever you are, and two shares open at the same moment are trivially linked. The property is real against other peers on the meeting place and much weaker against the relay.',
     signed: 'What the QR code carries is signed with this device\u2019s own key, and the signature covers the certificate fingerprint of the connection. So the encrypted channel is bound to the device you scanned — swapping in another one invalidates the signature before anything is dialled.',
     relay: `Through a relay, the two devices negotiate Noise between themselves and the relay forwards bytes it cannot decrypt. Multiplexing sits above that encryption, so it cannot see the protocol names either — it cannot tell a file transfer from a list update. What it does see is who talks to whom, when, for how long and roughly how much.`,
     layers: `Not doubly encrypted: libp2p picks one layer per connection. On WebRTC it passes skipEncryption and leaves Noise out, because DTLS already did the work — a connection reports its encryption as 'native' there and '/noise' over a relayed WebSocket. The TLS to the relay itself is a third, separate thing: it hides the traffic from the network between you and the relay, and the relay terminates it.`,

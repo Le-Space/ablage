@@ -15,6 +15,15 @@
 
 const DB = 'ablage'
 const STORE = 'handles'
+
+/**
+ * One folder per share, and the first share keeps the key it has always had.
+ *
+ * `folder` was the only key there was. Suffixing it for every share would have
+ * meant moving somebody's existing folder on the first start after an upgrade -
+ * a migration, with a window in which a mistake loses the thing the app is for.
+ * `scoped` in `shares.js` is where that rule lives; this is its other caller.
+ */
 const KEY = 'folder'
 
 export const canPickFolder = () => typeof globalThis.showDirectoryPicker === 'function'
@@ -44,13 +53,15 @@ async function transact (mode, run) {
   }
 }
 
-/** @param {FileSystemDirectoryHandle} handle */
-export const rememberFolder = handle => transact('readwrite', store => store.put(handle, KEY))
+/** @param {FileSystemDirectoryHandle} handle @param {string} [key] */
+export const rememberFolder = (handle, key = KEY) =>
+  transact('readwrite', store => store.put(handle, key))
 
-export const forgetFolder = () => transact('readwrite', store => store.delete(KEY))
+export const forgetFolder = (key = KEY) => transact('readwrite', store => store.delete(key))
 
-/** @returns {Promise<FileSystemDirectoryHandle | null>} */
-export const storedFolder = () => transact('readonly', store => store.get(KEY)).catch(() => null)
+/** @param {string} [key] @returns {Promise<FileSystemDirectoryHandle | null>} */
+export const storedFolder = (key = KEY) =>
+  transact('readonly', store => store.get(key)).catch(() => null)
 
 /**
  * Ask the picker, and remember what comes back.
@@ -58,10 +69,10 @@ export const storedFolder = () => transact('readonly', store => store.get(KEY)).
  * Must be called from a user gesture - the picker is a dialog, and browsers do
  * not open dialogs on a page's own initiative.
  */
-export async function pickFolder () {
+export async function pickFolder (key = KEY) {
   const handle = await globalThis.showDirectoryPicker({ mode: 'readwrite' })
 
-  await rememberFolder(handle)
+  await rememberFolder(handle, key)
   return handle
 }
 
@@ -75,8 +86,8 @@ export async function pickFolder () {
  *
  * @returns {Promise<{ handle: FileSystemDirectoryHandle, granted: boolean } | null>}
  */
-export async function restoreFolder () {
-  const handle = await storedFolder()
+export async function restoreFolder (key = KEY) {
+  const handle = await storedFolder(key)
 
   if (handle == null) return null
 

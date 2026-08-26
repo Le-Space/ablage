@@ -24,7 +24,22 @@
  *
  * @param {{ key?: string, storage?: Storage }} [options]
  */
-export function baseline ({ key = 'ablage.baseline', storage = globalThis.localStorage } = {}) {
+/**
+ * The default used to be `globalThis.localStorage`, and a default parameter is
+ * evaluated *before* the `try` below. In a browser where merely reaching
+ * `localStorage` throws - some privacy settings, some private windows - that
+ * threw during startup and the app did not come up at all. Guarded here rather
+ * than at every call site.
+ */
+function safeStore () {
+  try {
+    return globalThis.localStorage ?? null
+  } catch {
+    return null
+  }
+}
+
+export function baseline ({ key = 'ablage.baseline', storage = safeStore() } = {}) {
   let known
 
   try {

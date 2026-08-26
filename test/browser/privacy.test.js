@@ -104,3 +104,68 @@ test('the technical half of the intro carries the relay answer, and the simple h
   await expect(tech).toContainText(/skipEncryption/)
   await expect(tech.locator('a[href*="issues/43"]')).toHaveCount(1)
 })
+
+test.describe('one world at a time, in the technical half too', () => {
+  const intro = async page => {
+    await page.goto('/')
+    await page.waitForFunction(
+      () => document.getElementById('intro')?.shadowRoot?.querySelector('dialog')?.open === true,
+      undefined,
+      { timeout: 60_000 }
+    )
+    await page.locator('#intro-view').click()
+  }
+
+  const tick = page => page.evaluate(on => {
+    localStorage.setItem('ablage.relay', String(on))
+    document.getElementById('intro').dispatchEvent(new CustomEvent('relay-opt-in', { detail: { optIn: on } }))
+  }, true)
+
+  test('with a relay on, the code explanations go with the code', async ({ page }) => {
+    // The simple half got this when the either-or landed; the technical half
+    // did not, and went on describing a handshake nobody was about to make.
+    await intro(page)
+
+    await expect(page.locator('.how-code').first()).toBeVisible()
+    await expect(page.locator('.how-relay').first()).toBeHidden()
+
+    await tick(page)
+
+    await expect(page.locator('.how-code').first()).toBeHidden()
+    await expect(page.locator('.how-relay').first()).toBeVisible()
+  })
+
+  test('and the first sentence stops claiming there is nothing in between', async ({ page }) => {
+    await page.goto('/')
+    await expect(page.locator('#lede-code')).toBeVisible({ timeout: 60_000 })
+    await expect(page.locator('#lede-code')).toContainText(/nothing in the middle|nichts dazwischen/i)
+
+    await page.waitForFunction(
+      () => document.getElementById('intro')?.shadowRoot?.querySelector('dialog')?.open === true,
+      undefined,
+      { timeout: 60_000 }
+    )
+    await tick(page)
+
+    await expect(page.locator('#lede-code')).toBeHidden()
+    await expect(page.locator('#lede-relay')).toBeVisible()
+    await expect(page.locator('#lede-relay')).toContainText(/cannot read|nicht mitlesen/i)
+  })
+
+  test('the technical half says what each kind of share does to an identity', async ({ page }) => {
+    // Three claims, and the caveat is one of them. Running them together is how
+    // a limit gets read as a feature - so each is asserted separately rather
+    // than as one match somewhere in the block.
+    await intro(page)
+
+    const tech = page.locator('#intro .intro-tech')
+
+    // What a named share buys.
+    await expect(tech).toContainText(/key pair of its own|eigenes Schlüsselpaar/i)
+    // What the one-off share buys instead.
+    await expect(tech).toContainText(/new key pair on every start|jedem Start ein neues Schlüsselpaar/i)
+    await expect(tech).toContainText(/no relay can tell|kein Relay kann erkennen/i)
+    // And what neither of them buys, which is the sentence most easily left out.
+    await expect(tech).toContainText(/do not hide a shared IP|verbergen keine gemeinsame IP/i)
+  })
+})

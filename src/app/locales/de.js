@@ -4,7 +4,8 @@
 export default {
   page: {
     title: 'ablage',
-    lede: 'Ein Ordner, der auf zwei Geräten derselbe bleibt. Kein Konto, nichts dazwischen.'
+    lede: 'Ein Ordner, der auf zwei Geräten derselbe bleibt. Kein Konto, nichts dazwischen.',
+    ledeRelay: 'Ein Ordner, der auf zwei Geräten derselbe bleibt. Kein Konto — ein Relay hilft den beiden, sich zu finden, und kann nicht mitlesen.'
   },
   compact: {
     label: 'Kurzcode — ein Code statt einer Bilderfolge. Experimentell.',
@@ -140,6 +141,27 @@ export default {
     resume: ({ name }) => `${name} wieder benutzen`
   },
   preview: { counted: ({ name, at, of }) => `${name} — ${at} von ${of}` },
+  shares: {
+    label: 'Freigabe',
+    manage: 'Freigaben…',
+    title: 'Freigaben',
+    blurb: 'Eine Freigabe ist ein Ordner, die dafür zugelassenen Geräte und eine eigene Identität. Zwei Freigaben sehen für alle anderen aus wie zwei fremde Geräte — deshalb startet die App neu, wenn Sie eine auswählen.',
+    unnamed: 'Dieser Ordner',
+    oneOff: 'Einmalig',
+    oneOffAbout: 'bei jedem Start eine neue Identität — nichts wiederzuerkennen',
+    namePlaceholder: 'Name für eine neue Freigabe',
+    add: 'Freigabe anlegen',
+    close: 'Schließen',
+    open: 'Öffnen',
+    openNow: 'Jetzt öffnen',
+    current: 'offen',
+    rename: 'Umbenennen',
+    remove: 'Entfernen',
+    members: ({ count }) => count === 0 ? 'noch keine Geräte' : count === 1 ? 'ein Gerät' : `${count} Geräte`,
+    switching: 'Startet neu mit dieser Freigabe…',
+    removeLast: 'Die einzige Freigabe lässt sich nicht entfernen.',
+    keptFiles: 'Aus der Liste entfernt. Der Ordner und seine Dateien bleiben unberührt.'
+  },
   peers: {
     heading: 'Geräte da draußen',
     filter: 'Nach Peer-ID filtern',
@@ -187,7 +209,6 @@ export default {
   },
   intro: {
     start: 'Los geht\u2019s',
-    start: 'Los geht\u2019s',
     experimental: '<strong>Hochgradig experimentell — benutzen Sie es für nichts, dessen Verlust weh tut.</strong> Es ist eine lauffähige Demonstration, keine Sicherung: das Format kann sich ändern, und ein Ordner hier ist keine Kopie von irgendetwas.',
     what: 'Dies ist ein Ordner, den zwei Ihrer Geräte teilen. Es gibt kein Konto, und keinen Server dazwischen, der Ihre Dateien hält.',
     how: 'Zeigen Sie den Code auf diesem Bildschirm dem anderen Gerät, oder schicken Sie ihm den Link. Sobald beide verbunden sind, erscheint alles, was Sie in den Ordner legen, auf beiden.',
@@ -198,6 +219,9 @@ export default {
   how: {
     heading: 'Woran das hängt',
     dtls: 'Verschlüsselt wird mit DTLS, derselben Schicht, die ein Browser für jede WebRTC-Verbindung benutzt. Das ist nichts Aufgesetztes und lässt sich nicht abschalten.',
+    identity: 'Eine benannte Freigabe beh\u00e4lt ein eigenes Schl\u00fcsselpaar, dieses Ger\u00e4t erscheint also beim n\u00e4chsten Mal unter derselben Peer-Id und das andere erkennt es wieder, statt erneut zu fragen. Ein Schl\u00fcssel je Freigabe, damit zwei Ihrer Freigaben f\u00fcr alle anderen wie zwei fremde Ger\u00e4te aussehen.',
+    identityOnce: 'Die einmalige Freigabe speichert nichts: bei jedem Start ein neues Schl\u00fcsselpaar, die Peer-Id ist also jedes Mal eine andere, und kein Relay kann erkennen, dass zwei Besuche dasselbe Ger\u00e4t waren. Das andere Ger\u00e4t kann es ebenso wenig und fragt erneut \u2014 das ist der Handel, und so arbeitete jeder Start, bevor es Freigaben gab.',
+    identityLimit: 'Was getrennte Identit\u00e4ten nicht bringen: sie verbergen keine gemeinsame IP-Adresse. Ein Relay sieht, unter welcher Peer-Id Sie ankommen, und von wo \u2014 und zwei gleichzeitig ge\u00f6ffnete Freigaben sind trivial verkn\u00fcpfbar. Gegen\u00fcber anderen Peers auf dem Treffpunkt ist die Eigenschaft echt, gegen\u00fcber dem Relay deutlich schw\u00e4cher.',
     signed: 'Was der QR-Code trägt, ist mit dem eigenen Schlüssel dieses Geräts signiert, und die Signatur deckt den Zertifikats-Fingerabdruck der Verbindung ab. Der verschlüsselte Kanal ist damit an genau das Gerät gebunden, das Sie gescannt haben — ein untergeschobenes anderes macht die Signatur ungültig, bevor überhaupt gewählt wird.',
     relay: `Über ein Relay handeln die beiden Geräte Noise untereinander aus, und das Relay reicht Bytes weiter, die es nicht entschlüsseln kann. Die Strom-Aufteilung liegt oberhalb dieser Verschlüsselung, es sieht also nicht einmal die Protokollnamen — es kann eine Dateiübertragung nicht von einer Listenänderung unterscheiden. Was es sieht: wer mit wem, wann, wie lange und ungefähr wie viel.`,
     layers: `Nicht doppelt verschlüsselt: libp2p nimmt eine Schicht pro Verbindung. Auf WebRTC übergibt es skipEncryption und lässt Noise weg, weil DTLS die Arbeit schon getan hat — eine Verbindung meldet ihre Verschlüsselung dort als „native" und über ein Relay als „/noise". Das TLS zum Relay selbst ist ein drittes, davon getrenntes Ding: es verbirgt den Verkehr vor dem Netz zwischen Ihnen und dem Relay, und das Relay beendet es.`,

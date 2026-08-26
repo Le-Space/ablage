@@ -1,4 +1,4 @@
-import { directoryStorage } from './directory.js'
+import { directoryStorage, SHARE_FOLDERS } from './directory.js'
 import { canPickFolder, restoreFolder } from './handle.js'
 
 /**
@@ -49,7 +49,19 @@ export async function openStorage ({ root, folderKey, privateName = null } = {})
 async function privateFolder (name) {
   const root = await navigator.storage.getDirectory()
 
-  return root.getDirectoryHandle(`share-${name}`, { create: true })
+  // **Under a dot-name, and that is the whole of the fix.**
+  //
+  // The first share *is* the root - it has to be, so that nobody's existing
+  // files move. Putting the other shares' folders beside its files made them
+  // subfolders *of* it, and the first share listed every other share's files as
+  // nested paths. Separate storage, and the listing said otherwise.
+  //
+  // `directory.js` already skips one dot-name for the same reason - the
+  // folder's own id must never reach the index - so this is the second use of a
+  // rule that was already there, rather than a new one.
+  const held = await root.getDirectoryHandle(SHARE_FOLDERS, { create: true })
+
+  return held.getDirectoryHandle(name, { create: true })
 }
 
 export { directoryStorage }

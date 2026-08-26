@@ -15,7 +15,19 @@ const open = async page => {
   await expect(page.locator('#share-name')).not.toBeEmpty({ timeout: 60_000 })
 }
 
-const mine = page => page.locator('#my-peer').getAttribute('title')
+/**
+ * Waited for, not read.
+ *
+ * The share name appears as soon as the page paints; the peer id appears when
+ * the node has been built, which is later. Reading straight after a reload got
+ * `null` about one run in twenty - and a test that flakes on the thing it is
+ * asserting is worse than one that does not exist.
+ */
+const mine = async page => {
+  await expect(page.locator('#my-peer')).toHaveAttribute('title', /12D3Koo/, { timeout: 60_000 })
+
+  return page.locator('#my-peer').getAttribute('title')
+}
 
 test('the open share is named above everything it decides', async ({ page }) => {
   await open(page)
@@ -105,4 +117,54 @@ test('removing a share says the files are still there', async ({ page }) => {
 
   await expect(page.locator('.share', { hasText: 'Photos' })).toHaveCount(0)
   await expect(page.locator('#link-state')).toContainText(/files are untouched|Dateien bleiben unberührt/i)
+})
+
+/**
+ * The seam nothing covered: a share owns a *folder*.
+ *
+ * Every test above is about identity, names and buttons. None of them opens a
+ * share and asks whether the files changed with it - and that is the failure
+ * with the worst shape, because two shares quietly writing into one folder
+ * looks entirely correct until somebody wonders why their invoices are in with
+ * their photos.
+ *
+ * Found by working through #44, which is what it is for.
+ */
+test('a share opens its own folder, not the last one', async ({ page }) => {
+  await open(page)
+
+  await page.setInputFiles('#pick', {
+    name: 'erste.txt',
+    mimeType: 'text/plain',
+    buffer: Buffer.from('gehört zur ersten Freigabe')
+  })
+  await expect(page.locator('.tree')).toContainText('erste.txt')
+
+  await page.locator('#shares-open').click()
+  await page.locator('#share-new-name').fill('Photos')
+  await page.locator('#share-new').getByRole('button').click()
+  await page.locator('.share', { hasText: 'Photos' })
+    .getByRole('button', { name: /Open now|Jetzt öffnen/ }).click()
+
+  await expect(page.locator('#share-name')).toHaveText('Photos', { timeout: 60_000 })
+
+  // The claim. Not "a different name at the top" - a different folder.
+  await expect(page.locator('.tree')).not.toContainText('erste.txt')
+
+  await page.setInputFiles('#pick', {
+    name: 'zweite.txt',
+    mimeType: 'text/plain',
+    buffer: Buffer.from('gehört zur zweiten')
+  })
+  await expect(page.locator('.tree')).toContainText('zweite.txt')
+
+  // And back, which is the half that would catch a folder that was emptied
+  // rather than swapped.
+  await page.locator('#shares-open').click()
+  await page.locator('.share', { hasText: /This folder|Dieser Ordner/ })
+    .getByRole('button', { name: /Open now|Jetzt öffnen/ }).click()
+
+  await expect(page.locator('#share-name')).toHaveText(/This folder|Dieser Ordner/, { timeout: 60_000 })
+  await expect(page.locator('.tree')).toContainText('erste.txt')
+  await expect(page.locator('.tree')).not.toContainText('zweite.txt')
 })

@@ -18,6 +18,15 @@
 
 import { IDENTITY_FILE } from './identity.js'
 
+/**
+ * Where the folders of shares other than the first one live.
+ *
+ * A dot-name, like the identity file, and skipped by `list` for the same
+ * reason: the first share is the origin's root folder, so anything else has to
+ * sit inside it, and the index must not be told about it.
+ */
+export const SHARE_FOLDERS = '.ablage-shares'
+
 /** @param {FileSystemDirectoryHandle} root @param {string} path */
 async function walk (root, path, { create = false } = {}) {
   const parts = path.split('/').filter(Boolean)
@@ -54,6 +63,12 @@ export async function directoryStorage ({ root } = {}) {
       // `read` and `write` still reach it, which is how `identity.js` gets at
       // it at all.
       if (path === IDENTITY_FILE) continue
+
+      // The other shares' folders, for a browser with no picker. The first
+      // share is the root itself, so everything else lives inside it - and
+      // without this line the first share lists every other share's files as
+      // its own, which is separate storage that reads as one folder.
+      if (path === SHARE_FOLDERS) continue
 
       if (handle.kind === 'directory') {
         found.push(...await collect(handle, path))

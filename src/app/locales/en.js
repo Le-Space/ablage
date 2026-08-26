@@ -23,7 +23,7 @@ export default {
   brand: { home: 'Le-Space — who made this (opens a new tab, so this page keeps its connections)' },
   awake: {
     toggle: 'Keep the screen awake',
-    why: 'A phone that dozes off drops the connection, and a transfer in progress simply stops. While this is on and this page is on screen, the screen stays lit — which costs battery, so it is off until you ask.',
+    why: 'A sleeping phone drops the connection. Costs battery, so it is off until you ask.',
     unsupported: 'This browser cannot hold the screen awake. Leaving the page open and the screen lit by hand is the only thing that keeps a long transfer going here.'
   },
   lang: { label: 'Language' },
@@ -122,7 +122,7 @@ export default {
 <p>There is currently <strong>no screen that shows the list or takes a device back off it</strong>. Clearing the browser's data for this site clears it. That gap is part of <a href="https://github.com/Le-Space/ablage/issues/43" target="_blank" rel="noopener noreferrer">issue #43</a>.</p>`
     }
   },
-  foot: { legal: 'Imprint & privacy', privacy: 'Privacy' },
+  foot: { legal: 'Imprint', privacy: 'Privacy' },
   folder: {
     // The distinction the code deliberately cannot make. Both are a
     // `FileSystemDirectoryHandle`, so the interface has to say which one this
@@ -230,6 +230,7 @@ export default {
     gap: `The dialog that lets a device in gates the syncing, and not the channel the bytes travel on: bitswap will hand a block to any connected peer that names its content address. Measured, not assumed, and open as <a href="https://github.com/Le-Space/ablage/issues/43" target="_blank" rel="noopener noreferrer">issue #43</a>.`,
     bytes: 'The file contents travel over bitswap on that same connection, addressed by their content hash. Only the list of paths and hashes is shared as a document; the bytes are never inside it.',
     music: 'When you show a code, a 1903 recording of Mozart starts playing. It is not decoration: a page playing audible audio is one a phone will not suspend, and sending the link means leaving this app. Silence would not do — a stream the browser judges inaudible stops counting as playback.',
+    awake: 'Keeping the screen awake holds a wake lock, which the browser grants only while this page is the one being looked at and drops the moment it is not - so coming back has to ask for it again. It does not cover somebody deliberately locking their phone, and it should not pretend to. The waiting music is the other half: a page playing audible audio is one a phone will not suspend when you leave for another app.',
     open: 'None of this is ours to be trusted about: it is libp2p, WebRTC and Helia, and the parts specific to this handshake are in the open at NiKrause/libp2p-webrtc-qr.'
   }
 }

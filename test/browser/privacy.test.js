@@ -169,3 +169,23 @@ test.describe('one world at a time, in the technical half too', () => {
     await expect(tech).toContainText(/do not hide a shared IP|verbergen keine gemeinsame IP/i)
   })
 })
+
+test('the two links in the footer do not both say privacy', async ({ page }) => {
+  // They did: the in-app chapter and the external page were both "Datenschutz".
+  // The chapter is in the app since #46, so the outward link is the imprint.
+  await page.goto('/?intro=off')
+
+  await expect(page.locator('#privacy-open')).toHaveText(/Privacy|Datenschutz/)
+  await expect(page.locator('a[href="https://le-space.de"].foot-link')).toHaveText(/Imprint|Impressum/)
+  await expect(page.locator('a[href="https://le-space.de"].foot-link')).not.toHaveText(/Privacy|Datenschutz/)
+})
+
+test('and the long form of the wake lock is in the technical half', async ({ page }) => {
+  await page.goto('/')
+  await page.waitForFunction(
+    () => document.getElementById('intro')?.shadowRoot?.querySelector('dialog')?.open === true,
+    undefined, { timeout: 60_000 })
+  await page.locator('#intro-view').click()
+
+  await expect(page.locator('#intro .intro-tech')).toContainText(/wake lock|Wake-Lock/i)
+})

@@ -7,7 +7,8 @@
 export default {
   page: {
     title: 'ablage',
-    lede: 'A folder that stays the same on two devices. No account, nothing in the middle.'
+    lede: 'A folder that stays the same on two devices. No account, nothing in the middle.',
+    ledeRelay: 'A folder that stays the same on two devices. No account — a relay helps the two find each other and cannot read what they send.'
   },
   compact: {
     label: 'Short code — one code instead of a sequence. Experimental.',
@@ -205,6 +206,7 @@ export default {
     layers: `Not doubly encrypted: libp2p picks one layer per connection. On WebRTC it passes skipEncryption and leaves Noise out, because DTLS already did the work — a connection reports its encryption as 'native' there and '/noise' over a relayed WebSocket. The TLS to the relay itself is a third, separate thing: it hides the traffic from the network between you and the relay, and the relay terminates it.`,
     gap: `The dialog that lets a device in gates the syncing, and not the channel the bytes travel on: bitswap will hand a block to any connected peer that names its content address. Measured, not assumed, and open as <a href="https://github.com/Le-Space/ablage/issues/43" target="_blank" rel="noopener noreferrer">issue #43</a>.`,
     bytes: 'The file contents travel over bitswap on that same connection, addressed by their content hash. Only the list of paths and hashes is shared as a document; the bytes are never inside it.',
+    identity: 'This device gets a new key pair on every start, so its peer id is different each time and the other device sees somebody it has never met — which is why it asks again. Named shares that keep an identity, one per share so two of them cannot be linked, are planned as issue #50. Note what that would not buy: different peer ids do not hide a shared IP address, and a relay sees both arriving from one place.',
     music: 'When you show a code, a 1903 recording of Mozart starts playing. It is not decoration: a page playing audible audio is one a phone will not suspend, and sending the link means leaving this app. Silence would not do — a stream the browser judges inaudible stops counting as playback.',
     open: 'None of this is ours to be trusted about: it is libp2p, WebRTC and Helia, and the parts specific to this handshake are in the open at NiKrause/libp2p-webrtc-qr.'
   }

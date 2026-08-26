@@ -132,7 +132,16 @@
           </div>
         </div>
       </header>
-      <p class="lede" data-i18n="page.lede">
+      <!--
+        Two ledes, one shown. "Nothing in between" is the whole promise of the
+        QR path and it stops being true the moment a relay is switched on -
+        there *is* something in between, and pretending otherwise in the first
+        sentence somebody reads is the kind of claim that makes the rest less
+        believable. Replaced rather than dropped: what is true of a relay here
+        is still worth saying out loud.
+      -->
+      <p class="lede" id="lede-relay" data-i18n="page.ledeRelay" hidden></p>
+      <p class="lede" id="lede-code" data-i18n="page.lede">
         A folder that stays the same on two devices. No account, nothing in the middle.
       </p>
 
@@ -662,8 +671,15 @@
         <div data-view="technical" class="intro-tech">
           <h3 data-i18n="how.heading"></h3>
           <ul>
-            <li data-i18n="how.dtls"></li>
-            <li data-i18n="how.signed"></li>
+            <!--
+              The same either-or the simple half got, and it was missing here:
+              with a relay switched on this list went on explaining what a
+              scanned code carries and which encrypter a QR connection uses,
+              neither of which is the connection somebody is about to make.
+            -->
+            <li class="how-code" data-i18n="how.dtls"></li>
+            <li class="how-code" data-i18n="how.signed"></li>
+            <li data-i18n="how.identity"></li>
             <!--
               The relay half, and the one thing people ask first about it. Here
               rather than only in the privacy dialog: somebody deciding whether
@@ -676,11 +692,11 @@
               the honest version of it needs three more sentences to stay
               honest.
             -->
-            <li data-i18n="how.relay"></li>
+            <li class="how-relay" hidden data-i18n="how.relay"></li>
             <li data-i18n="how.layers"></li>
             <li data-i18n="how.bytes"></li>
             <li data-i18n-html="how.gap"></li>
-            <li data-i18n="how.music"></li>
+            <li class="how-code" data-i18n="how.music"></li>
             <li data-i18n="how.open"></li>
           </ul>
         </div>

@@ -26,7 +26,7 @@ import { expect, test } from '@playwright/test'
  * file can compute its address and confirm it.
  */
 
-test.setTimeout(300_000)
+test.setTimeout(360_000)
 
 test('an unadmitted peer can read a file whose address it knows', async ({ page }) => {
   await page.goto('/harness.html')
@@ -38,7 +38,10 @@ test('an unadmitted peer can read a file whose address it knows', async ({ page 
     try {
       const cid = await pair.hold('only one side put this in its folder')
 
-      const until = Date.now() + 90_000
+      // The same patience `relay.test.js` allows. A shared runner reaching a
+      // relay on the public internet is slower than a laptop, and 90s was cut
+      // close enough that CI failed on the step *after* it.
+      const until = Date.now() + 150_000
       while (!pair.heardEachOther() && Date.now() < until) {
         await new Promise(resolve => setTimeout(resolve, 1000))
       }
@@ -47,7 +50,7 @@ test('an unadmitted peer can read a file whose address it knows', async ({ page 
       // is never asked and no dialog is ever shown.
       const dialled = await pair.connect()
 
-      return { cid, connection: dialled, ...await pair.readWithoutAsking(cid) }
+      return { cid, heard: pair.heardEachOther(), connection: dialled, ...await pair.readWithoutAsking(cid) }
     } finally {
       await pair.stop()
     }
@@ -57,7 +60,13 @@ test('an unadmitted peer can read a file whose address it knows', async ({ page 
   // measured and both leak: `/p2p-circuit/p2p/…` reporting `limited: true`
   // before the hole punch existed, and `/p2p-circuit/webrtc/p2p/…` reporting
   // `limited: false` after it. So this is older than DCUtR.
-  expect(out.connection.ok).toBe(true)
+  // Reported with the whole outcome attached: on a shared runner this is the
+  // step that fails, and "expected true, received false" says nothing about
+  // whether discovery worked, what addresses were known, or what the dial said.
+  // Named in order, so a red run says which step broke rather than only that
+  // something did.
+  expect(out.heard, JSON.stringify(out)).toBe(true)
+  expect(out.connection, JSON.stringify(out)).toMatchObject({ ok: true })
   expect(out.connection.address).toContain('/p2p-circuit')
 
   // Invert these two when bitswap is gated.

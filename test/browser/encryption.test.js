@@ -19,7 +19,7 @@ import { expect, test } from '@playwright/test'
  * file transfer from a list update.
  */
 
-test.setTimeout(300_000)
+test.setTimeout(360_000)
 
 test('a relayed connection is encrypted between the two devices', async ({ page }) => {
   await page.goto('/harness.html')
@@ -29,7 +29,10 @@ test('a relayed connection is encrypted between the two devices', async ({ page 
     const pair = await window.__ablage.bitswapAcrossTheRelay()
 
     try {
-      const until = Date.now() + 90_000
+      // The same patience `relay.test.js` allows. A shared runner reaching a
+      // relay on the public internet is slower than a laptop, and 90s was cut
+      // close enough that CI failed on the step *after* it.
+      const until = Date.now() + 150_000
       while (!pair.heardEachOther() && Date.now() < until) {
         await new Promise(resolve => setTimeout(resolve, 1000))
       }
@@ -40,7 +43,7 @@ test('a relayed connection is encrypted between the two devices', async ({ page 
     }
   })
 
-  expect(out.ok).toBe(true)
+  expect(out, JSON.stringify(out)).toMatchObject({ ok: true })
   expect(out.address).toContain('/p2p-circuit')
 
   // One of the two, and never neither. `none` would mean the relay is reading

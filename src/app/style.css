@@ -333,10 +333,20 @@ button.primary:hover:not(:disabled) { background: var(--ls-red-bright); border-c
 
 /* A peer id is not a name, and pretending otherwise would be worse. Shown as
    what it is: an address, in the font addresses belong in. */
+/*
+  Amber, not the faint grey it was. `--ls-text-faint` is for things somebody may
+  skip; a peer id is the opposite - it is what you read out to somebody, compare
+  against a row in the device list, or check in the admission dialog before
+  letting a stranger into a folder. At 0.75rem monospace in #5c677a it was
+  reported as simply hard to read.
+
+  The token already exists and already means this: amber is the palette's colour
+  for data.
+*/
 .peer-id {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 0.75rem;
-  color: var(--ls-text-faint);
+  font-size: 0.8rem;
+  color: var(--ls-amber);
   word-break: break-all;
   margin: 0 0 0.8rem;
 }

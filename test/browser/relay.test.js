@@ -131,3 +131,66 @@ test.describe('calling somebody met through a relay', () => {
     }
   })
 })
+
+/**
+ * *How* connected, not only that.
+ *
+ * The line said "changes travel directly between the two devices" for every
+ * connection there was. Over a relay that is not true - the bytes cross
+ * somebody else's machine, encrypted and unreadable to it, but through it - and
+ * claiming otherwise in the one sentence somebody reads about their connection
+ * makes the privacy chapter worth less.
+ *
+ * Against the real relay, because which of the two it turns out to be is a fact
+ * about the network rather than about this code.
+ */
+test.describe('saying which path the bytes take', () => {
+  test.setTimeout(300_000)
+
+  test('a relayed pair says relayed, and a direct one says direct', async () => {
+    const { chromium } = await import('@playwright/test')
+    const browser = await chromium.launch()
+
+    const device = async () => {
+      const context = await browser.newContext()
+      const page = await context.newPage()
+
+      await page.addInitScript(() => localStorage.setItem('ablage.relay', 'true'))
+      await page.goto('/?intro=off')
+      await expect(page.locator('#my-peer')).toHaveAttribute('title', /12D3Koo/, { timeout: 60_000 })
+
+      return { page, context, id: await page.locator('#my-peer').getAttribute('title') }
+    }
+
+    const a = await device()
+    const b = await device()
+
+    try {
+      const row = a.page.locator('#peer-list li', { hasText: b.id.slice(-10) })
+
+      await expect(row).toBeVisible({ timeout: 150_000 })
+      await row.getByRole('button').click()
+
+      await expect(b.page.locator('#admit-ask')).toBeVisible({ timeout: 90_000 })
+      await b.page.locator('#admit-yes').click()
+
+      // One of the two, never the old sentence that claimed the first while
+      // possibly meaning the second.
+      await expect(a.page.locator('#link-state')).toHaveClass(/is-(connected|relayed)/, { timeout: 60_000 })
+
+      const said = await a.page.locator('#link-state').innerText()
+      const green = await a.page.evaluate(() =>
+        document.getElementById('link-state').classList.contains('is-connected'))
+
+      // Green is reserved for direct. If it says green it must say "directly",
+      // and if it does not it must name the relay - the pairing is the claim.
+      expect(said, JSON.stringify({ green, said })).toMatch(
+        green ? /directly|Direkt/i : /relay|Relay/i
+      )
+    } finally {
+      await a.context.close()
+      await b.context.close()
+      await browser.close()
+    }
+  })
+})

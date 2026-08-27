@@ -298,6 +298,39 @@ function drawPeers (found, all = found, onRelay = false) {
   }))
 }
 
+/** Who this device is syncing with, so the line can be redrawn as paths change. */
+const syncing = new Set()
+
+/**
+ * Say *how* connected, not only that.
+ *
+ * The line read "changes travel directly between the two devices" for every
+ * connection there was. Over a relay that is not true: the bytes cross somebody
+ * else's machine - encrypted, and unreadable to it, but through it. Claiming
+ * otherwise in the one sentence somebody reads about their connection makes the
+ * privacy chapter worth less.
+ *
+ * Redrawn rather than written once. A hole punch arrives *after* the connection
+ * does, so a line set at attach time stays wrong for the rest of the session.
+ *
+ * `onlyIfOurs` is the guard that matters. This shares one line with every other
+ * message the app has, and it is called from a peer event - without it, an
+ * unrelated device appearing on the relay would wipe "Taking the contents
+ * once…" off the screen mid-answer.
+ */
+function sayHowConnected ({ onlyIfOurs = false } = {}) {
+  const kinds = [...syncing].map(id => peer?.connectionKind(id)).filter(Boolean)
+
+  if (kinds.length === 0) return
+  if (onlyIfOurs && !/is-(connected|relayed)/.test(stateEl.className)) return
+
+  // Direct if *any* of them is: this line is about what this device managed,
+  // and one direct peer is a different sentence from none.
+  const direct = kinds.includes('direct')
+
+  setState(t(direct ? 'link.connected' : 'link.connectedRelayed'), direct ? 'connected' : 'relayed')
+}
+
 /**
  * Ask a device out there whether it will share this folder.
  *
@@ -828,6 +861,7 @@ function attach (stream, peerId) {
   // only way to rebuild would be to drop the connection and hand somebody a QR
   // code again.
   peers.add(peerId, provider, send)
+  syncing.add(peerId)
 
   // **Both sides ask, and that is the whole of this fix.**
   //
@@ -844,7 +878,7 @@ function attach (stream, peerId) {
   // the two that did not were the bug.
   provider.requestSync()
 
-  setState(t('link.connected'), 'connected')
+  sayHowConnected()
 
   // Both sides pass through here, which is why it belongs here rather than in
   // either handler. The scanning side closes its own box the moment it scans;
@@ -877,6 +911,7 @@ function attach (stream, peerId) {
       if (message.type === 'sync-refused') {
         setState(t('peers.refused', { id: shortId(peerId) }), 'idle')
         letGo.add(peerId)
+        syncing.delete(peerId)
         peers.drop(peerId)
         return
       }
@@ -891,6 +926,8 @@ function attach (stream, peerId) {
       // Only this peer's, and only if it is still the current one - a
       // reconnection may have put a newer provider under the same key while
       // this loop was ending.
+      syncing.delete(peerId)
+      syncing.delete(peerId)
       peers.dropIfCurrent(peerId, provider)
 
       // The others are still there; saying "gone" while two peers remain would
@@ -968,7 +1005,12 @@ async function start () {
   showMyPeer()
   myPeerEl.hidden = false
 
-  peer.watchPeers(showPeers)
+  peer.watchPeers(found => {
+    showPeers(found)
+    // A hole punch arrives as a second connection to a peer already known,
+    // which is the moment the line below stops being wrong.
+    sayHowConnected({ onlyIfOurs: true })
+  })
 
   // Redrawn as they type, from the list already held - a filter that waited for
   // the next discovery event would feel broken for five seconds at a time.
@@ -1388,6 +1430,7 @@ function toldAboutSwitch (peerId, message) {
     // the connection: a dropped connection would read as a fault rather than
     // as an answer.
     letGo.add(peerId)
+    syncing.delete(peerId)
     peers.drop(peerId)
     setState(t('switched.kept'), 'idle')
   }
@@ -1448,6 +1491,7 @@ function toldAboutSwitch (peerId, message) {
     // Dropped, not disconnected: the copying is finished, the acquaintance is
     // not. `drop` leaves the connection and stops describing this folder.
     letGo.add(peerId)
+    syncing.delete(peerId)
     peers.drop(peerId)
     setState(t('switched.took', { count }), 'idle')
   }

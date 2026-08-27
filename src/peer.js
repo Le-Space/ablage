@@ -284,6 +284,32 @@ export async function createPeer ({
      * hear each other long before either dials, and asking is what connects
      * them in the first place.
      */
+    /**
+     * Direct, or through the relay.
+     *
+     * **`limits`, not the address.** After a hole punch the address still reads
+     * `/…/p2p-circuit/webrtc/p2p/…` - the circuit carried the signalling and
+     * nothing else - so anything looking for `/p2p-circuit` in the string calls
+     * a direct connection relayed. Measured, both ways:
+     *
+     *     /…/p2p-circuit/p2p/…          limited: true    bytes cross the relay
+     *     /…/p2p-circuit/webrtc/p2p/…   limited: false   bytes go straight over
+     *
+     * libp2p marks a circuit connection *limited* because it is metered - 10
+     * GiB and twenty minutes on this one - and that flag is exactly the
+     * question being asked here.
+     *
+     * @returns {'direct' | 'relayed' | null} null when there is no connection
+     */
+    connectionKind (peerId) {
+      const held = node.getConnections().filter(c => c.remotePeer.toString() === String(peerId))
+
+      if (held.length === 0) return null
+
+      // Any unlimited connection is the one the bytes will take.
+      return held.some(c => c.limits == null) ? 'direct' : 'relayed'
+    },
+
     watchPeers: onChange => {
       const seen = new Map()
       /** @type {Map<string, boolean>} peer id -> does it offer the sync protocol */

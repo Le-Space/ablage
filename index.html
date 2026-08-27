@@ -153,8 +153,18 @@
         screen is one people get wrong. One line, not a card: naming what you
         are looking at should not cost as much room as the thing itself.
       -->
+      <!--
+        The name appears when there is something to tell apart.
+        **With one share it says nothing.** "Share: This folder" above the only
+        folder there is names a concept somebody does not have yet, on the
+        densest screen in the app - and a label that carries no information is
+        the kind of thing that makes the rest look like it might not either.
+
+        The way in stays, because without it a second share can never be made.
+        It is the button, quietly, on its own.
+      -->
       <section class="card share-bar">
-        <div class="share-now">
+        <div id="share-now" class="share-now" hidden>
           <span class="share-label" data-i18n="shares.label">Share</span>
           <strong id="share-name"></strong>
         </div>

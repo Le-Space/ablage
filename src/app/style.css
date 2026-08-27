@@ -515,7 +515,20 @@ button.primary:hover:not(:disabled) { background: var(--ls-red-bright); border-c
   display: flex; align-items: center; justify-content: space-between;
   gap: 1rem; padding: 0.7rem 1rem;
 }
+/*
+  Alone, it is not a card. A card frame around a single button is still a card -
+  it takes the same room on the first screen and says the same "here is a
+  section" as the two that actually are one.
+*/
+.share-bar:has(.share-now[hidden]) {
+  justify-content: flex-start;
+  background: none; border: none; box-shadow: none;
+  padding: 0; margin-bottom: 0.6rem;
+}
 .share-now { display: flex; align-items: baseline; gap: 0.5rem; min-width: 0; }
+/* A set `display` beats the browser's own `[hidden] { display: none }`, so
+   hiding this from JavaScript did nothing until this line existed. */
+.share-now[hidden] { display: none; }
 .share-label {
   color: var(--ls-text-faint); font-size: 0.75rem;
   letter-spacing: 0.08em; text-transform: uppercase;

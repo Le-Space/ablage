@@ -12,7 +12,9 @@ import { expect, test } from '@playwright/test'
 
 const open = async page => {
   await page.goto('/?intro=off')
-  await expect(page.locator('#share-name')).not.toBeEmpty({ timeout: 60_000 })
+  // The button, not the name: with one share there is no name on screen.
+  await expect(page.locator('#shares-open')).toBeVisible({ timeout: 60_000 })
+  await expect(page.locator('#share-name')).not.toBeEmpty()
 }
 
 /**
@@ -29,9 +31,25 @@ const mine = async page => {
   return page.locator('#my-peer').getAttribute('title')
 }
 
-test('the open share is named above everything it decides', async ({ page }) => {
+test('with one share there is no name on screen, only a way in', async ({ page }) => {
+  // "Share: This folder" above the only folder there is names a concept
+  // somebody does not have yet, on the densest screen in the app. The button
+  // stays, because without it a second share could never be made.
   await open(page)
 
+  await expect(page.locator('#share-now')).toBeHidden()
+  await expect(page.locator('#shares-open')).toBeVisible()
+})
+
+test('and the name appears as soon as there is something to tell apart', async ({ page }) => {
+  await open(page)
+
+  await page.locator('#shares-open').click()
+  await page.locator('#share-new-name').fill('Photos')
+  await page.locator('#share-new').getByRole('button').click()
+  await page.locator('#shares-close').click()
+
+  await expect(page.locator('#share-now')).toBeVisible()
   await expect(page.locator('#share-name')).toHaveText(/This folder|Dieser Ordner/)
 })
 

@@ -1676,6 +1676,12 @@ function showShares () {
   shareNameEl.textContent = named(book.current())
   shareNameEl.title = named(book.current())
 
+  // Shown once there is a second one. The element keeps its text either way -
+  // the admission dialog and the shares dialog both read from the same place,
+  // and a name that is only computed when it is visible is a name that is wrong
+  // the moment somebody opens the dialog.
+  $('share-now').hidden = book.all().filter(entry => !entry.oneOff).length < 2
+
   shareListEl.replaceChildren(...book.all().map(entry => {
     const li = document.createElement('li')
     const name = document.createElement('strong')

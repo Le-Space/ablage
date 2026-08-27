@@ -94,6 +94,19 @@ button.primary:hover:not(:disabled) { background: var(--ls-red-bright); border-c
 
 .modal { border: 1px solid var(--ls-card-border); border-radius: var(--ls-radius); background: var(--ls-bg-2); color: var(--ls-text); max-width: 26rem; }
 .modal::backdrop { background: rgba(0, 0, 0, 0.6); }
+
+/*
+  **The page must not scroll behind a dialog.** A `<dialog>` opened with
+  `showModal()` takes the keyboard and blocks clicks, and then lets the page
+  underneath scroll away as soon as a thumb touches the backdrop - so the thing
+  being answered slides off while the answer is still open. Seen on a Fold,
+  where there is enough page under the dialog for it to be obvious.
+
+  `:has` rather than a class toggled from JavaScript: the state is *a dialog is
+  open*, and reading it from the document is one fewer thing to keep in step.
+*/
+html:has(dialog[open]) { overflow: hidden; }
+
 .modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; }
 .close { border: 0; font-size: 1.3rem; line-height: 1; padding: 0 0.3rem; }
 
@@ -236,6 +249,8 @@ button.primary:hover:not(:disabled) { background: var(--ls-red-bright); border-c
    thing: one choice, and a sentence saying what it costs. */
 /* Reference text, so it is allowed to be taller than a question box - and it
    scrolls rather than growing past the screen on a phone. */
+/* Reference text, so it is allowed to be wider - and it scrolls inside itself
+   rather than growing past the screen. */
 .privacy { max-width: 44rem; max-height: 82vh; overflow-y: auto; }
 .privacy details { border-top: 1px solid var(--ls-line, rgba(255,255,255,0.1)); padding: 0.7rem 0; }
 .privacy details:last-of-type { border-bottom: 1px solid var(--ls-line, rgba(255,255,255,0.1)); }
@@ -535,6 +550,8 @@ button.primary:hover:not(:disabled) { background: var(--ls-red-bright); border-c
 }
 .share-now strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+/* Wider than a question, because every row carries a name, a description and
+   up to three controls. */
 .shares { max-width: 34rem; }
 .share-list { list-style: none; margin: 0.8rem 0; padding: 0; }
 /*

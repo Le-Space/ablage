@@ -251,3 +251,33 @@ test.describe('narrow enough to fold', () => {
       .getByRole('button', { name: /Open now|Jetzt öffnen/ })).toBeVisible()
   })
 })
+
+test('the page does not scroll away behind an open dialog', async ({ page }) => {
+  // A modal `<dialog>` takes the keyboard and blocks clicks, and then lets the
+  // page underneath scroll as soon as a thumb touches the backdrop - so the
+  // thing being answered slides off while the answer is still open. Obvious on
+  // a Fold, where there is enough page under the dialog to notice.
+  await page.setViewportSize({ width: 717, height: 700 })
+  await page.goto('/?intro=off')
+  await expect(page.locator('#shares-open')).toBeVisible({ timeout: 60_000 })
+
+  // Something to scroll: without it this passes on a page that is short.
+  await page.setInputFiles('#pick', Array.from({ length: 12 }, (_, i) => ({
+    name: `datei-${i}.txt`,
+    mimeType: 'text/plain',
+    buffer: Buffer.from(`${i}`)
+  })))
+  await expect(page.locator('.tree')).toContainText('datei-11.txt')
+  expect(await page.evaluate(() => document.documentElement.scrollHeight > innerHeight)).toBe(true)
+
+  await page.locator('#shares-open').click()
+  await page.mouse.wheel(0, 800)
+  await page.waitForTimeout(300)
+
+  expect(await page.evaluate(() => window.scrollY)).toBe(0)
+
+  // And it scrolls again afterwards, rather than being left locked.
+  await page.locator('#shares-close').click()
+  await page.mouse.wheel(0, 800)
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0)
+})

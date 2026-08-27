@@ -186,3 +186,68 @@ test('a share opens its own folder, not the last one', async ({ page }) => {
   await expect(page.locator('.tree')).toContainText('erste.txt')
   await expect(page.locator('.tree')).not.toContainText('zweite.txt')
 })
+
+/**
+ * A folded phone, which is where this broke.
+ *
+ * Three buttons pinned beside a name column ran off the right of the dialog on
+ * a Fold 5 while the name broke across three lines. Reported with a screenshot,
+ * and the fix is that the row wraps rather than that the words got shorter.
+ */
+test.describe('narrow enough to fold', () => {
+  const withTwo = async page => {
+    await page.addInitScript(() => {
+      localStorage.setItem('ablage.shares', JSON.stringify({
+        entries: [{ id: 'default', name: null }, { id: 'r2', name: 'Sophie' }], current: 'r2'
+      }))
+    })
+    await page.goto('/?intro=off')
+    await expect(page.locator('#shares-open')).toBeVisible({ timeout: 60_000 })
+    await page.locator('#shares-open').click()
+  }
+
+  for (const width of [344, 390, 717]) {
+    test(`nothing runs out of the dialog at ${width}px`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 800 })
+      await withTwo(page)
+
+      const over = await page.evaluate(() => {
+        const box = document.getElementById('shares').getBoundingClientRect()
+
+        return [...document.querySelectorAll('#share-list button, #share-new button, #share-new input')]
+          .filter(el => el.getBoundingClientRect().right > box.right + 1)
+          .map(el => el.getAttribute('aria-label') ?? (el.textContent.trim() || el.id))
+      })
+
+      expect(over, `bei ${width}px`).toEqual([])
+    })
+  }
+
+  test('the icon buttons are big enough for a thumb, and still say what they are', async ({ page }) => {
+    // 44px is the smallest thing a thumb hits reliably. An icon button that
+    // saves room by being small has moved the problem rather than solved it -
+    // and one with no accessible name is a button nobody can ask about.
+    await page.setViewportSize({ width: 344, height: 800 })
+    await withTwo(page)
+
+    const icons = page.locator('#share-list .icon-button')
+
+    expect(await icons.count()).toBeGreaterThan(1)
+
+    for (let i = 0; i < await icons.count(); i++) {
+      const box = await icons.nth(i).boundingBox()
+
+      expect(box.width).toBeGreaterThanOrEqual(44)
+      expect(box.height).toBeGreaterThanOrEqual(44)
+      await expect(icons.nth(i)).toHaveAttribute('aria-label', /Rename|Umbenennen|Remove|Entfernen/)
+    }
+  })
+
+  test('and "open" stays a word, because no picture means it', async ({ page }) => {
+    await page.setViewportSize({ width: 344, height: 800 })
+    await withTwo(page)
+
+    await expect(page.locator('.share', { hasText: /This folder|Dieser Ordner/ })
+      .getByRole('button', { name: /Open now|Jetzt öffnen/ })).toBeVisible()
+  })
+})

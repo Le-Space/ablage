@@ -537,17 +537,44 @@ button.primary:hover:not(:disabled) { background: var(--ls-red-bright); border-c
 
 .shares { max-width: 34rem; }
 .share-list { list-style: none; margin: 0.8rem 0; padding: 0; }
+/*
+  **Wrapping, not one fixed row.** Three buttons pinned beside a name column
+  overflowed a folded phone: the actions ran off the right of the dialog while
+  the name broke across three lines. Reported on a Fold 5, and the same shape
+  on any narrow screen.
+
+  `auto-fit` with a minimum lets the actions sit beside the name where there is
+  room and drop underneath where there is not, without a breakpoint guessing
+  which is which.
+*/
 .share {
-  display: grid; grid-template-columns: 1fr auto; gap: 0.2rem 1rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(11rem, 100%), 1fr));
+  gap: 0.4rem 1rem;
   align-items: center; padding: 0.7rem 0;
   border-top: 1px solid var(--ls-line, rgba(255, 255, 255, 0.1));
 }
+/* The name over its own line, not run together with it: they were two grid
+   rows before, and putting them in one column made them one line. */
+.share-who { min-width: 0; display: grid; gap: 0.15rem; align-content: center; }
 .share:last-child { border-bottom: 1px solid var(--ls-line, rgba(255, 255, 255, 0.1)); }
 /* The open one is marked rather than hidden: it is the row people look for
    first, and a list that omits it makes them count. */
 .share.open strong { color: var(--ls-accent); }
-.share-about { grid-column: 1; color: var(--ls-text-dim); font-size: 0.85rem; }
-.share-actions { grid-column: 2; grid-row: 1 / span 2; display: flex; gap: 0.4rem; }
+.share-about { color: var(--ls-text-dim); font-size: 0.85rem; }
+.share-actions { display: flex; gap: 0.4rem; align-items: center; justify-content: flex-end; }
+
+/*
+  44px, which is the smallest thing a thumb hits reliably. An icon button that
+  saves room by being small has moved the problem rather than solved it.
+*/
+.icon-button {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 2.75rem; height: 2.75rem; padding: 0; flex: none;
+  color: var(--ls-text-dim);
+}
+.icon-button svg { width: 1.25rem; height: 1.25rem; }
+.icon-button:hover, .icon-button:focus-visible { color: var(--ls-text); }
 .share-new { display: flex; gap: 0.5rem; margin-top: 0.9rem; }
 .share-new input { flex: 1; min-width: 0; }
 .share-open { border-color: var(--ls-accent); color: var(--ls-accent); }

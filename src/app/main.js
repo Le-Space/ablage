@@ -22,7 +22,7 @@ import { openStorage } from '../storage/index.js'
 import { createKeepAlive, createWakeLock } from '@le-space/libp2p-webrtc-qr'
 import { createIntroPolicy } from '@le-space/libp2p-webrtc-qr/elements'
 import { elementStrings, initialLocale, locale, setLocale, t, translateDocument } from './i18n.js'
-import { fileIcon, folderIcon, mark } from './icons.js'
+import { binIcon, fileIcon, folderIcon, mark, pencilIcon } from './icons.js'
 import { looksLikeImage, looksLikeMedia, looksLikeVideo, previews } from './previews.js'
 import { tree } from './tree.js'
 import { applyMusicChoice, musicWanted } from './music.js'
@@ -1727,14 +1727,24 @@ function showShares () {
     // would be two controls that quietly do nothing, which is worse than two
     // that are not there.
     if (entry.oneOff) {
-      li.append(name, about, actions)
+      const only = document.createElement('div')
+
+      only.className = 'share-who'
+      only.append(name, about)
+      li.append(only, actions)
       return li
     }
 
+    // A picture, with the word still attached where it counts: `aria-label`
+    // for a screen reader, `title` for a pointer that hovers. An icon button
+    // with no name is a button nobody can ask about.
     const rename = document.createElement('button')
 
     rename.type = 'button'
-    rename.textContent = t('shares.rename')
+    rename.className = 'icon-button'
+    rename.innerHTML = pencilIcon()
+    rename.title = t('shares.rename')
+    rename.setAttribute('aria-label', t('shares.rename'))
     rename.addEventListener('click', () => {
       const asked = globalThis.prompt(t('shares.namePlaceholder'), entry.name ?? '')
 
@@ -1750,7 +1760,10 @@ function showShares () {
       const remove = document.createElement('button')
 
       remove.type = 'button'
-      remove.textContent = t('shares.remove')
+      remove.className = 'icon-button'
+      remove.innerHTML = binIcon()
+      remove.title = t('shares.remove')
+      remove.setAttribute('aria-label', t('shares.remove'))
       remove.addEventListener('click', () => {
         book.remove(entry.id)
         // Said out loud, because "remove" beside a folder reads like a
@@ -1762,7 +1775,11 @@ function showShares () {
       actions.append(remove)
     }
 
-    li.append(name, about, actions)
+    const who = document.createElement('div')
+
+    who.className = 'share-who'
+    who.append(name, about)
+    li.append(who, actions)
     return li
   }))
 }

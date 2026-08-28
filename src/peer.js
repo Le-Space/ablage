@@ -5,7 +5,8 @@ import { pubsubPeerDiscovery } from '@libp2p/pubsub-peer-discovery'
 import { bootstrap } from '@libp2p/bootstrap'
 import { circuitRelayTransport } from '@libp2p/circuit-relay-v2'
 import { dcutr } from '@libp2p/dcutr'
-import { identify } from '@libp2p/identify'
+import { identify, identifyPush } from '@libp2p/identify'
+import { ping } from '@libp2p/ping'
 import { webRTC } from '@libp2p/webrtc'
 import { webSockets } from '@libp2p/websockets'
 import { decodePayload, QRSession, QR_TYPE_OFFER, webRTCQR } from '@le-space/libp2p-webrtc-qr'
@@ -153,7 +154,11 @@ export async function createPeer ({
       // connect directly here; if they cannot, the circuit carries them and
       // nothing above this line notices the difference.
       webRTC(),
-      circuitRelayTransport(),
+      // Twenty seconds rather than the default. A reservation is a round trip
+      // to a machine on the public internet, and a phone on mobile data is
+      // slower at it than a laptop on a desk - which is the case this app is
+      // for.
+      circuitRelayTransport({ reservationCompletionTimeout: 20_000 }),
       webSockets()
     ],
     // Neither is used by the QR transport, and without them nothing else can
@@ -193,6 +198,33 @@ export async function createPeer ({
 
     services: {
       identify: identify(),
+
+      /**
+       * **Tell peers when this device's addresses change.**
+       *
+       * A browser has no addresses at all until the relay reservation
+       * completes - and that happens *after* it has already connected to
+       * whoever was there. Without this, those peers go on knowing the node
+       * only by what identify said at the time: nothing worth dialling.
+       *
+       * `sync-dial.js` now picks a `/webrtc` address out of what it knows about
+       * a peer, and this is what makes such an address arrive at all. The two
+       * belong together; either alone does much less.
+       *
+       * libp2p's own `webrtc-private-to-private` example carries it, and so
+       * does simple-todo. This app was the one without it.
+       */
+      identifyPush: identifyPush(),
+
+      /**
+       * Liveness, and it is not decoration here.
+       *
+       * A circuit is metered - twenty minutes on this relay - and a connection
+       * that has quietly expired looks exactly like one that is idle. Ping is
+       * what tells them apart, and it is what the example and simple-todo both
+       * use.
+       */
+      ping: ping(),
 
       /**
        * `runOnLimitedConnection` is the line that decides whether any of this

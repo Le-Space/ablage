@@ -41,7 +41,14 @@ jobs:
       # fails with an executable-not-found that reads like a broken container.
       # The step below turns that into a sentence.
       image: mcr.microsoft.com/playwright:v1.62.1-noble
-    timeout-minutes: 20
+    # 436 tests, and a runner is slower than a laptop that does them in nine
+    # minutes. The last cancellation was not a hang: seven relay tests, each
+    # waiting out a 150s timeout and then retried twice, spent 1056 of the 1200
+    # seconds and the run was killed at test 121 having reported nothing.
+    #
+    # Those retries are off now (see the specs). This is the headroom for the
+    # suite having grown, not for that.
+    timeout-minutes: 30
     env:
       # Firefox refuses to start when $HOME is not owned by the current user,
       # which is the case for the default HOME inside this container. Playwright

@@ -26,6 +26,19 @@ import { expect, test } from '@playwright/test'
  * file can compute its address and confirm it.
  */
 
+/**
+ * **No retries here, and that is a cost decision.**
+ *
+ * Retries are for flaky tests. This one's failure mode is not flakiness - it is
+ * waiting out a discovery timeout, which takes 150 seconds and then fails for
+ * the same reason it failed the first time. In CI that turned one red test into
+ * 513 seconds, and seven of them ate 1056 of the job's 1200-second budget: the
+ * run was cancelled at test 121 of 436, having reported nothing at all.
+ *
+ * Fast when it passes, cheap when it does not.
+ */
+test.describe.configure({ retries: 0 })
+
 test.setTimeout(360_000)
 
 test('an unadmitted peer can read a file whose address it knows', async ({ page }) => {

@@ -188,6 +188,8 @@ export default {
     refused: ({ id }) => `${id} hat nicht angenommen`
   },
   relay: {
+    lookingAgain: 'Das eingebaute Relay hat nicht geantwortet — suche ein anderes…',
+    noneFound: 'Kein Relay hat geantwortet. Geräte finden einander weiterhin über einen gescannten Code.',
     onNextStart: 'Ein Relay wird beim nächsten Öffnen dieser Seite benutzt — die Verbindungseinstellungen stehen fest, sobald die App startet.',
     off: 'Kein Relay. Dieses Gerät ist nur erreichbar, wenn jemand seinen Code scannt.'
   },

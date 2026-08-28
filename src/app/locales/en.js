@@ -190,6 +190,8 @@ export default {
     refused: ({ id }) => `${id} did not accept`
   },
   relay: {
+    lookingAgain: 'The relay this build knows did not answer — looking for another one…',
+    noneFound: 'No relay answered. Devices can still find each other by scanning a code.',
     onNextStart: 'A relay will be used the next time this page is opened — the connection settings are fixed when the app starts.',
     off: 'No relay. This device can only be reached by somebody scanning its code.'
   },

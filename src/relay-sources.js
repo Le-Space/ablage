@@ -30,13 +30,21 @@
  */
 
 const BAKED = [
-  // Found through the channel below on 2026-08-22 and verified by hand:
-  // certificate `CN` matched, `Verify return code: 0`, and the port answered.
-  // A 400 to a plain GET is what a libp2p wss listener says to a browser asking
-  // for a web page - it is the sound of a relay that is up, not of one that is
-  // broken.
-  '/dns4/improve-empty-grass-tent.2n6.me/tcp/443/tls/ws/p2p/12D3KooWL9UKRwGWE6GGxANhDZpJNyDphQcfBSApuXE1qTW5pkVh',
-  '/dns6/improve-empty-grass-tent.2n6.me/tcp/443/tls/ws/p2p/12D3KooWL9UKRwGWE6GGxANhDZpJNyDphQcfBSApuXE1qTW5pkVh'
+  // Read from the relay's own `/multiaddrs` on 2026-08-28 rather than written
+  // by hand, and verified: `Verify return code: 0` on the name below, and
+  // `/health` reporting this peer id.
+  //
+  // **What the name it replaced teaches.** `improve-empty-grass-tent.2n6.me`
+  // resolved, and TCP 443 answered, and TLS never completed - because that name
+  // and this one point at *the same address*, and only one of them still has a
+  // certificate there. A dead 2n6 route looks exactly like a live machine until
+  // the handshake, which is why "the relay is down" was the wrong diagnosis for
+  // most of a day.
+  //
+  // The lesson is not the address. It is that one baked name is a single point
+  // of failure that fails silently - see `discoverRelays` below, and #53.
+  '/dns4/mosquito-sadness-before-search.2n6.me/tcp/443/tls/ws/p2p/12D3KooWNsf7FvEmh4Z89Ty4mk4xZgUWaqUiqjsznnyn5CwKfaKB',
+  '/dns6/mosquito-sadness-before-search.2n6.me/tcp/443/tls/ws/p2p/12D3KooWNsf7FvEmh4Z89Ty4mk4xZgUWaqUiqjsznnyn5CwKfaKB'
 ]
 
 /** The production registration, not the test rigs that share its profile. */

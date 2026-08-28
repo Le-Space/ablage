@@ -12,7 +12,7 @@ import { expect, test } from '@playwright/test'
  * is the point - a mock would have passed all along.
  */
 
-const RELAY = '/dns4/improve-empty-grass-tent.2n6.me/tcp/443/tls/ws/p2p/12D3KooWL9UKRwGWE6GGxANhDZpJNyDphQcfBSApuXE1qTW5pkVh'
+const RELAY = '/dns4/mosquito-sadness-before-search.2n6.me/tcp/443/tls/ws/p2p/12D3KooWNsf7FvEmh4Z89Ty4mk4xZgUWaqUiqjsznnyn5CwKfaKB'
 
 const harness = async page => {
   await page.goto('/harness.html')

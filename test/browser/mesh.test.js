@@ -591,3 +591,72 @@ test.describe('an empty list says which empty', () => {
     await expect(page.locator('#peers-empty')).toContainText(/nobody else is here|sonst ist noch niemand da/i)
   })
 })
+
+test('a device row does not say the same word as the connection line', async ({ page }) => {
+  /**
+   * They both said "connected", on one card, meaning two different things: the
+   * line above is whether a folder is syncing, the row below is whether libp2p
+   * has a connection to that peer at all. Somebody who built this read the grey
+   * row and asked why it was not green.
+   *
+   * "Connected" belongs to the line that is green or amber. A row says whether
+   * this device could be asked, which is what the button beside it does.
+   */
+  await page.goto('/?intro=off')
+  await page.evaluate(() => localStorage.setItem('ablage.relay', 'true'))
+  await page.reload()
+  await expect(page.locator('#by-relay')).toBeVisible({ timeout: 60_000 })
+
+  await page.evaluate(() => window.__showPeersForTest([
+    { peerId: '12D3KooWaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaXVKSiRV7BA', state: 'connected', speaks: true },
+    { peerId: '12D3KooWbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbYhaNGLHJ5A', state: 'heard', speaks: null }
+  ]))
+
+  const rows = (await page.locator('#peer-list li').allInnerTexts()).join(' ')
+
+  expect(rows).toMatch(/reachable|erreichbar/i)
+  expect(rows).toMatch(/found on the relay|über das Relay gefunden/i)
+  // The word the state line owns.
+  expect(rows).not.toMatch(/\bconnected\b|\bverbunden\b/i)
+})
+
+/**
+ * Whether anybody can call this device.
+ *
+ * Connected to a relay and reachable through one are different things, and
+ * between them sits a window in which everything looks connected and nobody can
+ * call you. From the other side that window reads *the dial request has no
+ * valid addresses for peer …*; from this side it read as nothing at all.
+ */
+test.describe('saying whether this device can be reached', () => {
+  test('without a relay there is nothing to say', async ({ page }) => {
+    // A device reached by scanning a code has no address of this kind and does
+    // not need one.
+    await page.goto('/?intro=off')
+    await expect(page.locator('#by-code')).toBeVisible({ timeout: 60_000 })
+
+    await expect(page.locator('#reachable')).toBeHidden()
+  })
+
+  test('with a relay it says which of the two it is', async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem('ablage.relay', 'true'))
+    await page.goto('/?intro=off')
+    await expect(page.locator('#reachable')).toBeVisible({ timeout: 60_000 })
+
+    // One of the two, never blank - "nothing shown" is the state this replaces.
+    await expect(page.locator('#reachable')).toHaveClass(/is-(reachable|waiting)/)
+    await expect(page.locator('#reachable')).not.toBeEmpty()
+
+    const said = await page.locator('#reachable').innerText()
+    const reserved = await page.evaluate(() =>
+      document.getElementById('reachable').classList.contains('is-reachable'))
+
+    // The pairing is the claim: green must mean the relay accepts calls, amber
+    // must say there is no address yet - and *only* that. The first version of
+    // this line said "a relay answered", which is a claim about the relay that
+    // was false the very afternoon it was written, with the relay hung.
+    expect(said, JSON.stringify({ reserved, said })).toMatch(
+      reserved ? /accepts calls|nimmt Anrufe/i : /no address|keine Adresse/i
+    )
+  })
+})

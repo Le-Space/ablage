@@ -595,3 +595,24 @@ html:has(dialog[open]) { overflow: hidden; }
 .share-new { display: flex; gap: 0.5rem; margin-top: 0.9rem; }
 .share-new input { flex: 1; min-width: 0; }
 .share-open { border-color: var(--ls-accent); color: var(--ls-accent); }
+
+/* ---------- the introduction's own progress ---------- */
+
+.intro-progress { display: inline-flex; align-items: center; gap: 0.5rem; color: var(--ls-text-dim); font-size: 0.9rem; }
+.intro-progress[hidden] { display: none; }
+.spinner {
+  width: 0.9rem; height: 0.9rem; flex: none;
+  border: 2px solid var(--ls-card-border); border-top-color: var(--ls-accent);
+  border-radius: 50%; animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+/* Somebody who asked for less motion gets a mark that does not turn. */
+@media (prefers-reduced-motion: reduce) { .spinner { animation: none; border-top-color: var(--ls-accent); } }
+
+/* Whether anybody can call this device. Green once the relay has agreed to
+   take calls for it, amber while it has only answered - the same two colours
+   the connection line uses, meaning the same two things. */
+.reachable { font-size: 0.85rem; margin: 0 0 0.8rem; }
+.reachable[hidden] { display: none; }
+.reachable.is-reachable { color: var(--ls-green); }
+.reachable.is-waiting { color: var(--ls-amber); }

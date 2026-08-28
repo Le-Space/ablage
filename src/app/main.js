@@ -72,6 +72,7 @@ const viewModeEl = $('view-mode')
 const compactEl = $('compact-payload')
 const introViewEl = $('intro-view')
 const awakeEl = $('awake')
+const reachableEl = $('reachable')
 const shareNameEl = $('share-name')
 const sharesEl = $('shares')
 const shareListEl = $('share-list')
@@ -402,6 +403,31 @@ async function callDirectly (text) {
  * `language.test.js` checks that kind of text separately. Called from
  * `applyLocale`, so a switch reaches it too.
  */
+/**
+ * Whether this device can be called, and by how many roads.
+ *
+ * The reservation is the thing being reported, not the connection. A relay
+ * answering is one step; agreeing to take calls on this device's behalf is the
+ * next, and only the second produces a `/p2p-circuit` address for anybody to
+ * dial. Somebody watching a peer list fill up while nothing works is looking at
+ * the gap between them.
+ */
+function showReachable () {
+  const addresses = peer?.relayAddresses() ?? []
+  const wanted = readRelayOptIn(localStore, RELAY_OPT_IN_KEY)
+
+  // Nothing to say without a relay: a device reached by scanning a code has no
+  // address of this kind and does not need one.
+  reachableEl.hidden = !wanted
+
+  if (!wanted) return
+
+  reachableEl.textContent = addresses.length > 0
+    ? t('link.reachable', { count: addresses.length })
+    : t('link.notReachable')
+  reachableEl.className = addresses.length > 0 ? 'reachable is-reachable' : 'reachable is-waiting'
+}
+
 function showMyPeer () {
   if (peer == null) return
 
@@ -610,12 +636,39 @@ const SWIPE_MAX_SLOPE = 0.6
 let dragFrom = null
 let swiped = false
 
+/**
+ * How tall a browser's own video controls are, near enough.
+ *
+ * There is no way to ask. They live in a closed shadow root, so every pointer
+ * event on them arrives with the `<video>` itself as its target - which is why
+ * this is a region and not a selector.
+ *
+ * Chrome draws them around 40px; 56 leaves room and matches the smallest touch
+ * target worth aiming at. Erring high costs a strip of the picture that cannot
+ * start a swipe; erring low costs somebody the ability to seek.
+ */
+const VIDEO_CONTROLS = 56
+
 previewEl.addEventListener('pointerdown', event => {
-  // Not the controls. Dragging a video's scrubber is a drag and it is not this
-  // one - without this, seeking through a video turns the page instead.
-  // `closest` rather than a tag test, because the controls live in a shadow
-  // root and what arrives here is the `<video>` itself.
-  if (event.target.closest?.('video') != null) return
+  // **Only the controls, not the whole video.**
+  //
+  // This used to ignore any press that landed on a `<video>` at all, to keep a
+  // drag on the scrubber from turning the page. But a video fills most of the
+  // dialog, so it made swiping past one impossible: the viewer stopped dead at
+  // every video and the only way on was to close it. Reported from a phone.
+  //
+  // The controls sit along the bottom, so that is the strip that is spared.
+  if (event.target.closest?.('video') != null) {
+    const box = event.target.getBoundingClientRect()
+
+    // Never more than a share of the element. A fixed 56px swallowed a video
+    // shorter than that whole - `bottom - 56` sat above its own top, so every
+    // press counted as the controls and the swipe was dead again, which the
+    // test caught before this line existed.
+    const strip = Math.min(VIDEO_CONTROLS, box.height * 0.4)
+
+    if (event.clientY > box.bottom - strip) return
+  }
 
   dragFrom = { x: event.clientX, y: event.clientY }
   swiped = false
@@ -1005,6 +1058,10 @@ async function start () {
   showMyPeer()
   myPeerEl.hidden = false
 
+  // The reservation arrives after the connection does, so this is told rather
+  // than asked - `self:peer:update` is libp2p's own event for it.
+  peer.watchOwnAddresses(showReachable)
+
   peer.watchPeers(found => {
     showPeers(found)
     // A hole punch arrives as a second connection to a peer already known,
@@ -1071,6 +1128,7 @@ function applyLocale (next) {
   // never reaches them.
   showFolder()
   showMyPeer()
+  showReachable()
   showShares()
 
   // Rows carry their own text and are not repainted by anything else.
@@ -1122,25 +1180,59 @@ markEl.innerHTML = mark()
  * can be open before the node exists, and the check only happens if somebody
  * ticks the box.
  */
+/**
+ * What the relay check is doing, while it does it.
+ *
+ * Three stages, and on a phone they take seconds: probe the addresses this
+ * build ships with, ask Aleph for more, probe those. Saying which one is
+ * running is the difference between a wait and a hang - and the way out is
+ * disabled meanwhile, because closing the introduction mid-check lands
+ * somebody on a card that says a relay will be used *next* time, having just
+ * watched it look for one.
+ */
+function checking (stage) {
+  const running = stage != null
+
+  $('intro-progress').hidden = !running
+  $('intro-start').disabled = running
+
+  if (running) $('intro-progress-text').textContent = t(`intro.checking.${stage}`)
+}
+
 introEl.relay = {
   storageKey: RELAY_OPT_IN_KEY,
   check: () => {
+    checking('baked')
+
     // The gate is shut on a node that started without a relay, and it would
     // refuse this very check - which is what made a live relay report itself as
     // silent. Opened for the probe; using one still waits for the next start.
     peer?.allowRelayDials(true)
 
+    const probe = relayProbe(peer.node, multiaddr)
+    let asked = false
+
     return findReachableRelays({
       baked: bakedRelayAddresses(),
-      probe: relayProbe(peer.node, multiaddr),
-      discover: discoverRelays
+      // Which stage this is depends on whether Aleph has been asked yet -
+      // `findReachableRelays` probes the baked list first and only reaches for
+      // more if none of them answered.
+      probe: addresses => {
+        checking(asked ? 'probing' : 'baked')
+        return probe(addresses)
+      },
+      discover: () => {
+        asked = true
+        checking('asking')
+        return discoverRelays()
+      }
     }).then(found => {
       // Kept, because the next start needs an address and this one answered a
       // probe from this device. Discovery can take a while and the baked list
       // ages; a relay that replied a minute ago is the better first guess.
       rememberRelays(localStore, RELAY_ADDRESSES_KEY, found.addresses)
       return found
-    })
+    }).finally(() => checking(null))
   }
 }
 

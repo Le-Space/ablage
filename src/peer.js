@@ -317,6 +317,35 @@ export async function createPeer ({
      * them in the first place.
      */
     /**
+     * The addresses this device can be reached at through a relay.
+     *
+     * **Being connected to a relay is not being reachable through one.** The
+     * connection is a WebSocket this node opened; the *reservation* is the
+     * relay agreeing to accept calls on its behalf, and only that produces a
+     * `/p2p-circuit` address. Between the two there is a window - seconds on a
+     * desk, longer on mobile data - in which everything looks connected and
+     * nobody can call you.
+     *
+     * That window is what "the dial request has no valid addresses for peer"
+     * looks like from the other side, and it is why the interface says which of
+     * the two this is rather than only that a relay answered.
+     */
+    relayAddresses: () => node.getMultiaddrs()
+      .map(String)
+      .filter(address => address.includes('/p2p-circuit')),
+
+    /**
+     * Told when they change, because they arrive late.
+     *
+     * `self:peer:update` is libp2p's own event for it - the reservation
+     * completing is exactly one of these - so nothing here polls.
+     */
+    watchOwnAddresses: onChange => {
+      node.addEventListener('self:peer:update', () => onChange())
+      onChange()
+    },
+
+    /**
      * Direct, or through the relay.
      *
      * **`limits`, not the address.** After a hole punch the address still reads

@@ -53,6 +53,10 @@ export default {
     pasteUse: 'Use this reply',
     pasteBad: 'That does not look like a reply. A reply link contains #r=.',
     myPeer: ({ id }) => `This device: ${id}`,
+    reachable: ({ count }) => count === 1
+      ? 'The relay accepts calls for this device — one address to reach it at.'
+      : `The relay accepts calls for this device — ${count} addresses to reach it at.`,
+    notReachable: 'Not reachable yet — this device has no address anybody could dial. That arrives when a relay agrees to take calls for it.',
     scanReply: 'Scan their reply',
     cameraHint: 'Their camera opens the same link — or send it to them.'
   },
@@ -168,8 +172,8 @@ export default {
     heading: 'Devices out there',
     filter: 'Filter by peer id',
     noMatch: 'No device here matches that.',
-    heard: 'heard on the relay',
-    connected: 'connected',
+    heard: 'found on the relay',
+    connected: 'reachable',
     share: 'Ask to share',
     asking: ({ id }) => `Asked ${id} — waiting for an answer`,
     afterReload: 'The relay is switched on but not in use yet — which relay to reach is decided when the app starts. Load the page again and devices appear here within a few seconds.',
@@ -211,6 +215,11 @@ export default {
   },
   intro: {
     start: "Let's go",
+    checking: {
+      baked: 'Trying the relays this build ships with…',
+      asking: 'Asking Aleph which relays are up…',
+      probing: 'Trying the ones it named…'
+    },
     experimental: '<strong>Highly experimental — do not use this for anything you cannot lose.</strong> It is a working demonstration, not a backup: the format may change, and a folder here is not a copy of anything.',
     what: 'This is a folder shared between two of your devices. There is no account, and no server in the middle holding your files.',
     how: 'Show the code on this screen to the other device, or send it the link. Once the two are connected, whatever you put in the folder appears on both.',

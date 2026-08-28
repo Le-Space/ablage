@@ -50,6 +50,10 @@ export default {
     pasteUse: 'Diese Antwort verwenden',
     pasteBad: 'Das sieht nicht nach einer Antwort aus. Ein Antwort-Link enthält #r=.',
     myPeer: ({ id }) => `Dieses Gerät: ${id}`,
+    reachable: ({ count }) => count === 1
+      ? 'Das Relay nimmt Anrufe für dieses Gerät an — eine Adresse, unter der es erreichbar ist.'
+      : `Das Relay nimmt Anrufe für dieses Gerät an — ${count} Adressen, unter denen es erreichbar ist.`,
+    notReachable: 'Noch nicht erreichbar — dieses Gerät hat keine Adresse, die jemand wählen könnte. Die entsteht, sobald ein Relay zusagt, Anrufe dafür anzunehmen.',
     scanReply: 'Antwort scannen',
     cameraHint: 'Die Kamera des anderen Geräts öffnet denselben Link — oder schicken Sie ihn hin.'
   },
@@ -166,8 +170,8 @@ export default {
     heading: 'Geräte da draußen',
     filter: 'Nach Peer-ID filtern',
     noMatch: 'Kein Gerät hier passt dazu.',
-    heard: 'über das Relay gehört',
-    connected: 'verbunden',
+    heard: 'über das Relay gefunden',
+    connected: 'erreichbar',
     share: 'Teilen anfragen',
     asking: ({ id }) => `${id} gefragt — wartet auf Antwort`,
     afterReload: 'Das Relay ist eingeschaltet, aber noch nicht in Betrieb — welches Relay erreicht wird, entscheidet sich beim Start der App. Laden Sie die Seite neu, dann erscheinen Geräte hier binnen weniger Sekunden.',
@@ -209,6 +213,11 @@ export default {
   },
   intro: {
     start: 'Los geht\u2019s',
+    checking: {
+      baked: 'Probiere die mitgelieferten Relays…',
+      asking: 'Frage Aleph, welche Relays laufen…',
+      probing: 'Probiere die genannten…'
+    },
     experimental: '<strong>Hochgradig experimentell — benutzen Sie es für nichts, dessen Verlust weh tut.</strong> Es ist eine lauffähige Demonstration, keine Sicherung: das Format kann sich ändern, und ein Ordner hier ist keine Kopie von irgendetwas.',
     what: 'Dies ist ein Ordner, den zwei Ihrer Geräte teilen. Es gibt kein Konto, und keinen Server dazwischen, der Ihre Dateien hält.',
     how: 'Zeigen Sie den Code auf diesem Bildschirm dem anderen Gerät, oder schicken Sie ihm den Link. Sobald beide verbunden sind, erscheint alles, was Sie in den Ordner legen, auf beiden.',

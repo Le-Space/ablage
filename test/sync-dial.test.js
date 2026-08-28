@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { openSyncStream, rankAddresses } from '../src/sync-dial.js'
+import { openSyncStream, rankAddresses, throughOurRelay } from '../src/sync-dial.js'
 
 /**
  * The send path, away from a browser.
@@ -155,21 +155,22 @@ test('nothing usable is an empty list, not a bad choice', async () => {
   assert.deepEqual(rankAddresses([`/ip4/127.0.0.1/tcp/1/ws${THEM}`]), [])
 })
 
-test('a chosen address that never works falls back to the peer id', async () => {
-  // The risk this feature brings: an address can be stale - the peer moved
-  // relays, the reservation lapsed - and retrying a dead one fifteen times
-  // would lose a connection that dialling the peer id would have made.
-  const tried = []
+test('the address is connected to, and the stream is opened by peer id', async () => {
+  // Two different jobs. `dialProtocol(multiaddr)` has to negotiate on that
+  // exact address, so a WebRTC address still coming up yields a connection
+  // with no usable stream - two devices that say "connected" and a dialog that
+  // never appears. Reported from a phone.
+  const dialled = []
+  const streamed = []
   const node = {
     peerStore: {
       get: async () => ({
         addresses: [{ multiaddr: { toString: () => '/dns4/relay.example/tcp/443/tls/ws/p2p/12D3KooWRelay/p2p-circuit/webrtc/p2p/12D3KooWThem' } }]
       })
     },
+    dial: async address => { dialled.push(String(address)) },
     dialProtocol: async target => {
-      tried.push(typeof target?.toString === 'function' && String(target).startsWith('/') ? 'address' : 'peerId')
-
-      if (tried.length < 8) throw new Error('nope')
+      streamed.push(String(target))
       return { status: 'open' }
     }
   }
@@ -179,6 +180,80 @@ test('a chosen address that never works falls back to the peer id', async () => 
   })
 
   assert.equal(stream.status, 'open')
-  assert.deepEqual(tried.slice(0, 5), Array(5).fill('address'), 'first the address')
-  assert.deepEqual(tried.slice(5), Array(tried.length - 5).fill('peerId'), 'then the peer id')
+  assert.equal(dialled.length, 1)
+  assert.match(dialled[0], /p2p-circuit\/webrtc/, 'the connection is made at the address')
+  assert.equal(streamed.length, 1)
+  assert.doesNotMatch(streamed[0], /^\//, 'the stream is opened by peer id')
+})
+
+test('an address that cannot be reached is not fatal', async () => {
+  // Best effort: if the direct connection cannot be made, the relayed one is
+  // still there, and a slower sync beats none.
+  const node = {
+    peerStore: {
+      get: async () => ({
+        addresses: [{ multiaddr: { toString: () => '/dns4/relay.example/tcp/443/tls/ws/p2p/12D3KooWRelay/p2p-circuit/webrtc/p2p/12D3KooWThem' } }]
+      })
+    },
+    dial: async () => { throw new Error('unreachable') },
+    dialProtocol: async () => ({ status: 'open' })
+  }
+
+  const stream = await openSyncStream(node, '12D3KooWDpJ7As7BWAwRMfu1VU2WCqNjvq387JEYKDBj4kx6nXTA', '/x/1', {
+    retryDelay: 0, settleDelay: 0
+  })
+
+  assert.equal(stream.status, 'open')
+})
+
+/**
+ * Reaching somebody the meeting place named but did not describe.
+ *
+ * Reported from two phones: *The dial request has no valid addresses for peer
+ * …* while that peer sat in the list as found on the relay. A browser announces
+ * itself before its reservation completes, so what arrives is a name with
+ * nothing attached.
+ */
+
+test('their address through our relay is ours with their id on the end', async () => {
+  const built = throughOurRelay(
+    [`${RELAY}/p2p-circuit/p2p/12D3KooWUs`],
+    '12D3KooWThem'
+  )
+
+  assert.deepEqual(built, [`${RELAY}/p2p-circuit/p2p/12D3KooWThem`])
+})
+
+test('an upgraded address of ours does not describe how to reach them', async () => {
+  // `/p2p-circuit/webrtc/…` is a connection this device made. Handing that
+  // shape to somebody else would be describing our hole punch, not their door.
+  const built = throughOurRelay(
+    [`${RELAY}/p2p-circuit/webrtc/p2p/12D3KooWUs`],
+    '12D3KooWThem'
+  )
+
+  assert.deepEqual(built, [`${RELAY}/p2p-circuit/p2p/12D3KooWThem`])
+})
+
+test('with no relay of our own there is nothing to build from', async () => {
+  assert.deepEqual(throughOurRelay([], '12D3KooWThem'), [])
+  assert.deepEqual(throughOurRelay(['/ip4/1.2.3.4/tcp/1/ws/p2p/12D3KooWUs'], '12D3KooWThem'), [])
+})
+
+test('a peer with no addresses is dialled through our relay rather than not at all', async () => {
+  const dialled = []
+  const node = {
+    peerStore: { get: async () => ({ addresses: [] }) },
+    getMultiaddrs: () => [`${RELAY}/p2p-circuit/p2p/12D3KooWUs`],
+    dial: async address => { dialled.push(String(address)) },
+    dialProtocol: async () => ({ status: 'open' })
+  }
+
+  const stream = await openSyncStream(node, '12D3KooWDpJ7As7BWAwRMfu1VU2WCqNjvq387JEYKDBj4kx6nXTA', '/x/1', {
+    retryDelay: 0, settleDelay: 0
+  })
+
+  assert.equal(stream.status, 'open')
+  assert.equal(dialled.length, 1)
+  assert.match(dialled[0], /p2p-circuit\/p2p\/12D3KooWDpJ7/)
 })

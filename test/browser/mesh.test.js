@@ -251,7 +251,7 @@ test.describe('the list the app itself draws', () => {
       // would pass this while proving nothing.
       await expect(a.page.locator('#peer-list')).toContainText(b.id.slice(-10), { timeout: 150_000 })
 
-      const relay = '12D3KooWL9UKRwGWE6GGxANhDZpJNyDphQcfBSApuXE1qTW5pkVh'
+      const relay = '12D3KooWNsf7FvEmh4Z89Ty4mk4xZgUWaqUiqjsznnyn5CwKfaKB'
 
       await expect(a.page.locator('#peer-list')).not.toContainText(relay.slice(-10))
       expect(await a.page.evaluate(() => document.getElementById('peer-list').textContent))
@@ -366,7 +366,7 @@ test.describe('only devices that could answer', () => {
 
   test('something that does not speak the protocol is not a device out there', async ({ page }) => {
     await withHeard(page, [
-      { peerId: '12D3KooWL9UKRwGWE6GGxANhDZpJNyDphQcfBSApuXE1qTW5pkVh', state: 'connected', speaks: false },
+      { peerId: '12D3KooWNsf7FvEmh4Z89Ty4mk4xZgUWaqUiqjsznnyn5CwKfaKB', state: 'connected', speaks: false },
       { peerId: '12D3KooWDpJ7As7BWAwRMfu1VU2WCqNjvq387JEYKDBj4kx6nXTA', state: 'connected', speaks: true }
     ])
 
@@ -381,7 +381,7 @@ test.describe('only devices that could answer', () => {
     // Not "no devices match your search" - there is no search. The panel has to
     // say the same thing it says when genuinely nobody is out there.
     await withHeard(page, [
-      { peerId: '12D3KooWL9UKRwGWE6GGxANhDZpJNyDphQcfBSApuXE1qTW5pkVh', state: 'connected', speaks: false }
+      { peerId: '12D3KooWNsf7FvEmh4Z89Ty4mk4xZgUWaqUiqjsznnyn5CwKfaKB', state: 'connected', speaks: false }
     ])
 
     await expect(page.locator('#peer-list')).toBeEmpty()
@@ -584,7 +584,7 @@ test.describe('an empty list says which empty', () => {
     // The relay itself, connected and not speaking the sync protocol - exactly
     // what `watchPeers` reports for it. No rows, and a different sentence.
     await show(page, [
-      { peerId: '12D3KooWL9UKRwGWE6GGxANhDZpJNyDphQcfBSApuXE1qTW5pkVh', state: 'connected', speaks: false }
+      { peerId: '12D3KooWNsf7FvEmh4Z89Ty4mk4xZgUWaqUiqjsznnyn5CwKfaKB', state: 'connected', speaks: false }
     ])
 
     await expect(page.locator('#peer-list')).toBeEmpty()

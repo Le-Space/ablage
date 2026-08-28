@@ -11,6 +11,7 @@ import '@le-space/libp2p-webrtc-qr/elements'
 import * as Y from 'yjs'
 
 import { createContent } from '../content.js'
+import { findARelay } from '../find-a-relay.js'
 import { keyFor } from '../device-key.js'
 import { FIRST_SHARE, ONE_OFF_SHARE, scoped, shares } from './shares.js'
 import { createPeer } from '../peer.js'
@@ -1061,6 +1062,42 @@ async function start () {
   // The reservation arrives after the connection does, so this is told rather
   // than asked - `self:peer:update` is libp2p's own event for it.
   peer.watchOwnAddresses(showReachable)
+
+  /**
+   * If the relay we started with turns out to be dead, look for another.
+   *
+   * **This is the day the baked address cost.** It pointed at a name whose
+   * route had been withdrawn - DNS resolved, TCP answered, TLS never
+   * completed - so it looked alive right up to the handshake. Every start
+   * dialled it, every start failed, and nothing ever tried anything else,
+   * because the discovery channel was only ever consulted from the
+   * introduction's check, which somebody has to open by hand.
+   *
+   * No restart needed: a bootstrap list is a convenience for the first dial,
+   * and the `/p2p-circuit` listen address is already there whenever a relay was
+   * asked for at all. So this dials, and the interface says what came of it.
+   *
+   * Only with a relay asked for. Without one this makes no call, which is the
+   * promise in `AGENTS.md`.
+   */
+  if (readRelayOptIn(localStore, RELAY_OPT_IN_KEY)) {
+    findARelay({
+      relayAddresses: () => peer.relayAddresses().length,
+      find: () => findReachableRelays({
+        baked: bakedRelayAddresses(),
+        probe: relayProbe(peer.node, multiaddr),
+        discover: discoverRelays
+      }),
+      dial: address => peer.node.dial(multiaddr(address), { signal: AbortSignal.timeout(20_000) }),
+      remember: addresses => rememberRelays(localStore, RELAY_ADDRESSES_KEY, addresses),
+      report: state => {
+        // Only over its own words and the waiting line: this shares the state
+        // line with everything else the app says.
+        if (state === 'looking') setState(t('relay.lookingAgain'), 'waiting')
+        if (state === 'gave-up') setState(t('relay.noneFound'), 'idle')
+      }
+    }).catch(() => {})
+  }
 
   peer.watchPeers(found => {
     showPeers(found)

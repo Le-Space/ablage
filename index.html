@@ -324,6 +324,16 @@
           Shortened here in the simple view, whole in the technical one.
         -->
         <p class="peer-id" id="my-peer" hidden></p>
+        <!--
+          Whether anybody can actually call this device.
+
+          Connected to a relay and reachable through one are different things,
+          and between them sits a window - seconds on a desk, longer on mobile
+          data - in which everything looks connected and nobody can call you.
+          The other side sees "no valid addresses for peer" and this side saw
+          nothing at all, which is what this line is for.
+        -->
+        <p id="reachable" class="reachable" hidden></p>
 
         <!--
           Keeping the screen awake, where the connection is described.
@@ -786,6 +796,19 @@
           at all: unassigned slotted content is simply not drawn, so it would
           have shipped as markup nobody could see.
         -->
+        <!--
+          The way out, and a line saying why it is not available yet.
+
+          Ticking the relay box starts a measurement - baked addresses first,
+          then a list fetched from Aleph, each of them probed - and it takes
+          seconds on a phone. Leaving the button live through that lets somebody
+          close the introduction mid-check and land on a card that says a relay
+          will be used *next* time, having just watched it look for one.
+        -->
+        <span slot="footer" id="intro-progress" class="intro-progress" hidden>
+          <span class="spinner" aria-hidden="true"></span>
+          <span id="intro-progress-text"></span>
+        </span>
         <button slot="footer" id="intro-start" class="primary" type="button" data-i18n="intro.start">Let's go</button>
       </qr-intro>
 

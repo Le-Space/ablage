@@ -620,3 +620,38 @@ test.describe('which story the introduction tells', () => {
     await expect(page.locator('#intro-how-relay')).toBeHidden()
   })
 })
+
+test.describe('while the relay check runs', () => {
+  const introUp = async page => {
+    await page.goto('/')
+    await page.waitForFunction(
+      () => document.getElementById('intro')?.shadowRoot?.querySelector('dialog')?.open === true,
+      undefined, { timeout: 60_000 })
+  }
+
+  test('the way out waits, and says what is being tried', async ({ page }) => {
+    // Closing the introduction mid-check lands somebody on a card saying a
+    // relay will be used *next* time, having just watched it look for one.
+    await introUp(page)
+
+    // The node has to exist first: `check` probes through it, and calling it
+    // early throws before the progress line is ever shown.
+    await expect(page.locator('#my-peer')).toHaveAttribute('title', /12D3Koo/, { timeout: 60_000 })
+
+    await expect(page.locator('#intro-start')).toBeEnabled()
+    await expect(page.locator('#intro-progress')).toBeHidden()
+
+    // Not awaited: the point is what the interface looks like *during* it.
+    await page.evaluate(() => { document.getElementById('intro').relay.check() })
+
+    await expect(page.locator('#intro-progress')).toBeVisible()
+    await expect(page.locator('#intro-start')).toBeDisabled()
+    // A stage, not a spinner on its own: "something is happening" is what a
+    // hang looks like too.
+    await expect(page.locator('#intro-progress-text')).toContainText(/relays|Relays/i)
+
+    // And it lets go afterwards, whatever the answer was.
+    await expect(page.locator('#intro-start')).toBeEnabled({ timeout: 120_000 })
+    await expect(page.locator('#intro-progress')).toBeHidden()
+  })
+})

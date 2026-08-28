@@ -77,6 +77,36 @@ export function rankAddresses (addresses) {
 }
 
 /**
+ * A way to reach somebody the meeting place named but did not describe.
+ *
+ * **Reported from two phones:** *The dial request has no valid addresses for
+ * peer …* while that same peer sat in the list as *found on the relay*. Being
+ * announced and being dialable are different things - a browser announces
+ * itself on the meeting place before its relay reservation completes, so what
+ * arrives is a name with nothing attached.
+ *
+ * But we are on that relay too, and our *own* address through it is
+ * `<relay>/p2p-circuit/p2p/<us>`. Swapping our peer id for theirs gives the
+ * address they would have announced had they got round to it - which is how
+ * anybody reaches anybody through a circuit.
+ *
+ * Built rather than waited for. Waiting is what the report describes.
+ *
+ * @param {readonly string[]} ours addresses this node announces for itself
+ * @param {string} them the peer id to reach
+ */
+export function throughOurRelay (ours, them) {
+  const circuits = ours.filter(address => address.includes('/p2p-circuit'))
+
+  return rankAddresses(circuits.map(address =>
+    // Everything up to and including `/p2p-circuit`, then them. The trailing
+    // `/webrtc` of an upgraded address goes with it: that half describes a
+    // connection this device made, not one anybody else can be reached at.
+    `${address.slice(0, address.indexOf('/p2p-circuit'))}/p2p-circuit/p2p/${them}`
+  ))
+}
+
+/**
  * A stream that is still open a beat after it was opened.
  *
  * Both peers reach `connected` at the same moment, but a stream opened before
@@ -95,37 +125,51 @@ export async function openSyncStream (node, peerId, protocol, options = {}) {
   // The best address this device knows for them, or the peer id if it knows
   // none. Read once: the store does not change usefully inside a retry loop,
   // and re-reading it every attempt would be one more thing to go wrong.
-  const best = await (node.peerStore?.get(id) ?? Promise.resolve(null)).then(
-    known => rankAddresses(known?.addresses?.map(a => a.multiaddr.toString()) ?? [])[0] ?? null,
-    () => null
+  const known = await (node.peerStore?.get(id) ?? Promise.resolve(null)).then(
+    held => rankAddresses(held?.addresses?.map(a => a.multiaddr.toString()) ?? []),
+    () => []
   )
+
+  // Nothing dialable on record, but we are on a relay and so are they - that is
+  // how they were heard at all. Their address through it is ours with their
+  // peer id at the end.
+  const best = known[0] ??
+    throughOurRelay(node.getMultiaddrs?.().map(String) ?? [], id.toString())[0] ??
+    null
 
   const { multiaddr } = best == null ? { multiaddr: null } : await import('@multiformats/multiaddr')
 
   /**
-   * The address first, the peer id after.
+   * **Connect by address; open the stream by peer id.**
    *
-   * **Falling back matters more than choosing well.** A chosen address can be
-   * stale - the peer moved relays, the reservation lapsed - and retrying the
-   * same dead address fifteen times would lose a connection that dialling the
-   * peer id would have made. So the address gets a few tries and then libp2p
-   * gets the whole list, which is what this did before.
+   * The first version of this dialled the protocol *at* the address, and that
+   * conflates two things. `dialProtocol(multiaddr)` has to reach that exact
+   * address and negotiate on it - so a WebRTC address that is still coming up
+   * gives a connection without a usable stream, which on screen is two devices
+   * that say "connected" and a dialog that never appears. Reported from a
+   * phone, and it is the shape of what was reported.
+   *
+   * Split, each half does what it is good at: the address is how a *direct*
+   * connection gets made rather than a relayed one, and the peer id lets
+   * libp2p open the stream on whichever connection is actually up - which,
+   * once the dial below has done its work, is the direct one.
+   *
+   * Best effort on purpose. If the address cannot be reached, the peer id
+   * still had a relayed connection to work with, and a slower sync beats none.
    */
-  const byAddress = Math.min(5, attempts)
-  const targetFor = attempt =>
-    best != null && attempt < byAddress ? multiaddr(best) : id
+  if (best != null) {
+    await node.dial(multiaddr(best), { signal: AbortSignal.timeout(20_000) }).catch(() => {})
+  }
 
   let lastError = new Error(`The remote peer never accepted a ${protocol} stream`)
 
   for (let attempt = 0; attempt < attempts; attempt++) {
-    const target = targetFor(attempt)
-
     try {
       // The dialling half of the same rule. A relayed connection is *limited*,
       // and a protocol stream on one is refused unless both sides say it may -
       // the handler in `peer.js` carries the same flag, and either alone is
       // still a refusal.
-      const stream = await node.dialProtocol(target, protocol, { runOnLimitedConnection: true })
+      const stream = await node.dialProtocol(id, protocol, { runOnLimitedConnection: true })
 
       await new Promise(resolve => setTimeout(resolve, settleDelay))
 

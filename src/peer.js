@@ -94,6 +94,35 @@ export const DISCOVERY_TOPICS = [
  *   start did until shares arrived, and the reason the other device saw a
  *   stranger each time and asked again.
  */
+/**
+ * How large an identify response this node will still accept.
+ *
+ * **The default is 8192, and it fails silently and completely.** libp2p does
+ * not truncate an oversized identify response - it drops the whole message, so
+ * a peer that crosses the line loses `hop`, `bitswap` and `meshsub` from this
+ * node's view all at once, with no error logged on either side. What is left
+ * is a relay that answers every dial, reserves for nobody, and appears in the
+ * device list because nothing is known about what it speaks.
+ *
+ * That is not hypothetical. The production relay measured 10538 bytes from 122
+ * protocols, 109 of them `/orbitdb/heads/*` - one per open database - and 129
+ * protocols an hour later. Filtering its announce list brings it to about 7883
+ * bytes, which is 96% of the default: seven more databases and it is over
+ * again. See orbitdb-relay#50 and #51.
+ *
+ * So the ceiling here is raised rather than relied upon being enough. It is
+ * still a bound on what a stranger can make this node buffer, and 64 KiB is a
+ * small enough buffer to keep while being far enough from a number that has
+ * already been crossed once - roughly 700 databases of room.
+ *
+ * The same number as simple-todo, deliberately. Both apps meet the same relay
+ * and fail the same way, and two apps carrying two different ceilings for one
+ * cause is a trap for whoever reads them next. simple-todo also measured what
+ * this buys: with the default limit a client got no circuit address in 30 s,
+ * and 2.0 s after raising it.
+ */
+export const MAX_IDENTIFY_BYTES = 65_536
+
 export async function createPeer ({
   onSyncStream,
   rtcConfiguration,
@@ -217,7 +246,7 @@ export async function createPeer ({
       : [],
 
     services: {
-      identify: identify(),
+      identify: identify({ maxMessageSize: MAX_IDENTIFY_BYTES }),
 
       /**
        * **Tell peers when this device's addresses change.**
@@ -234,7 +263,7 @@ export async function createPeer ({
        * libp2p's own `webrtc-private-to-private` example carries it, and so
        * does simple-todo. This app was the one without it.
        */
-      identifyPush: identifyPush(),
+      identifyPush: identifyPush({ maxMessageSize: MAX_IDENTIFY_BYTES }),
 
       /**
        * Liveness, and it is not decoration here.

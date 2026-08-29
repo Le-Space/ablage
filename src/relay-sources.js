@@ -30,21 +30,31 @@
  */
 
 const BAKED = [
-  // Read from the relay's own `/multiaddrs` on 2026-08-28 rather than written
-  // by hand, and verified: `Verify return code: 0` on the name below, and
-  // `/health` reporting this peer id.
+  // Read from the Aleph registration on 2026-08-29, not written by hand, and
+  // measured before being written down: identify names 13 protocols with
+  // `/libp2p/circuit/relay/0.2.0/hop` among them, and a reservation completes
+  // in **one second**.
   //
-  // **What the name it replaced teaches.** `improve-empty-grass-tent.2n6.me`
-  // resolved, and TCP 443 answered, and TLS never completed - because that name
-  // and this one point at *the same address*, and only one of them still has a
-  // certificate there. A dead 2n6 route looks exactly like a live machine until
-  // the handshake, which is why "the relay is down" was the wrong diagnosis for
-  // most of a day.
+  // **What the address this replaced teaches, and it is not the same lesson as
+  // last time.** `mosquito-sadness-before-search.2n6.me` was not unreachable -
+  // it answered every dial. Its identify response had grown past libp2p's
+  // 8192-byte default (10538 bytes, 109 of its 122 protocols one per open
+  // database), so clients dropped the whole message, never saw `hop`, and never
+  // reserved. A relay that works and cannot be recognised as one looks exactly
+  // like a relay that is down. That machine has since been deleted;
+  // orbitdb-relay 0.10.9 filters its announce list, and `MAX_IDENTIFY_BYTES` in
+  // `peer.js` is the half of the fix that lives here.
   //
-  // The lesson is not the address. It is that one baked name is a single point
-  // of failure that fails silently - see `discoverRelays` below, and #53.
-  '/dns4/mosquito-sadness-before-search.2n6.me/tcp/443/tls/ws/p2p/12D3KooWNsf7FvEmh4Z89Ty4mk4xZgUWaqUiqjsznnyn5CwKfaKB',
-  '/dns6/mosquito-sadness-before-search.2n6.me/tcp/443/tls/ws/p2p/12D3KooWNsf7FvEmh4Z89Ty4mk4xZgUWaqUiqjsznnyn5CwKfaKB'
+  // **Why the `:443` route is not in this list.** The relay also has a 2n6
+  // proxy name, `job-blanket-biology-typical.2n6.me`, and port 443 is the one
+  // that survives a restrictive mobile network. The deploy verified it -
+  // `ok: true`, 237 ms - and it stopped working shortly afterwards: the name
+  // resolves to the proxy rather than to the relay, and the proxy presents `no
+  // peer certificate available` there. Baking an address whose TLS handshake
+  // fails is what cost a day in August; it is left out until it answers, and
+  // `discoverRelays` will offer it the moment the relay registers it.
+  '/dns4/65-108-233-158.k51qzi5uqu5dm9h9k158btp9sq2ijzbozhgef9wqz4apsdjdpwu6e9i7dgmpww.libp2p.direct/tcp/24007/tls/ws/p2p/12D3KooWSEfBQ6yJ19ebpoWvx1T5yWL3UtjkN1muJJ4djyTfPtsZ',
+  '/dns6/2a01-4f9-1a-ada6-3-7802-e859-f5f1.k51qzi5uqu5dm9h9k158btp9sq2ijzbozhgef9wqz4apsdjdpwu6e9i7dgmpww.libp2p.direct/tcp/9092/tls/ws/p2p/12D3KooWSEfBQ6yJ19ebpoWvx1T5yWL3UtjkN1muJJ4djyTfPtsZ'
 ]
 
 /** The production registration, not the test rigs that share its profile. */

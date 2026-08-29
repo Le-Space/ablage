@@ -62,6 +62,80 @@ test.describe('reaching a relay', () => {
   })
 })
 
+/**
+ * Two phones on mobile data, where the circuit is the only path there is.
+ *
+ * **What the other relay specs do not prove.** They run two browsers on one
+ * machine, where a direct connection is always available and DCUtR takes it
+ * within seconds. So "the sync stream opens" can be - and quietly was - a
+ * measurement of the direct path, with the relay used only to introduce the
+ * two. The address does not settle it either: a hole-punched connection still
+ * reads `/p2p-circuit/webrtc/p2p/…`, which is why this asks `limits`.
+ *
+ * Reported from the road: on the same WLAN, sync and the dialog worked; over
+ * mobile data the same two devices saw each other and the dial came back "The
+ * dial request has no valid addresses for peer". Behind carrier NAT no hole
+ * punch succeeds, and everything then rests on `/ablage/sync/1.0.0` being
+ * allowed to run on a *limited* connection - `runOnLimitedConnection`, on the
+ * handler in `peer.js` and on the dial in `sync-dial.js`, and either one alone
+ * is still a refusal.
+ *
+ * The hole punch is taken away rather than waited out: no DCUtR to arrange a
+ * direct connection, and no `/webrtc` address to arrange it to.
+ */
+test.describe('when the circuit is the only way there is', () => {
+  test.setTimeout(240_000)
+
+  const relayOnly = async browser => {
+    const context = await browser.newContext()
+    const page = await context.newPage()
+
+    await page.goto('/harness.html')
+    await page.waitForFunction(() => window.__ablage != null)
+    await page.evaluate(async () => {
+      window.__side = await window.__ablage.meetAndDial({ holePunch: false })
+    })
+
+    return { page, context, id: await page.evaluate(() => window.__side.peerId) }
+  }
+
+  test('the sync stream runs on a metered connection, and the bytes arrive', async () => {
+    const { chromium } = await import('@playwright/test')
+    const browser = await chromium.launch()
+    const a = await relayOnly(browser)
+    const b = await relayOnly(browser)
+
+    try {
+      await expect
+        .poll(() => a.page.evaluate(id => window.__side.heard().includes(id), b.id), { timeout: 120_000 })
+        .toBe(true)
+
+      const call = await a.page.evaluate(id => window.__side.call(id), b.id)
+
+      expect(call.error).toBe(null)
+      expect(call.ok).toBe(true)
+
+      // The point of the whole spec: it worked, and it worked *over the
+      // circuit*. Asked after the call rather than before, because before it
+      // there is no connection to ask about.
+      expect(await a.page.evaluate(id => window.__side.onlyRelayed(id), b.id)).toBe(true)
+
+      await expect
+        .poll(() => b.page.evaluate(() => window.__side.inbound()), { timeout: 30_000 })
+        .toContain(a.id)
+
+      // And it stays that way. Without DCUtR nothing should ever appear beside
+      // the circuit - if something does, this node found a direct path after
+      // all and the assertion above was measuring the wrong thing.
+      expect(await a.page.evaluate(id => window.__side.onlyRelayed(id), b.id)).toBe(true)
+    } finally {
+      await a.context.close()
+      await b.context.close()
+      await browser.close()
+    }
+  })
+})
+
 test.describe('calling somebody met through a relay', () => {
   test.setTimeout(240_000)
 

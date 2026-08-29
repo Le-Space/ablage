@@ -174,7 +174,7 @@ window.__ablage = {
    * step between "they see each other" and "they sync", and it is where the
    * report of two devices that find each other and do nothing points.
    */
-  meetAndDial: async () => {
+  meetAndDial: async ({ holePunch = true } = {}) => {
     const { createPeer } = await import('./peer.js')
 
     const heard = new Set()
@@ -187,7 +187,12 @@ window.__ablage = {
     const peer = await createPeer({
       relayOptIn: true,
       relayBootstrapAddrs: await relayAddresses(),
-      onSyncStream: (stream, peerId) => inbound.push(peerId)
+      onSyncStream: (stream, peerId) => inbound.push(peerId),
+
+      // With this off there is no DCUtR and no `/webrtc` address, so the
+      // circuit is the only path that will ever exist - which is what two
+      // phones on mobile data have.
+      holePunch
     })
 
     peer.node.addEventListener('peer:discovery', event => heard.add(event.detail.id.toString()))
@@ -228,6 +233,21 @@ window.__ablage = {
           address: String(c.remoteAddr ?? ''),
           limited: c.limits != null
         }))
+      },
+
+      /**
+       * Is every connection to this peer a metered one?
+       *
+       * Asked of `limits`, never of the address. A hole-punched connection
+       * still reads `/p2p-circuit/webrtc/p2p/…`, so a spec that greps the
+       * address for `/p2p-circuit` passes just as happily over a direct
+       * connection - which on one machine is the connection it will get.
+       */
+      onlyRelayed: async peerId => {
+        const { peerIdFromString } = await import('@libp2p/peer-id')
+        const held = peer.node.getConnections(peerIdFromString(peerId))
+
+        return held.length > 0 && held.every(c => c.limits != null)
       },
 
       stop: () => peer.stop().catch(() => {})

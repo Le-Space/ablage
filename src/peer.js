@@ -99,7 +99,25 @@ export async function createPeer ({
   rtcConfiguration,
   privateKey,
   relayOptIn = false,
-  relayBootstrapAddrs = []
+  relayBootstrapAddrs = [],
+
+  /**
+   * Whether this node may leave the relay for a direct connection.
+   *
+   * On by default, and it is what everybody wants: a circuit is metered, every
+   * byte crosses somebody else's machine, and two devices behind ordinary
+   * routers can usually reach each other once DCUtR has told them when to try.
+   *
+   * Off is not a preference - it is a network. Two phones on mobile data sit
+   * behind carrier NAT, no hole punch succeeds, and the circuit is the only
+   * path there will ever be. That case is the reason `runOnLimitedConnection`
+   * exists on both the handler and the dial, and it is untestable while a
+   * direct path is available - which, on one machine, it always is.
+   *
+   * So this exists to take the direct path away: no DCUtR to arrange one, and
+   * no `/webrtc` address to arrange it to.
+   */
+  holePunch = true
 } = {}) {
   let session = null
 
@@ -141,7 +159,9 @@ export async function createPeer ({
     // transport actually claims: `/p2p-circuit/webrtc` reads like the right
     // one and is claimed by no transport at all, so listening on it fails
     // quietly. Measured against both filters rather than copied from a guess.
-    ...(hasRelay ? { addresses: { listen: ['/p2p-circuit', '/webrtc'] } } : {}),
+    ...(hasRelay
+      ? { addresses: { listen: holePunch ? ['/p2p-circuit', '/webrtc'] : ['/p2p-circuit'] } }
+      : {}),
     transports: [
       // **First, and that is load-bearing.** libp2p returns the first transport
       // whose `dialFilter` claims an address, in the order this array is
@@ -260,7 +280,10 @@ export async function createPeer ({
        * addresses a node listens on are dialable from outside, and a browser
        * has none to confirm.
        */
-      dcutr: dcutr()
+      // Spread, so that with the hole punch off the service is *absent* rather
+      // than present and idle. A node that still ran DCUtR would keep trying to
+      // leave the relay, which is the opposite of what the caller asked for.
+      ...(holePunch ? { dcutr: dcutr() } : {})
     }
   })
 

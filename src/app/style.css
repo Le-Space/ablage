@@ -87,9 +87,23 @@ button.primary:hover:not(:disabled) { background: var(--ls-red-bright); border-c
 .drop .link { color: var(--ls-accent); text-decoration: underline; cursor: pointer; }
 
 .files { list-style: none; margin: 1rem 0 0; padding: 0; }
-.files li { display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem 0; border-top: 1px solid var(--ls-card-border); }
-.files .name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
-.files .size { color: var(--ls-text-dim); font-size: 0.85rem; white-space: nowrap; }
+/* **A name needs a floor, or it gets one character per line.**
+
+   `min-width: 0` let the name shrink to whatever was left after the size and
+   the "Remove" button had taken theirs, and `overflow-wrap: anywhere` then did
+   as it was told: broke the filename at every character. On a folded Samsung
+   that is a row three characters wide and fifteen lines tall - reported with a
+   screenshot, and the file name unreadable.
+
+   The floor is what fixes it; `flex-wrap` is what keeps the floor affordable.
+   Once the name refuses to go below 12 characters, the size and the button
+   wrap onto a line of their own instead of squeezing it. On a wide screen
+   nothing wraps and nothing changes. */
+.files li { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; padding: 0.5rem 0; border-top: 1px solid var(--ls-card-border); }
+.files .name { flex: 1 1 auto; min-width: 12ch; overflow-wrap: anywhere; }
+/* `margin-left: auto` so that when the row does wrap, the size and the button
+   sit at the right rather than under the start of the name. */
+.files .size { margin-left: auto; color: var(--ls-text-dim); font-size: 0.85rem; white-space: nowrap; }
 .hint { color: var(--ls-text-dim); font-size: 0.9rem; }
 
 .modal { border: 1px solid var(--ls-card-border); border-radius: var(--ls-radius); background: var(--ls-bg-2); color: var(--ls-text); max-width: 26rem; }

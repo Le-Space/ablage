@@ -256,3 +256,73 @@ test.describe('where the link lives', () => {
     expect(order).toBe('paste first')
   })
 })
+
+/**
+ * A folded phone, where a long file name had one character per line.
+ *
+ * `.files .name` carried `min-width: 0`, so it shrank to whatever was left once
+ * the size and the "Remove" button had taken theirs - and `overflow-wrap:
+ * anywhere` then broke the name at every character. Reported from a Fold 5 with
+ * a screenshot: a column three characters wide and fifteen lines tall, with the
+ * file name unreadable.
+ *
+ * The assertion is about the shape rather than the pixels. A name that wrapped
+ * per character is many times taller than one line and barely wider than a
+ * character, so both are worth checking - width alone would pass if the column
+ * were wide and the text still stacked.
+ */
+test.describe('a narrow screen keeps the file name readable', () => {
+  const FOLD = 344
+
+  const longName = '20260819_093742_a_rather_long_camera_file_name.jpg'
+
+  test('a long name is not broken one character to a line', async ({ page }) => {
+    const errors = await open(page)
+
+    await page.setViewportSize({ width: FOLD, height: 800 })
+    await page.setInputFiles('#pick', {
+      name: longName,
+      mimeType: 'image/jpeg',
+      buffer: Buffer.from('nicht wirklich ein Bild')
+    })
+
+    await expect(page.locator('#files li .name')).toHaveText(longName)
+
+    const shape = await page.evaluate(() => {
+      const name = document.querySelector('#files li .name')
+      const box = name.getBoundingClientRect()
+      const line = parseFloat(getComputedStyle(name).lineHeight) || 16
+
+      return { width: box.width, lines: Math.round(box.height / line) }
+    })
+
+    // One character is about 8px at this size; the collapse measured three of
+    // them. Half the viewport is a floor a stacked column cannot reach.
+    expect(shape.width).toBeGreaterThan(FOLD / 2)
+
+    // Fifty characters over a column that narrow is fifteen lines or more. Four
+    // leaves room for an honest wrap of a long name.
+    expect(shape.lines).toBeLessThanOrEqual(4)
+    expect(errors).toEqual([])
+  })
+
+  test('and the row does not push the page sideways', async ({ page }) => {
+    // The other way this could have been "fixed": let the name keep its width
+    // and overflow. That trades an unreadable column for a page that scrolls
+    // horizontally, which on a phone is worse.
+    const errors = await open(page)
+
+    await page.setViewportSize({ width: FOLD, height: 800 })
+    await page.setInputFiles('#pick', {
+      name: longName,
+      mimeType: 'image/jpeg',
+      buffer: Buffer.from('nicht wirklich ein Bild')
+    })
+
+    await expect(page.locator('#files li .name')).toHaveText(longName)
+
+    expect(await page.evaluate(() => document.documentElement.scrollWidth))
+      .toBeLessThanOrEqual(FOLD)
+    expect(errors).toEqual([])
+  })
+})

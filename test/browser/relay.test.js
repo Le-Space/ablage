@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test'
 
+import { LOCAL_RELAY } from '../support/local-relay.js'
+
 /**
  * Does the second way in actually carry anything?
  *
@@ -25,7 +27,7 @@ import { expect, test } from '@playwright/test'
  */
 test.describe.configure({ retries: 0 })
 
-const RELAY = '/dns4/mosquito-sadness-before-search.2n6.me/tcp/443/tls/ws/p2p/12D3KooWNsf7FvEmh4Z89Ty4mk4xZgUWaqUiqjsznnyn5CwKfaKB'
+const RELAY = LOCAL_RELAY
 
 const harness = async page => {
   await page.goto('/harness.html')

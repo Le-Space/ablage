@@ -57,7 +57,28 @@ const REGISTRATION_ID = 'relay:orbitdb-relay:orbitdb-relay'
  */
 const MAX_AGE_MS = 13 * 60 * 60 * 1000
 
-export const bakedRelayAddresses = () => [...BAKED]
+/**
+ * Which relays this build ships with.
+ *
+ * `VITE_RELAY_ADDRESSES` replaces the list rather than adding to it, comma
+ * separated. Two uses, and the second is why it exists at all:
+ *
+ * - somebody running their own ablage against their own relay should not have
+ *   to edit this file to do it
+ * - the browser tests start a relay next to themselves and point the build at
+ *   it, so that a machine nobody here administers cannot decide whether this
+ *   repository's tests pass. It replaces rather than adds because a test that
+ *   also dialled the public relay would still be waiting on it.
+ */
+export const bakedRelayAddresses = () => {
+  const configured = import.meta.env?.VITE_RELAY_ADDRESSES
+
+  if (typeof configured === 'string' && configured.trim() !== '') {
+    return configured.split(',').map(address => address.trim()).filter(Boolean)
+  }
+
+  return [...BAKED]
+}
 
 /**
  * Ask the public channel, scoped hard before anything is dialled.

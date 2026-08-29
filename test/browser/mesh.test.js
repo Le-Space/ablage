@@ -1,5 +1,8 @@
 import { chromium, expect, test } from '@playwright/test'
 
+import { RELAY_ID } from '../support/local-relay.js'
+
+
 /**
  * The meeting place, and the list it fills.
  *
@@ -251,7 +254,7 @@ test.describe('the list the app itself draws', () => {
       // would pass this while proving nothing.
       await expect(a.page.locator('#peer-list')).toContainText(b.id.slice(-10), { timeout: 150_000 })
 
-      const relay = '12D3KooWNsf7FvEmh4Z89Ty4mk4xZgUWaqUiqjsznnyn5CwKfaKB'
+      const relay = RELAY_ID
 
       await expect(a.page.locator('#peer-list')).not.toContainText(relay.slice(-10))
       expect(await a.page.evaluate(() => document.getElementById('peer-list').textContent))

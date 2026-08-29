@@ -26,6 +26,26 @@ async function scratch (name) {
   return root.getDirectoryHandle(name, { create: true })
 }
 
+/**
+ * Which relay the harness should use.
+ *
+ * A spec sets `window.__relay` before the page loads; without one this falls
+ * back to what the app ships with. The relaying specs point it at the relay
+ * started next to the run, so a machine on the public internet cannot decide
+ * whether this repository's tests pass. One smoke spec still names the public
+ * address on purpose - see `test/support/local-relay.js` for why the two are
+ * separate.
+ */
+async function relayAddresses () {
+  const chosen = /** @type {any} */ (window).__relay
+
+  if (chosen != null) return Array.isArray(chosen) ? [...chosen] : [chosen]
+
+  const { bakedRelayAddresses } = await import('./relay-sources.js')
+
+  return bakedRelayAddresses()
+}
+
 window.__ablage = {
   storage: async name => {
     const store = await directoryStorage({ root: await scratch(name) })
@@ -127,9 +147,8 @@ window.__ablage = {
    */
   meetOverRelay: async () => {
     const { createPeer } = await import('./peer.js')
-    const { bakedRelayAddresses } = await import('./relay-sources.js')
 
-    const peer = await createPeer({ relayOptIn: true, relayBootstrapAddrs: bakedRelayAddresses() })
+    const peer = await createPeer({ relayOptIn: true, relayBootstrapAddrs: await relayAddresses() })
     const heard = new Set()
 
     peer.node.addEventListener('peer:discovery', event => heard.add(event.detail.id.toString()))
@@ -138,6 +157,12 @@ window.__ablage = {
       peerId: peer.peerId(),
       heard: () => [...heard],
       connections: () => peer.node.getConnections().length,
+
+      // Connected and reachable are different things, and only the second one
+      // produces a `/p2p-circuit` address. The public-relay smoke spec asks
+      // for exactly this, because a relay can answer every dial and still
+      // reserve for nobody.
+      relayAddresses: () => peer.relayAddresses(),
       stop: () => peer.stop().catch(() => {})
     }
   },
@@ -151,7 +176,6 @@ window.__ablage = {
    */
   meetAndDial: async () => {
     const { createPeer } = await import('./peer.js')
-    const { bakedRelayAddresses } = await import('./relay-sources.js')
 
     const heard = new Set()
     const inbound = []
@@ -162,7 +186,7 @@ window.__ablage = {
     // handler this one was trying to replace.
     const peer = await createPeer({
       relayOptIn: true,
-      relayBootstrapAddrs: bakedRelayAddresses(),
+      relayBootstrapAddrs: await relayAddresses(),
       onSyncStream: (stream, peerId) => inbound.push(peerId)
     })
 
@@ -222,10 +246,9 @@ window.__ablage = {
   bitswapAcrossTheRelay: async () => {
     const { createPeer } = await import('./peer.js')
     const { createContent } = await import('./content.js')
-    const { bakedRelayAddresses } = await import('./relay-sources.js')
 
     const start = async () => {
-      const peer = await createPeer({ relayOptIn: true, relayBootstrapAddrs: bakedRelayAddresses() })
+      const peer = await createPeer({ relayOptIn: true, relayBootstrapAddrs: await relayAddresses() })
       const heard = new Set()
 
       peer.node.addEventListener('peer:discovery', event => heard.add(event.detail.id.toString()))

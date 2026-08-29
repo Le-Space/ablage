@@ -119,7 +119,26 @@ export function throughOurRelay (ours, them) {
  * address this one deliberately does not build.
  */
 export async function openSyncStream (node, peerId, protocol, options = {}) {
-  const { attempts = 15, retryDelay = 300, settleDelay = 200 } = options
+  const {
+    attempts = 15,
+    retryDelay = 300,
+    settleDelay = 200,
+
+    /**
+     * **A dial with no deadline is a button that never comes back.**
+     *
+     * `dialProtocol` was called without a signal, so an attempt that never
+     * settled hung the whole loop - not for `attempts` tries, but forever. On
+     * screen that is "Ask to share" pressed and nothing happening, ever, with
+     * no error to show; in the browser tests it is a spec sailing past its own
+     * four-minute limit. Both were seen before this was found.
+     *
+     * Per attempt, and a budget over all of them: fifteen ten-second dials
+     * would be a two-and-a-half-minute wait, which is its own kind of hang.
+     */
+    dialTimeout = 10_000,
+    budget = 45_000
+  } = options
   const id = typeof peerId === 'string' ? peerIdFromString(peerId) : peerId
 
   // The best address this device knows for them, or the peer id if it knows
@@ -163,13 +182,23 @@ export async function openSyncStream (node, peerId, protocol, options = {}) {
 
   let lastError = new Error(`The remote peer never accepted a ${protocol} stream`)
 
+  const deadline = Date.now() + budget
+
   for (let attempt = 0; attempt < attempts; attempt++) {
+    if (Date.now() >= deadline) {
+      lastError = new Error(`no ${protocol} stream after ${Math.round(budget / 1000)}s`)
+      break
+    }
+
     try {
       // The dialling half of the same rule. A relayed connection is *limited*,
       // and a protocol stream on one is refused unless both sides say it may -
       // the handler in `peer.js` carries the same flag, and either alone is
       // still a refusal.
-      const stream = await node.dialProtocol(id, protocol, { runOnLimitedConnection: true })
+      const stream = await node.dialProtocol(id, protocol, {
+        runOnLimitedConnection: true,
+        signal: AbortSignal.timeout(Math.min(dialTimeout, Math.max(0, deadline - Date.now())))
+      })
 
       await new Promise(resolve => setTimeout(resolve, settleDelay))
 

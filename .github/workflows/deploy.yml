@@ -80,7 +80,22 @@ jobs:
       - run: npm run test:unit
 
       # The container ships the browsers, so both engines run without an install.
-      - run: npx playwright test
+      #
+      # `@public` is left out on purpose. Those specs call the relay people
+      # actually use, which is a machine nobody here administers - on
+      # 2026-08-28 it stopped advertising its own protocols and twelve red
+      # tests kept a correct build from publishing, not one of them about this
+      # code. Everything that needs a relay to relay now runs against one
+      # started next to the tests.
+      - run: npx playwright test --grep-invert @public
+
+      # The public relay, still called, still reported - and unable to fail the
+      # deploy. `continue-on-error` is the whole point: when this turns red it
+      # means the relay drifted from what the app expects, which is worth
+      # knowing and is somebody's afternoon, not a blocked release.
+      - name: And the relay people actually use
+        continue-on-error: true
+        run: npx playwright test --grep @public
 
   deploy:
     needs: test

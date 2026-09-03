@@ -174,7 +174,7 @@ window.__ablage = {
    * step between "they see each other" and "they sync", and it is where the
    * report of two devices that find each other and do nothing points.
    */
-  meetAndDial: async ({ holePunch = true } = {}) => {
+  meetAndDial: async ({ holePunch = true, admitAll = false } = {}) => {
     const { createPeer } = await import('./peer.js')
 
     const heard = new Set()
@@ -192,7 +192,13 @@ window.__ablage = {
       // With this off there is no DCUtR and no `/webrtc` address, so the
       // circuit is the only path that will ever exist - which is what two
       // phones on mobile data have.
-      holePunch
+      holePunch,
+
+      // A spec measuring *transport* - does DCUtR get these two off the relay -
+      // has to say so, because a node now closes a direct connection to anyone
+      // it has no relationship with. Saying it out loud beats a spec that
+      // silently measures the guard instead of the hole punch.
+      admitted: () => admitAll
     })
 
     peer.node.addEventListener('peer:discovery', event => heard.add(event.detail.id.toString()))
@@ -263,12 +269,22 @@ window.__ablage = {
    * comes back with the bytes, an unadmitted peer can read a file whose address
    * it knows.
    */
-  bitswapAcrossTheRelay: async () => {
+  bitswapAcrossTheRelay: async ({ holePunch = true, admitAll = false } = {}) => {
     const { createPeer } = await import('./peer.js')
     const { createContent } = await import('./content.js')
 
     const start = async () => {
-      const peer = await createPeer({ relayOptIn: true, relayBootstrapAddrs: await relayAddresses() })
+      // With the hole punch off there is no DCUtR and no `/webrtc` address, so
+      // the circuit is the only path the two can ever have. That is what makes
+      // "bitswap refuses limited connections" a claim this harness can test
+      // rather than hope for: with a direct path available it is never put to
+      // the question.
+      const peer = await createPeer({
+        relayOptIn: true,
+        relayBootstrapAddrs: await relayAddresses(),
+        holePunch,
+        admitted: () => admitAll
+      })
       const heard = new Set()
 
       peer.node.addEventListener('peer:discovery', event => heard.add(event.detail.id.toString()))

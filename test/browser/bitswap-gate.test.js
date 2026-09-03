@@ -47,7 +47,7 @@ test('an unadmitted peer can read a file whose address it knows', async ({ page 
   await page.waitForFunction(() => window.__ablage != null)
 
   const out = await page.evaluate(async () => {
-    const pair = await window.__ablage.bitswapAcrossTheRelay()
+    const pair = await window.__ablage.bitswapAcrossTheRelay({ admitAll: true })
 
     try {
       const cid = await pair.hold('only one side put this in its folder')
@@ -70,10 +70,14 @@ test('an unadmitted peer can read a file whose address it knows', async ({ page 
     }
   })
 
-  // What kind of connection carried it decides what this proves. Both were
-  // measured and both leak: `/p2p-circuit/p2p/…` reporting `limited: true`
-  // before the hole punch existed, and `/p2p-circuit/webrtc/p2p/…` reporting
-  // `limited: false` after it. So this is older than DCUtR.
+  // What kind of connection carried it decides what this proves, and the first
+  // reading of that was wrong. It said both paths leak - `limited: true` as
+  // well as `limited: false` - and concluded the hole was older than DCUtR.
+  // The spec below takes the direct path away entirely rather than reporting
+  // on whichever connection `connect()` happened to name, and over a circuit
+  // that is the only path there is, nothing arrives. So the earlier
+  // `limited: true` reading was a second, unlimited connection standing beside
+  // the one being reported.
   // Reported with the whole outcome attached: on a shared runner this is the
   // step that fails, and "expected true, received false" says nothing about
   // whether discovery worked, what addresses were known, or what the dial said.
@@ -86,4 +90,117 @@ test('an unadmitted peer can read a file whose address it knows', async ({ page 
   // Invert these two when bitswap is gated.
   expect(out.error).toBe(null)
   expect(out.got).toBe('only one side put this in its folder')
+})
+
+
+/**
+ * And it cannot, when the circuit is the only path there is.
+ *
+ * `@helia/bitswap` registers its handler with `runOnLimitedConnection: false`,
+ * so in principle a relayed connection should already refuse to serve blocks.
+ * Whether it does could not be settled while a direct path was available: two
+ * browsers on one machine hole-punch within seconds, and a read that succeeds
+ * afterwards says nothing about what the circuit would have done.
+ *
+ * With `holePunch: false` there is no DCUtR and no `/webrtc` address, so the
+ * circuit is the only path these two will ever have. That turns the flag into
+ * something measurable.
+ *
+ * **What this pins down.** The gate that exists works. The hole is the
+ * *upgrade*: an unadmitted stranger is refused for as long as they are stuck on
+ * the relay, and served the moment DCUtR gets them off it. Which makes "do not
+ * upgrade a peer nobody admitted" a smaller fix than gating bitswap by peer or
+ * encrypting the blockstore - the two options #43 was weighing before this was
+ * known.
+ */
+test('and it cannot, when the circuit is the only path there is', async ({ page }) => {
+  await page.goto('/harness.html')
+  await page.waitForFunction(() => window.__ablage != null)
+
+  const out = await page.evaluate(async () => {
+    const pair = await window.__ablage.bitswapAcrossTheRelay({ holePunch: false })
+
+    try {
+      const cid = await pair.hold('only one side put this in its folder')
+      const until = Date.now() + 150_000
+
+      while (!pair.heardEachOther() && Date.now() < until) {
+        await new Promise(resolve => setTimeout(resolve, 1000))
+      }
+
+      const dialled = await pair.connect()
+
+      return { heard: pair.heardEachOther(), connection: dialled, ...await pair.readWithoutAsking(cid) }
+    } finally {
+      await pair.stop()
+    }
+  })
+
+  expect(out.heard, JSON.stringify(out)).toBe(true)
+  expect(out.connection, JSON.stringify(out)).toMatchObject({ ok: true })
+
+  // The premise of the whole spec. Asked of `limits` rather than of the
+  // address: a hole-punched connection still reads `/p2p-circuit/webrtc/…`, so
+  // the address would not tell these two apart.
+  expect(out.connection.limited, JSON.stringify(out)).toBe(true)
+
+  // And so nothing arrives.
+  expect(out.got, JSON.stringify(out)).toBe(null)
+  expect(out.error, JSON.stringify(out)).toMatch(/timed out/i)
+})
+
+/**
+ * And a stranger is kept on the relay, where those two facts do the work.
+ *
+ * The two specs above bracket the problem: bitswap serves an unadmitted peer
+ * over a direct connection, and refuses one over a circuit. So the hole was
+ * never the circuit - it was DCUtR getting a stranger off it, after which every
+ * protocol on the node is reachable at once.
+ *
+ * `peer.js` now closes a direct connection to a peer that was neither scanned
+ * nor admitted. This is the same setup as the first spec - the hole punch is
+ * available, nothing is stopping it - with the guard doing its work.
+ *
+ * **What this deliberately does not claim.** Somebody admitted once is served
+ * for as long as they hold what they saw, and taking that back needs the blocks
+ * to be useless without a key. That is #70, not this.
+ */
+test('and a stranger never gets the direct connection that would serve them', async ({ page }) => {
+  await page.goto('/harness.html')
+  await page.waitForFunction(() => window.__ablage != null)
+
+  const out = await page.evaluate(async () => {
+    // No `admitAll`, and the hole punch left available: exactly the shape that
+    // leaked before the guard existed.
+    const pair = await window.__ablage.bitswapAcrossTheRelay()
+
+    try {
+      const cid = await pair.hold('only one side put this in its folder')
+      const until = Date.now() + 150_000
+
+      while (!pair.heardEachOther() && Date.now() < until) {
+        await new Promise(resolve => setTimeout(resolve, 1000))
+      }
+
+      const dialled = await pair.connect()
+      const read = await pair.readWithoutAsking(cid, 20000)
+
+      // Asked after the read rather than before it: DCUtR needs a moment, and
+      // the question is whether an unlimited connection ever stands, not
+      // whether one had appeared by the time we first looked.
+      return { heard: pair.heardEachOther(), connection: dialled, after: await pair.connect(), ...read }
+    } finally {
+      await pair.stop()
+    }
+  })
+
+  expect(out.heard, JSON.stringify(out)).toBe(true)
+  expect(out.connection, JSON.stringify(out)).toMatchObject({ ok: true })
+
+  // The guard's whole job: no unlimited connection to somebody with no
+  // relationship, however hard DCUtR tries.
+  expect(out.after.limited, JSON.stringify(out)).toBe(true)
+
+  expect(out.got, JSON.stringify(out)).toBe(null)
+  expect(out.error, JSON.stringify(out)).toMatch(/timed out/i)
 })

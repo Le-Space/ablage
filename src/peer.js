@@ -9,7 +9,7 @@ import { identify, identifyPush } from '@libp2p/identify'
 import { ping } from '@libp2p/ping'
 import { webRTC } from '@libp2p/webrtc'
 import { webSockets } from '@libp2p/websockets'
-import { decodePayload, QRSession, QR_TYPE_OFFER, webRTCQR } from '@le-space/libp2p-webrtc-qr'
+import { decodePayload, QRSession, QR_TYPE_ANSWER, QR_TYPE_OFFER, webRTCQR } from '@le-space/libp2p-webrtc-qr'
 import { createLibp2p } from 'libp2p'
 
 import { denyDial, relayBootstrapList } from './relay-policy.js'
@@ -146,7 +146,20 @@ export async function createPeer ({
    * So this exists to take the direct path away: no DCUtR to arrange one, and
    * no `/webrtc` address to arrange it to.
    */
-  holePunch = true
+  holePunch = true,
+
+  /**
+   * Does this peer have a relationship with this device?
+   *
+   * Consulted before a *direct* connection to them is allowed to stand. The
+   * default answers no to everybody, which is the conservative half: a node
+   * whose caller wires nothing up keeps strangers on the relay, where the
+   * protocols that matter already refuse them.
+   *
+   * Scanning a code is the other way in and is not asked about here - the scan
+   * was the consent, and `scanned` records the act.
+   */
+  admitted = () => false
 } = {}) {
   let session = null
 
@@ -314,6 +327,90 @@ export async function createPeer ({
       // leave the relay, which is the opposite of what the caller asked for.
       ...(holePunch ? { dcutr: dcutr() } : {})
     }
+  })
+
+  /**
+   * Record a scanned peer *before* the connection to them exists.
+   *
+   * `session.acceptOffer` and `session.acceptAnswer` are what establish the
+   * WebRTC connection, so the guard below sees `connection:open` while they are
+   * still running. Recording the scan afterwards left a window in which a
+   * connection that exists *because* somebody scanned a code looked exactly
+   * like a stranger's and was closed - ten QR specs failed there, which is how
+   * the ordering was found.
+   *
+   * Still only after verification. `decodePayload` checks the signature, and an
+   * offer that does not decode is not consent to anything - that property is
+   * older than the guard and is kept.
+   *
+   * @param {string} payload
+   * @param {unknown} type
+   */
+  async function noteScan (payload, type) {
+    try {
+      const { peerId } = await decodePayload(payload, type)
+
+      scanned.add(String(peerId))
+    } catch {
+      // Unverifiable, so not consent. The peer is asked about rather than
+      // admitted, which is the direction to fail in.
+    }
+  }
+
+  /**
+   * **Keep a stranger on the relay.**
+   *
+   * `/ablage/sync/1.0.0` is gated by the admission dialog, and for a while that
+   * was believed to cover everything. It does not: bitswap is a second protocol
+   * on the same node, and it serves any block it holds to anyone who names the
+   * address. Measured, and it is #43.
+   *
+   * What was *not* known until it could be measured in isolation is that
+   * bitswap already refuses a relayed connection - `runOnLimitedConnection:
+   * false` is its default and it works. Over a circuit that is the only path
+   * two peers have, an unadmitted read times out. The leak is not the circuit;
+   * it is the moment DCUtR gets them off it, because a direct connection is
+   * unlimited and every protocol on the node becomes reachable at once.
+   *
+   * So this closes the direct connection rather than gating each protocol on
+   * it. Narrow, and it inherits every gate the relayed path already has instead
+   * of adding a new list to keep in step.
+   *
+   * **What it does not fix.** Somebody admitted once keeps what they saw and
+   * can fetch those blocks again afterwards; taking that back needs the bytes
+   * to be useless without a key, which is a different change.
+   */
+  node.addEventListener('connection:open', event => {
+    const connection = event.detail
+
+    // Relayed, and therefore already refused by the protocols that matter.
+    if (connection?.limits != null) return
+
+    /**
+     * **Only a link to another browser, never one to infrastructure.**
+     *
+     * The first version of this closed anything unlimited, and the relay is
+     * exactly that: a plain WebSocket this node dialled, to a peer it has no
+     * relationship with by construction. Closing it took discovery down with
+     * it and the two peers never heard each other at all.
+     *
+     * Two browsers can only ever reach each other directly over WebRTC - a
+     * hole punch reads `/p2p-circuit/webrtc/p2p/…`, a scanned session reads
+     * `/webrtc/p2p/…`. Anything without `/webrtc` in it is a server, and this
+     * is not about servers.
+     */
+    if (!String(connection.remoteAddr ?? '').includes('/webrtc')) return
+
+    const id = String(connection.remotePeer)
+
+    // The scan was the consent, and the QR path is direct by construction.
+    if (scanned.has(id)) return
+    if (admitted(id)) return
+
+    connection.close().catch(() => {
+      // A connection that will not close is one libp2p is already tearing
+      // down. Nothing better to do here than let it.
+    })
   })
 
   session = new QRSession(node, rtcConfiguration != null ? { rtcConfiguration } : {})
@@ -503,25 +600,20 @@ export async function createPeer ({
      * consent to anything.
      */
     acceptOffer: async offer => {
-      const answer = await session.acceptOffer(offer)
+      await noteScan(offer, QR_TYPE_OFFER)
 
-      try {
-        const { peerId } = await decodePayload(offer, QR_TYPE_OFFER)
-
-        scanned.add(String(peerId))
-      } catch {
-        // It decoded a moment ago inside `acceptOffer`, so this is close to
-        // unreachable. If it ever happens the peer is asked about rather than
-        // admitted, which is the direction to fail in.
-      }
-
-      return answer
+      return session.acceptOffer(offer)
     },
 
     /** Back on the offering side: read the reply and connect. */
     acceptAnswer: async answer => {
+      await noteScan(answer, QR_TYPE_ANSWER)
+
       const { peerId } = await session.acceptAnswer(answer)
 
+      // Again, and this one is authoritative: the session knows who it
+      // actually connected to, while the line above only knows who signed the
+      // code. They agree in every case that works.
       scanned.add(peerId.toString())
       return peerId.toString()
     },

@@ -478,6 +478,16 @@ const letGo = new Set()
 /** Who may write into this folder. The QR scan is the only automatic yes. */
 const admitted = admission({ key: scoped('ablage.admitted', shareId) })
 
+/**
+ * Who was let in during this session, remembered or not.
+ *
+ * Read by the guard in `peer.js`, which closes a *direct* connection to anyone
+ * this device has no relationship with - see #43. Kept beside the stored set
+ * rather than inside it: this one is deliberately forgotten on reload, because
+ * a one-time yes was never meant to outlive the session.
+ */
+const letIn = new Set()
+
 /** This folder's id and name, for the message a switch sends. */
 let folder = { id: null, name: null }
 
@@ -903,6 +913,14 @@ async function render () {
  *   replaces that peer's provider rather than accumulating one per attempt.
  */
 function attach (stream, peerId) {
+  // **Admitted for this session, whether or not the box was ticked.**
+  //
+  // `admitted.remembered()` only knows the peers somebody chose to keep. A
+  // one-time yes is just as much a yes, and the guard in `peer.js` has to hear
+  // about it - otherwise the direct connection to somebody who was let in a
+  // moment ago gets closed as a stranger's.
+  letIn.add(String(peerId))
+
   const send = message => stream.send(encode(JSON.stringify(message)))
 
   // Its own binding, read by its own loop below. Reading the shared one was
@@ -1031,6 +1049,10 @@ async function start () {
     // during the introduction's check and heard nobody for ever, which is what
     // "connected, and no peers anywhere" turned out to mean.
     relayBootstrapAddrs: startupRelays(localStore, RELAY_ADDRESSES_KEY),
+
+    // Both halves of "does this peer have a relationship with us": the ones
+    // somebody chose to keep, and the ones let in since this page loaded.
+    admitted: id => letIn.has(String(id)) || admitted.remembered(String(id)),
     onSyncStream: (stream, peerId) => {
       // `peer.arrivedByScan`, not the address. A peer that hole-punched out of
       // the relay has a `/webrtc/p2p/<id>` address with no circuit in it -

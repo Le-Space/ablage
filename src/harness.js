@@ -269,7 +269,7 @@ window.__ablage = {
    * comes back with the bytes, an unadmitted peer can read a file whose address
    * it knows.
    */
-  bitswapAcrossTheRelay: async ({ holePunch = true, admitAll = false } = {}) => {
+  bitswapAcrossTheRelay: async ({ holePunch = true, admitAll = false, overCircuits = false } = {}) => {
     const { createPeer } = await import('./peer.js')
     const { createContent } = await import('./content.js')
 
@@ -289,7 +289,7 @@ window.__ablage = {
 
       peer.node.addEventListener('peer:discovery', event => heard.add(event.detail.id.toString()))
 
-      return { peer, content: await createContent(peer.node), heard }
+      return { peer, content: await createContent(peer.node, { overCircuits }), heard }
     }
 
     const holder = await start()
@@ -302,6 +302,33 @@ window.__ablage = {
 
       /** @returns {Promise<string>} the address of some bytes only the holder has */
       hold: text => holder.content.add(new TextEncoder().encode(text)),
+
+      /**
+       * Can the bitswap protocol itself be opened over this connection?
+       *
+       * Separates two questions a timed-out read cannot: whether libp2p refuses
+       * the stream, or whether the stream opens and bitswap's own want/session
+       * machinery is what does not deliver.
+       */
+      canOpenBitswap: async () => {
+        const { peerIdFromString } = await import('@libp2p/peer-id')
+
+        for (const protocol of ['/ipfs/bitswap/1.2.0', '/ipfs/bitswap/1.1.0']) {
+          try {
+            const stream = await reader.peer.node.dialProtocol(
+              peerIdFromString(holder.peer.peerId()), protocol,
+              { runOnLimitedConnection: true, signal: AbortSignal.timeout(12_000) }
+            )
+
+            await stream.close().catch(() => {})
+            return { protocol, ok: true, error: null }
+          } catch (error) {
+            var last = String(error?.message ?? error).slice(0, 140)
+          }
+        }
+
+        return { protocol: null, ok: false, error: last }
+      },
 
       /**
        * Ask for it from the other node, having agreed to nothing.
@@ -385,7 +412,7 @@ window.__ablage = {
    * One whole side: storage, a peer, content, an index, and the wiring that
    * makes a change on either side end up on the other.
    */
-  start: async name => {
+  start: async (name, { overRelay = false } = {}) => {
     await window.__ablage.clear(name)
 
     let doc = new Y.Doc()
@@ -451,11 +478,32 @@ window.__ablage = {
     // claim about whatever network the test happens to be on.
     const peer = await createPeer({
       rtcConfiguration: { iceServers: [] },
+
+      /**
+       * A full side that can only reach the other over a circuit.
+       *
+       * Two phones on mobile data are behind carrier NAT, and when no hole
+       * punch succeeds the relay is the whole of the path. The specs that use
+       * this ask a question nothing else does: the sync stream is known to
+       * cross a circuit, but *files* travel by bitswap, which refuses one.
+       */
+      ...(overRelay
+        ? {
+            relayOptIn: true,
+            relayBootstrapAddrs: await relayAddresses(),
+            holePunch: false,
+            admitted: () => true
+          }
+        : {}),
       onSyncStream: (stream, peerId, address) => {
         lastInbound = { peerId, address }
         attach(stream, peerId)
       }
     })
+
+    const heardOnRelay = new Set()
+
+    peer.node.addEventListener('peer:discovery', event => heardOnRelay.add(event.detail.id.toString()))
 
     const content = await createContent(peer.node)
 
@@ -553,7 +601,28 @@ window.__ablage = {
       list: () => storage.list(),
       paths: () => index.paths(),
       reconcile: pass,
-      connections: () => peer.connections()
+      connections: () => peer.connections(),
+
+      /** Who is out there, for a side that reached the meeting place. */
+      heard: () => [...heardOnRelay],
+
+      /** Open the sync stream to somebody found there. */
+      call: async peerId => {
+        try {
+          attach(await peer.openSyncStream(peerId), peerId)
+          return { ok: true, error: null }
+        } catch (error) {
+          return { ok: false, error: String(error?.message ?? error).slice(0, 200) }
+        }
+      },
+
+      /** Every connection to them, and whether it is metered. */
+      carriedBy: async peerId => {
+        const { peerIdFromString } = await import('@libp2p/peer-id')
+
+        return peer.node.getConnections(peerIdFromString(peerId))
+          .map(c => ({ address: String(c.remoteAddr ?? ''), limited: c.limits != null }))
+      }
     }
 
     return peer.peerId()
@@ -563,6 +632,6 @@ window.__ablage = {
 // One side per browser context, which is what a device is.
 let side = null
 
-for (const name of ['peerId', 'createOffer', 'acceptOffer', 'acceptAnswer', 'write', 'remove', 'read', 'list', 'paths', 'reconcile', 'connections', 'useFolder', 'syncPeers', 'identity', 'lastInbound', 'appMessages', 'refuse']) {
+for (const name of ['peerId', 'createOffer', 'acceptOffer', 'acceptAnswer', 'write', 'remove', 'read', 'list', 'paths', 'reconcile', 'connections', 'useFolder', 'syncPeers', 'identity', 'lastInbound', 'appMessages', 'refuse', 'heard', 'call', 'carriedBy']) {
   window.__ablage[name] = (...args) => side[name](...args)
 }

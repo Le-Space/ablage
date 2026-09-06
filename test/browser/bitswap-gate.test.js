@@ -185,10 +185,26 @@ test('and a stranger never gets the direct connection that would serve them', as
       const dialled = await pair.connect()
       const read = await pair.readWithoutAsking(cid, 20000)
 
-      // Asked after the read rather than before it: DCUtR needs a moment, and
-      // the question is whether an unlimited connection ever stands, not
-      // whether one had appeared by the time we first looked.
-      return { heard: pair.heardEachOther(), connection: dialled, after: await pair.connect(), ...read }
+      // **Sampled, not asked once.**
+      //
+      // The guard closes the connection when `connection:open` fires, which is
+      // a beat after the connection exists - so a single look can catch the
+      // moment in between and report `limited: false` for a connection that is
+      // already being torn down. That made this spec fail about one run in ten
+      // on Firefox while passing alone, which is the worst way for a security
+      // test to behave: it gets waved through.
+      //
+      // What is asserted is that no unlimited connection *stands*, so the
+      // question is asked repeatedly over a few seconds and the answers are
+      // kept.
+      const samples = []
+
+      for (let i = 0; i < 8; i++) {
+        samples.push((await pair.connect()).limited)
+        await new Promise(resolve => setTimeout(resolve, 500))
+      }
+
+      return { heard: pair.heardEachOther(), connection: dialled, samples, ...read }
     } finally {
       await pair.stop()
     }
@@ -198,9 +214,71 @@ test('and a stranger never gets the direct connection that would serve them', as
   expect(out.connection, JSON.stringify(out)).toMatchObject({ ok: true })
 
   // The guard's whole job: no unlimited connection to somebody with no
-  // relationship, however hard DCUtR tries.
-  expect(out.after.limited, JSON.stringify(out)).toBe(true)
+  // relationship stands, however hard DCUtR tries. Every sample, not the last -
+  // one that flickers open and shut is still a window somebody could have used.
+  expect(out.samples, JSON.stringify(out)).not.toContain(false)
 
+  expect(out.got, JSON.stringify(out)).toBe(null)
+  expect(out.error, JSON.stringify(out)).toMatch(/timed out/i)
+})
+
+/**
+ * The option that ought to lift this does nothing, and that is upstream.
+ *
+ * `@helia/bitswap` documents `runOnLimitedConnections`. Setting it to `true`
+ * should let blocks cross a circuit — and it does not, because two call sites
+ * drop the flag: the registrar topology never sets `notifyOnLimitedConnection`,
+ * so bitswap is never told the peer exists, and `sendMessage()` dials without
+ * merging the flag into its options. **Each alone is enough to break it** -
+ * patching either changes nothing, patching both makes a read succeed.
+ *
+ * Measured here against a patched copy of the dependency, then reported as
+ * ipfs/helia#1124. `handle()` and `findProviders()` both honour the flag; the
+ * call that actually asks a peer for a block is the one that does not.
+ *
+ * **This spec asserts the broken behaviour on purpose.** It is a tripwire: when
+ * the fix lands upstream and this repository picks it up, it turns red, and the
+ * thing to do is invert it rather than to go looking for a regression. That
+ * also matters for the guard in `peer.js` — while this holds, a stranger on the
+ * relay is refused twice over, and afterwards only once.
+ */
+test('and the documented option does not lift that, until helia#1124 lands', async ({ page }) => {
+  await page.goto('/harness.html')
+  await page.waitForFunction(() => window.__ablage != null)
+
+  const out = await page.evaluate(async () => {
+    const pair = await window.__ablage.bitswapAcrossTheRelay({
+      holePunch: false,
+      admitAll: true,
+      // The whole point: asking for it, and being refused anyway.
+      overCircuits: true
+    })
+
+    try {
+      const cid = await pair.hold('only one side put this in its folder')
+      const until = Date.now() + 150_000
+
+      while (!pair.heardEachOther() && Date.now() < until) {
+        await new Promise(resolve => setTimeout(resolve, 1000))
+      }
+
+      const dialled = await pair.connect()
+
+      // The discriminating fact. libp2p does *not* refuse the protocol over the
+      // circuit - the stream opens when dialled by hand. So the failure below
+      // is bitswap never asking, not the transport saying no.
+      const stream = await pair.canOpenBitswap()
+
+      return { connection: dialled, stream, ...await pair.readWithoutAsking(cid, 25000) }
+    } finally {
+      await pair.stop()
+    }
+  })
+
+  expect(out.connection, JSON.stringify(out)).toMatchObject({ ok: true, limited: true })
+  expect(out.stream, JSON.stringify(out)).toMatchObject({ ok: true })
+
+  // Invert these two when the fix is in.
   expect(out.got, JSON.stringify(out)).toBe(null)
   expect(out.error, JSON.stringify(out)).toMatch(/timed out/i)
 })

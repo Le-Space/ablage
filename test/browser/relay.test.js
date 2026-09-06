@@ -145,7 +145,14 @@ test.describe('calling somebody met through a relay', () => {
 
     await page.goto('/harness.html')
     await page.waitForFunction(() => window.__ablage != null)
-    await page.evaluate(async () => { window.__side = await window.__ablage.meetAndDial() })
+    // `admitAll` because these specs measure *transport* - whether the sync
+    // stream crosses a circuit, and whether DCUtR gets the two off it. A node
+    // now closes a direct connection to a peer it has no relationship with
+    // (#43), so without saying this out loud the upgrade spec below would be
+    // measuring the guard instead of the hole punch.
+    await page.evaluate(async () => {
+      window.__side = await window.__ablage.meetAndDial({ admitAll: true })
+    })
 
     return { page, context, id: await page.evaluate(() => window.__side.peerId) }
   }

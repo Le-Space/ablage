@@ -73,12 +73,59 @@ finish.
 The tests pass a relay address in deliberately. One that left it out would pass
 for the wrong reason, and would keep passing with the gate deleted.
 
+### A circuit carries data. What stops a protocol is a flag, not the transport
+
+**This is the single fact that cost the most time in this repository. Read it
+before concluding that anything "does not work over a relay".**
+
+A circuit relay forwards bytes between two peers and stores nothing — no cache,
+no copy, pure relaying. Data crosses it. Measured here, over a circuit that was
+the only path two browsers had:
+
+| payload | |
+| --- | --- |
+| 1 MiB | 46 ms |
+| 4 MiB | 179 ms |
+| **16 MiB** | **585 ms** |
+
+The relay's own budget is 10 GiB and twenty minutes per circuit, so metering is
+not the limit either.
+
+**What decides whether a protocol crosses is `runOnLimitedConnection`.** libp2p
+marks a relayed connection *limited* and refuses to open a protocol stream on
+one unless the protocol says it may — and **both sides have to say it**, on
+`node.handle` and on `dialProtocol`. Either alone is still a refusal.
+
+| | crosses a circuit |
+| --- | --- |
+| `/ablage/sync/1.0.0` — sets it on both sides | **yes** |
+| gossipsub — `runOnLimitedConnection: true` | **yes** |
+| bitswap — does not set it, and cannot be made to (ipfs/helia#1124) | no |
+
+So "files do not cross a relay" is the wrong sentence. The right one is
+"bitswap declines to run on a limited connection", and that is a property of one
+library, not of the network. #72 and #74 are the work that follows from it.
+
+**Tell relayed from direct by `connection.limits == null`, never by the
+address.** A hole-punched connection still reads `/p2p-circuit/webrtc/p2p/…`, so
+a check that greps the address for `/p2p-circuit` passes just as happily on a
+connection the relay stopped carrying long ago. Specs in this repository were
+written that way and were measuring the wrong thing.
+
+**And a relay that also holds the data is a different animal.** `orbitdb-relay`
+runs OrbitDB and pins databases, so simple-todo's browsers get their data *from
+the relay* over an ordinary unlimited WebSocket — never through a circuit at
+all. That is why the limitation above went unnoticed there for years. ablage's
+relay holds nothing, which is why the same limitation is visible here.
+
 ### Which relay can do what
 
-A circuit relay brokers the connection; the data then flows **directly** between
-devices — measured at 1.6 s, with the relay used only for signalling. So the
-2 min / 128 KB limits in go-peer's `relayv2.DefaultResources()` never bite for
-connecting, and would for replication.
+A circuit relay brokers the connection, and when a hole punch succeeds the data
+then flows **directly** between devices — measured at 1.6 s. When it does not,
+the circuit carries the data itself, which works for any protocol that opted in
+above. The 2 min / 128 KB limits in go-peer's `relayv2.DefaultResources()`
+therefore do bite for replication over that relay; ours allows 10 GiB and
+twenty minutes.
 
 The real dividing line is not transport, it is **discovery**:
 

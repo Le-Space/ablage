@@ -47,6 +47,28 @@ test('a file crosses once the two have left the relay', async () => {
       .poll(() => a.page.evaluate(id => window.__ablage.carriedBy(id), b.id), { timeout: 90_000 })
       .toEqual(expect.arrayContaining([expect.objectContaining({ limited: false })]))
 
+    /**
+     * **And its address is `/p2p-circuit/webrtc/p2p/…`, which is the shape worth
+     * naming.** The circuit is still in it - that is where the two agreed on a
+     * moment - but nothing is being relayed any more: `limited` is false and
+     * the relay's budget no longer applies.
+     *
+     * This is exactly why the address must never be used to tell relayed from
+     * direct. Grepping it for `/p2p-circuit` matches both the connection the
+     * relay is carrying and the one it merely introduced.
+     */
+    const carried = await a.page.evaluate(id => window.__ablage.carriedBy(id), b.id)
+    const upgraded = carried.filter(c => !c.limited)
+
+    expect(upgraded.length, JSON.stringify(carried)).toBeGreaterThan(0)
+    expect(
+      upgraded.some(c => c.address.includes('/p2p-circuit/') && c.address.includes('/webrtc/')),
+      JSON.stringify(carried)
+    ).toBe(true)
+
+    // And the circuit itself is still there, still limited, beside it.
+    expect(carried.some(c => c.limited), JSON.stringify(carried)).toBe(true)
+
     expect(await b.page.evaluate(() => window.__ablage.list())).toEqual([])
 
     await a.page.evaluate(() => window.__ablage.write('notiz.txt', 'über den durchstoß'))

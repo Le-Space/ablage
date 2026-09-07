@@ -114,7 +114,24 @@ jobs:
           cache: npm
 
       - run: npm ci
+
+      # **Bake the relay the registration names, not the one somebody last
+      # wrote down.** The hand-maintained list in `relay-sources.js` has gone
+      # stale three times in two weeks - a relay is redeployed, gets a new peer
+      # id, and the shipped address points at a machine that no longer exists.
+      # The app recovers by asking the registration after fifteen seconds, so
+      # nobody is stuck; they just wait for something that was knowable here.
+      #
+      # Empty on failure, and that is deliberate: Aleph is somebody else's API,
+      # and a deploy that cannot reach it should still ship with the addresses
+      # the source carries.
+      - name: Ask the registration which relays are live
+        id: relays
+        run: echo "addresses=$(node scripts/current-relays.mjs)" >> "$GITHUB_OUTPUT"
+
       - run: npx vite build
+        env:
+          VITE_RELAY_ADDRESSES: ${{ steps.relays.outputs.addresses }}
 
       - name: Install isolated Aleph deploy tooling
         run: npm install --prefix /tmp/le-space-deployer @le-space/node@0.6.22

@@ -412,7 +412,7 @@ window.__ablage = {
    * One whole side: storage, a peer, content, an index, and the wiring that
    * makes a change on either side end up on the other.
    */
-  start: async (name, { overRelay = false } = {}) => {
+  start: async (name, { overRelay = false, holePunch = false } = {}) => {
     await window.__ablage.clear(name)
 
     let doc = new Y.Doc()
@@ -491,7 +491,13 @@ window.__ablage = {
         ? {
             relayOptIn: true,
             relayBootstrapAddrs: await relayAddresses(),
-            holePunch: false,
+
+            // Off by default here, because the specs that use `overRelay` are
+            // about what a circuit alone can carry - and with a hole punch
+            // available on one machine, it is never the circuit that carries
+            // anything. On says: meet through the relay, then leave it, which
+            // is what two devices normally do.
+            holePunch,
             admitted: () => true
           }
         : {}),

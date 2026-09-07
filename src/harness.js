@@ -453,7 +453,12 @@ window.__ablage = {
           // The application's own messages, kept out of the provider - the same
           // split `main.js` makes. Recorded here so a test can see that one
           // arrived, rather than only that a stream ended.
-          if (message.type === 'sync-refused' || message.type === 'folder-switch') {
+          // Anything the CRDT has no opinion about, not just the two types this
+          // used to name. The provider's switch has no default, so a type it
+          // does not know is dropped in silence - which made an early
+          // measurement report that half a megabyte never crossed a circuit
+          // when in truth it had crossed and been discarded here.
+          if (message.type !== 'update' && message.type !== 'sync-request' && message.type !== 'sync-response') {
             appMessages.push({ from: peerId, message })
             continue
           }
@@ -645,6 +650,26 @@ window.__ablage = {
         }
       },
 
+      /**
+       * Send an arbitrary message on the sync stream.
+       *
+       * For showing that a circuit carries application data of a real size,
+       * rather than only the handful of bytes a Yjs update happens to be. The
+       * receiving side files unknown types under `appMessages`.
+       */
+      sendApp: async (peerId, message) => {
+        const held = peers.get(peerId)
+
+        if (held == null) return { ok: false, error: 'no such peer' }
+
+        try {
+          await held.send(message)
+          return { ok: true, error: null }
+        } catch (error) {
+          return { ok: false, error: String(error?.message ?? error).slice(0, 160) }
+        }
+      },
+
       /** Every connection to them, and whether it is metered. */
       carriedBy: async peerId => {
         const { peerIdFromString } = await import('@libp2p/peer-id')
@@ -661,6 +686,6 @@ window.__ablage = {
 // One side per browser context, which is what a device is.
 let side = null
 
-for (const name of ['peerId', 'createOffer', 'acceptOffer', 'acceptAnswer', 'write', 'remove', 'read', 'list', 'paths', 'reconcile', 'connections', 'useFolder', 'syncPeers', 'identity', 'lastInbound', 'appMessages', 'refuse', 'heard', 'call', 'carriedBy', 'hold', 'fetch']) {
+for (const name of ['peerId', 'createOffer', 'acceptOffer', 'acceptAnswer', 'write', 'remove', 'read', 'list', 'paths', 'reconcile', 'connections', 'useFolder', 'syncPeers', 'identity', 'lastInbound', 'appMessages', 'refuse', 'heard', 'call', 'carriedBy', 'sendApp', 'hold', 'fetch']) {
   window.__ablage[name] = (...args) => side[name](...args)
 }

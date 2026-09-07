@@ -119,6 +119,10 @@ export function throughOurRelay (ours, them) {
  * address this one deliberately does not build.
  */
 export async function openSyncStream (node, peerId, protocol, options = {}) {
+  // One name or several, newest first: `dialProtocol` negotiates, and the
+  // stream that comes back says which was agreed. Kept as a list so a failure
+  // names what was actually offered.
+  const offered = [protocol].flat()
   const {
     attempts = 15,
     retryDelay = 300,
@@ -180,13 +184,13 @@ export async function openSyncStream (node, peerId, protocol, options = {}) {
     await node.dial(multiaddr(best), { signal: AbortSignal.timeout(20_000) }).catch(() => {})
   }
 
-  let lastError = new Error(`The remote peer never accepted a ${protocol} stream`)
+  let lastError = new Error(`The remote peer never accepted any of ${offered.join(', ')}`)
 
   const deadline = Date.now() + budget
 
   for (let attempt = 0; attempt < attempts; attempt++) {
     if (Date.now() >= deadline) {
-      lastError = new Error(`no ${protocol} stream after ${Math.round(budget / 1000)}s`)
+      lastError = new Error(`no ${offered.join(' or ')} stream after ${Math.round(budget / 1000)}s`)
       break
     }
 
@@ -195,7 +199,7 @@ export async function openSyncStream (node, peerId, protocol, options = {}) {
       // and a protocol stream on one is refused unless both sides say it may -
       // the handler in `peer.js` carries the same flag, and either alone is
       // still a refusal.
-      const stream = await node.dialProtocol(id, protocol, {
+      const stream = await node.dialProtocol(id, offered, {
         runOnLimitedConnection: true,
         signal: AbortSignal.timeout(Math.min(dialTimeout, Math.max(0, deadline - Date.now())))
       })

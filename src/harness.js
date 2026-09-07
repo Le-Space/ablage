@@ -603,6 +603,29 @@ window.__ablage = {
       reconcile: pass,
       connections: () => peer.connections(),
 
+      /**
+       * Put bytes in the blockstore without writing them to storage.
+       *
+       * That is what a block belonging to a *different* share would look like
+       * if one ever lingered in this process: reachable by address, backed by
+       * no file here. See #70.
+       */
+      hold: async text => content.add(new TextEncoder().encode(text)),
+
+      /** Ask for bytes by address, the way an admitted peer would. */
+      fetch: async (cid, timeoutMs = 15000) => {
+        try {
+          const bytes = await Promise.race([
+            content.get(cid),
+            new Promise((_, no) => setTimeout(() => no(new Error('timed out')), timeoutMs))
+          ])
+
+          return new TextDecoder().decode(bytes)
+        } catch {
+          return null
+        }
+      },
+
       /** Who is out there, for a side that reached the meeting place. */
       heard: () => [...heardOnRelay],
 
@@ -632,6 +655,6 @@ window.__ablage = {
 // One side per browser context, which is what a device is.
 let side = null
 
-for (const name of ['peerId', 'createOffer', 'acceptOffer', 'acceptAnswer', 'write', 'remove', 'read', 'list', 'paths', 'reconcile', 'connections', 'useFolder', 'syncPeers', 'identity', 'lastInbound', 'appMessages', 'refuse', 'heard', 'call', 'carriedBy']) {
+for (const name of ['peerId', 'createOffer', 'acceptOffer', 'acceptAnswer', 'write', 'remove', 'read', 'list', 'paths', 'reconcile', 'connections', 'useFolder', 'syncPeers', 'identity', 'lastInbound', 'appMessages', 'refuse', 'heard', 'call', 'carriedBy', 'hold', 'fetch']) {
   window.__ablage[name] = (...args) => side[name](...args)
 }

@@ -7,6 +7,7 @@
  * question "why does it say pending", and it would be describing a stage as
  * though it were a fault.
  */
+import { codecFor } from '../sync/framing.js'
 import '@le-space/libp2p-webrtc-qr/elements'
 import * as Y from 'yjs'
 
@@ -14,7 +15,7 @@ import { createContent } from '../content.js'
 import { findARelay } from '../find-a-relay.js'
 import { keyFor } from '../device-key.js'
 import { FIRST_SHARE, ONE_OFF_SHARE, scoped, shares } from './shares.js'
-import { createPeer } from '../peer.js'
+import { SYNC_PROTOCOL, SYNC_PROTOCOL_FRAMED, createPeer } from '../peer.js'
 import { reconcile } from '../reconcile.js'
 import { baseline } from '../sync/baseline.js'
 import { fileIndex } from '../sync/file-index.js'
@@ -345,7 +346,7 @@ async function askToShare (peerId) {
   setState(t('peers.asking', { id: shortId(peerId) }), 'waiting')
 
   try {
-    attach(await peer.openSyncStream(peerId), peerId)
+    attachDialled(await peer.openSyncStream(peerId), peerId)
   } catch (error) {
     // The stream would not open at all - unreachable, or gone since the list
     // was drawn. Not a refusal: that one arrives as a message, because a stream
@@ -389,7 +390,7 @@ async function callDirectly (text) {
     // id and nowhere to send it.
     if (isAddress) await peer.node.dial(multiaddr(typed))
 
-    attach(await peer.openSyncStream(peerId), peerId)
+    attachDialled(await peer.openSyncStream(peerId), peerId)
   } catch (error) {
     setState(t('peers.unreachable', { id: shortId(peerId) }), 'idle')
     report(error)
@@ -912,7 +913,18 @@ async function render () {
  * @param {string} peerId who is on the other end. Keyed by it so a reconnection
  *   replaces that peer's provider rather than accumulating one per attempt.
  */
-function attach (stream, peerId) {
+/**
+ * For a stream this device opened: the negotiated protocol is on the stream.
+ *
+ * Three call sites would have to remember to pass it and one of them
+ * eventually would not - which is how this file and the harness drifted twice
+ * before.
+ */
+function attachDialled (stream, peerId) {
+  return attach(stream, peerId, stream.protocol ?? SYNC_PROTOCOL)
+}
+
+function attach (stream, peerId, protocol = SYNC_PROTOCOL) {
   // **Admitted for this session, whether or not the box was ticked.**
   //
   // `admitted.remembered()` only knows the peers somebody chose to keep. A
@@ -921,7 +933,10 @@ function attach (stream, peerId) {
   // moment ago gets closed as a stranger's.
   letIn.add(String(peerId))
 
-  const send = message => stream.send(encode(JSON.stringify(message)))
+  // Which protocol was negotiated decides whether a message carries its own
+  // length. Both halves come from one place so they cannot disagree.
+  const codec = codecFor(protocol, SYNC_PROTOCOL_FRAMED)
+  const send = message => stream.send(codec.encode(message))
 
   // Its own binding, read by its own loop below. Reading the shared one was
   // how a second peer took over the first one's messages.
@@ -966,31 +981,34 @@ function attach (stream, peerId) {
 
   ;(async () => {
     for await (const data of stream) {
-      const message = JSON.parse(decode(data.subarray?.() ?? data))
+      // Several messages may share one chunk, and one may span several. Under
+      // 1.0.0 this yields exactly the one message a chunk was assumed to be;
+      // under 1.1.0 it is the length prefix that makes the difference.
+      for (const message of codec.decode(data.subarray?.() ?? data)) {
+        // The application's own message, on the sync stream. The provider's
+        // switch has no default, so an unknown type would be dropped in
+        // silence - which is why it is taken out here rather than added there:
+        // the CRDT has no opinion about folders.
+        if (message.type === 'folder-switch') {
+          toldAboutSwitch(peerId, message)
+          continue
+        }
 
-      // The application's own message, on the sync stream. The provider's
-      // switch has no default, so an unknown type would be dropped in silence -
-      // which is why it is taken out here rather than added there: the CRDT has
-      // no opinion about folders.
-      if (message.type === 'folder-switch') {
-        toldAboutSwitch(peerId, message)
-        continue
+        // The other side said no. Reported as an answer rather than as the
+        // disconnection that follows it, which is the only thing this used to
+        // look like.
+        if (message.type === 'sync-refused') {
+          setState(t('peers.refused', { id: shortId(peerId) }), 'idle')
+          letGo.add(peerId)
+          syncing.delete(peerId)
+          peers.drop(peerId)
+          return
+        }
+
+        provider.receive(message)
+        // A remote change is a reason to look at storage again.
+        pass()
       }
-
-      // The other side said no. Reported as an answer rather than as the
-      // disconnection that follows it, which is the only thing this used to
-      // look like.
-      if (message.type === 'sync-refused') {
-        setState(t('peers.refused', { id: shortId(peerId) }), 'idle')
-        letGo.add(peerId)
-        syncing.delete(peerId)
-        peers.drop(peerId)
-        return
-      }
-
-      provider.receive(message)
-      // A remote change is a reason to look at storage again.
-      pass()
     }
   })()
     .catch(report)
@@ -1053,13 +1071,13 @@ async function start () {
     // Both halves of "does this peer have a relationship with us": the ones
     // somebody chose to keep, and the ones let in since this page loaded.
     admitted: id => letIn.has(String(id)) || admitted.remembered(String(id)),
-    onSyncStream: (stream, peerId) => {
+    onSyncStream: (stream, peerId, address, protocol) => {
       // `peer.arrivedByScan`, not the address. A peer that hole-punched out of
       // the relay has a `/webrtc/p2p/<id>` address with no circuit in it -
       // character for character what a scan produces - and reading consent off
       // that let strangers in without a question.
       if (decide({ scanned: peer.arrivedByScan(peerId), peerId, admitted }) === 'admit') {
-        attach(stream, peerId)
+        attach(stream, peerId, protocol)
         return
       }
 
@@ -1532,7 +1550,7 @@ function askToAdmit (stream, peerId) {
 
     if ($('admit-remember').checked) admitted.remember(peerId)
 
-    attach(stream, peerId)
+    attach(stream, peerId, stream.protocol ?? SYNC_PROTOCOL)
     setState(t('admit.admitted'), 'connected')
   }
 
@@ -2112,7 +2130,7 @@ async function acceptReply (text) {
 
   try {
     const peerId = await peer.acceptAnswer(payloadOf(text))
-    attach(await peer.openSyncStream(peerId), peerId)
+    attachDialled(await peer.openSyncStream(peerId), peerId)
   } catch (error) {
     report(error)
   }

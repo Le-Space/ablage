@@ -6,10 +6,11 @@
  * browser: storage, a peer, content addressing, and the reconciliation that
  * joins them.
  */
+import { codecFor } from './sync/framing.js'
 import * as Y from 'yjs'
 
 import { createContent } from './content.js'
-import { createPeer } from './peer.js'
+import { SYNC_PROTOCOL, SYNC_PROTOCOL_FRAMED, createPeer } from './peer.js'
 import { reconcile } from './reconcile.js'
 import { baseline } from './sync/baseline.js'
 import { fileIndex } from './sync/file-index.js'
@@ -459,8 +460,9 @@ window.__ablage = {
     // One per peer, and each loop reads its own - the same shape `main.js`
     // has. A shared binding lets a second peer take over the first one's
     // incoming messages, which is the bug `several-peers.test.js` is for.
-    const attach = (stream, peerId) => {
-      const send = message => stream.send(encode(JSON.stringify(message)))
+    const attach = (stream, peerId, protocol = stream.protocol ?? SYNC_PROTOCOL) => {
+      const codec = codecFor(protocol, SYNC_PROTOCOL_FRAMED)
+      const send = message => stream.send(codec.encode(message))
       const provider = new Provider(doc, send)
 
       peers.get(peerId)?.provider.destroy()
@@ -473,8 +475,9 @@ window.__ablage = {
 
       ;(async () => {
         for await (const data of stream) {
-          const message = JSON.parse(decode(data.subarray?.() ?? data))
-
+          // Several messages may share one chunk, and one may span several -
+          // which is the whole reason 1.1.0 exists.
+          for (const message of codec.decode(data.subarray?.() ?? data)) {
           // The application's own messages, kept out of the provider - the same
           // split `main.js` makes. Recorded here so a test can see that one
           // arrived, rather than only that a stream ended.
@@ -483,14 +486,15 @@ window.__ablage = {
           // does not know is dropped in silence - which made an early
           // measurement report that half a megabyte never crossed a circuit
           // when in truth it had crossed and been discarded here.
-          if (message.type !== 'update' && message.type !== 'sync-request' && message.type !== 'sync-response') {
-            appMessages.push({ from: peerId, message })
-            continue
-          }
+            if (message.type !== 'update' && message.type !== 'sync-request' && message.type !== 'sync-response') {
+              appMessages.push({ from: peerId, message })
+              continue
+            }
 
-          provider.receive(message)
-          // A remote change is a reason to look at storage again.
-          pass().catch(() => {})
+            provider.receive(message)
+            // A remote change is a reason to look at storage again.
+            pass().catch(() => {})
+          }
         }
       })()
         .catch(() => {})
@@ -695,6 +699,17 @@ window.__ablage = {
         }
       },
 
+      /** Which protocol this side negotiated with them. */
+      spokenWith: peerId => peers.get(peerId)?.stream?.protocol ?? null,
+
+      /** Send an arbitrary message on the sync stream, for sizing it. */
+      sendApp: async (peerId, message) => {
+        const held = peers.get(peerId)
+        if (held == null) return { ok: false, error: 'no such peer' }
+        try { await held.send(message); return { ok: true, error: null } }
+        catch (error) { return { ok: false, error: String(error?.message ?? error).slice(0, 160) } }
+      },
+
       /** Every connection to them, and whether it is metered. */
       carriedBy: async peerId => {
         const { peerIdFromString } = await import('@libp2p/peer-id')
@@ -722,6 +737,6 @@ window.__ablage = {
 // One side per browser context, which is what a device is.
 let side = null
 
-for (const name of ['peerId', 'createOffer', 'acceptOffer', 'acceptAnswer', 'write', 'remove', 'read', 'list', 'paths', 'reconcile', 'connections', 'useFolder', 'syncPeers', 'identity', 'lastInbound', 'appMessages', 'refuse', 'heard', 'call', 'carriedBy', 'sendApp', 'hold', 'fetch']) {
+for (const name of ['peerId', 'createOffer', 'acceptOffer', 'acceptAnswer', 'write', 'remove', 'read', 'list', 'paths', 'reconcile', 'connections', 'useFolder', 'syncPeers', 'identity', 'lastInbound', 'appMessages', 'refuse', 'heard', 'call', 'carriedBy', 'spokenWith', 'sendApp', 'sendApp', 'hold', 'fetch']) {
   window.__ablage[name] = (...args) => side[name](...args)
 }

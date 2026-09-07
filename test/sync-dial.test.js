@@ -43,7 +43,20 @@ test('a peer id given as text arrives as a peer id, never as text', async () => 
 
   assert.equal(typeof node.seen[0].peerId, 'object')
   assert.equal(typeof node.seen[0].peerId.toString(), 'string')
-  assert.equal(node.seen[0].protocol, '/x/1.0.0')
+  // A list, always. `dialProtocol` negotiates, and this module now offers the
+  // framed protocol ahead of the original so two devices on different versions
+  // still understand each other. One name in, one-element list out.
+  assert.deepEqual(node.seen[0].protocol, ['/x/1.0.0'])
+})
+
+test('and several protocols are offered in the order they were given', async () => {
+  // Newest first: whichever both sides have is the one used, and the caller
+  // decides what "newest" means rather than this module guessing.
+  const node = nodeThatRecords({ status: 'open' })
+
+  await openSyncStream(node, A_PEER, ['/x/1.1.0', '/x/1.0.0'], fastOptions)
+
+  assert.deepEqual(node.seen[0].protocol, ['/x/1.1.0', '/x/1.0.0'])
 })
 
 test('a peer id given as an object is passed through untouched', async () => {

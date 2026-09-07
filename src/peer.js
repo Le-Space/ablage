@@ -46,6 +46,28 @@ import { openSyncStream } from './sync-dial.js'
 export const SYNC_PROTOCOL = '/ablage/sync/1.0.0'
 
 /**
+ * The same conversation, with each message saying where it ends.
+ *
+ * **1.0.0 has no framing, and that loses messages.** The reader parses whatever
+ * chunk the stream hands it, which assumes a message always arrives in one
+ * piece. That holds while messages are small and stops holding without warning:
+ * a 4 MiB message arrived as 11 chunks, 9 of them unparsable, and each fragment
+ * was discarded in silence. See `sync/framing.js`.
+ *
+ * A new protocol id rather than a flag day. libp2p negotiates, so a device that
+ * has this speaks it, one that has not is still understood, and nobody has to
+ * update two phones on the same afternoon. Offered newest-first.
+ *
+ * **This is #74's first step and only that.** The send path is untouched, so
+ * what a single `send()` will carry is unchanged - the framing is what lets the
+ * *reader* put a split message back together.
+ */
+export const SYNC_PROTOCOL_FRAMED = '/ablage/sync/1.1.0'
+
+/** Offered and dialled in this order - the newer one when both sides have it. */
+export const SYNC_PROTOCOLS = [SYNC_PROTOCOL_FRAMED, SYNC_PROTOCOL]
+
+/**
  * Where devices call out to find each other.
  *
  * One topic for the whole app, so any two devices with a relay meet - which is
@@ -418,11 +440,13 @@ export async function createPeer ({
   //
   // Both halves need it. This is the answering side; `sync-dial.js` carries the
   // same flag on the dial, and either one alone still refuses.
-  await node.handle(SYNC_PROTOCOL, (stream, connection) => {
+  await node.handle(SYNC_PROTOCOLS, (stream, connection) => {
     // The address says how this peer was reached, and that decides whether it
     // is asked about. A QR peer arrives over `/webrtc/p2p/<id>` - the scan was
     // the consent - while anything through a relay carries `/p2p-circuit`.
-    onSyncStream?.(stream, connection.remotePeer.toString(), String(connection.remoteAddr ?? ''))
+    // Which of the two was negotiated decides whether messages are framed, and
+    // only the stream knows - the caller cannot infer it from the peer.
+    onSyncStream?.(stream, connection.remotePeer.toString(), String(connection.remoteAddr ?? ''), stream.protocol ?? SYNC_PROTOCOL)
   }, { runOnLimitedConnection: true })
 
   return {
@@ -539,7 +563,7 @@ export async function createPeer ({
       const heardProtocols = (id, protocols) => {
         if (protocols == null) return
 
-        const offers = protocols.includes(SYNC_PROTOCOL)
+        const offers = SYNC_PROTOCOLS.some(protocol => protocols.includes(protocol))
 
         if (speaks.get(id) === offers) return
 
@@ -626,7 +650,7 @@ export async function createPeer ({
     // limited - `node.handle` above hangs on the bare node - and this makes
     // sending match it. See `sync-dial.js` for the muxer race it still has to
     // survive.
-    openSyncStream: peerId => openSyncStream(node, peerId, SYNC_PROTOCOL),
+    openSyncStream: peerId => openSyncStream(node, peerId, SYNC_PROTOCOLS),
 
     connections: () => node.getConnections().length,
 

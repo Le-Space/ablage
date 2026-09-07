@@ -17,8 +17,12 @@ import { createHeliaLight } from 'helia'
  * Lifted from the webrtc-qr demo, comment and all, because it is the part that
  * is easy to get subtly wrong and impossible to notice afterwards.
  */
-export async function createContent (node) {
-  const helia = withBitswap(withLibp2p(createHeliaLight(), node))
+export async function createContent (node, { overCircuits = false } = {}) {
+  // `runOnLimitedConnections` defaults to false in `@helia/bitswap`, which is
+  // why a peer stuck on a relay is served nothing - measured in
+  // `bitswap-gate.test.js`. It is an option, not a law, and this exists to be
+  // able to say which of the two is being measured.
+  const helia = withBitswap(withLibp2p(createHeliaLight(), node), { runOnLimitedConnections: overCircuits })
   await helia.start()
 
   const fs = unixfs(helia)

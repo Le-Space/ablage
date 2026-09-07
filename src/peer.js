@@ -192,6 +192,48 @@ export async function createPeer ({
   const relays = relayBootstrapList(relayBootstrapAddrs, relayOptIn)
   const hasRelay = relays.length > 0
 
+  /**
+   * **Keep a stranger on the relay.**
+   *
+   * `/ablage/sync/1.0.0` is gated by the admission dialog, and for a while that
+   * was believed to cover everything. It does not: bitswap is a second protocol
+   * on the same node and serves any block it holds to anyone who names the
+   * address. That is #43.
+   *
+   * The leak is not the circuit. Bitswap already refuses a relayed connection -
+   * measured over one that was the only path two peers had - so a stranger is
+   * refused for as long as they are stuck on the relay. What opens everything at
+   * once is DCUtR getting them off it, because a direct connection is unlimited.
+   *
+   * **Refused during the upgrade rather than closed after it.** The first
+   * version listened for `connection:open` and closed what it did not like.
+   * That worked in the sense that mattered - nothing crossed - but on Firefox
+   * DCUtR simply tried again, and sampling the connection state showed it
+   * flapping: open, closed, open. A window that keeps reappearing is still a
+   * window. The gater is asked *before* the connection is handed to anything,
+   * so there is nothing to flap.
+   *
+   * Only a link to another browser, never one to infrastructure: the relay is
+   * unlimited too, and closing it took discovery down with it when this guard
+   * was first written. Two browsers can only reach each other directly over
+   * WebRTC.
+   *
+   * **What it does not fix.** Somebody admitted once keeps what they saw - #70.
+   *
+   * @param {unknown} peerId
+   * @param {{ remoteAddr?: unknown }} maConn
+   */
+  const strangerHere = (peerId, maConn) => {
+    if (!String(maConn?.remoteAddr ?? '').includes('/webrtc')) return false
+
+    const id = String(peerId)
+
+    // The scan was the consent, and the QR path is direct by construction.
+    if (scanned.has(id)) return false
+
+    return !admitted(id)
+  }
+
   const node = await createLibp2p({
     // Spread rather than handed over as `undefined`: libp2p reads whether the
     // field is there, and an explicit `undefined` is not the same as silence.
@@ -241,7 +283,11 @@ export async function createPeer ({
     streamMuxers: [yamux()],
 
     connectionGater: {
-      denyDialMultiaddr: addr => denyDial(String(addr), relayWanted)
+      denyDialMultiaddr: addr => denyDial(String(addr), relayWanted),
+
+      // Refused during the upgrade, not closed afterwards. See `strangerHere`.
+      denyInboundUpgradedConnection: (peerId, maConn) => strangerHere(peerId, maConn),
+      denyOutboundUpgradedConnection: (peerId, maConn) => strangerHere(peerId, maConn)
     },
     /**
      * A meeting place, and only where there is one to meet in.
@@ -333,11 +379,11 @@ export async function createPeer ({
    * Record a scanned peer *before* the connection to them exists.
    *
    * `session.acceptOffer` and `session.acceptAnswer` are what establish the
-   * WebRTC connection, so the guard below sees `connection:open` while they are
-   * still running. Recording the scan afterwards left a window in which a
-   * connection that exists *because* somebody scanned a code looked exactly
-   * like a stranger's and was closed - ten QR specs failed there, which is how
-   * the ordering was found.
+   * WebRTC connection, and `strangerHere` is consulted during that upgrade.
+   * Recording the scan afterwards left a window in which a connection that
+   * exists *because* somebody scanned a code looked exactly like a stranger's
+   * and was refused - ten QR specs failed there, which is how the ordering was
+   * found.
    *
    * Still only after verification. `decodePayload` checks the signature, and an
    * offer that does not decode is not consent to anything - that property is
@@ -356,62 +402,6 @@ export async function createPeer ({
       // admitted, which is the direction to fail in.
     }
   }
-
-  /**
-   * **Keep a stranger on the relay.**
-   *
-   * `/ablage/sync/1.0.0` is gated by the admission dialog, and for a while that
-   * was believed to cover everything. It does not: bitswap is a second protocol
-   * on the same node, and it serves any block it holds to anyone who names the
-   * address. Measured, and it is #43.
-   *
-   * What was *not* known until it could be measured in isolation is that
-   * bitswap already refuses a relayed connection - `runOnLimitedConnection:
-   * false` is its default and it works. Over a circuit that is the only path
-   * two peers have, an unadmitted read times out. The leak is not the circuit;
-   * it is the moment DCUtR gets them off it, because a direct connection is
-   * unlimited and every protocol on the node becomes reachable at once.
-   *
-   * So this closes the direct connection rather than gating each protocol on
-   * it. Narrow, and it inherits every gate the relayed path already has instead
-   * of adding a new list to keep in step.
-   *
-   * **What it does not fix.** Somebody admitted once keeps what they saw and
-   * can fetch those blocks again afterwards; taking that back needs the bytes
-   * to be useless without a key, which is a different change.
-   */
-  node.addEventListener('connection:open', event => {
-    const connection = event.detail
-
-    // Relayed, and therefore already refused by the protocols that matter.
-    if (connection?.limits != null) return
-
-    /**
-     * **Only a link to another browser, never one to infrastructure.**
-     *
-     * The first version of this closed anything unlimited, and the relay is
-     * exactly that: a plain WebSocket this node dialled, to a peer it has no
-     * relationship with by construction. Closing it took discovery down with
-     * it and the two peers never heard each other at all.
-     *
-     * Two browsers can only ever reach each other directly over WebRTC - a
-     * hole punch reads `/p2p-circuit/webrtc/p2p/…`, a scanned session reads
-     * `/webrtc/p2p/…`. Anything without `/webrtc` in it is a server, and this
-     * is not about servers.
-     */
-    if (!String(connection.remoteAddr ?? '').includes('/webrtc')) return
-
-    const id = String(connection.remotePeer)
-
-    // The scan was the consent, and the QR path is direct by construction.
-    if (scanned.has(id)) return
-    if (admitted(id)) return
-
-    connection.close().catch(() => {
-      // A connection that will not close is one libp2p is already tearing
-      // down. Nothing better to do here than let it.
-    })
-  })
 
   session = new QRSession(node, rtcConfiguration != null ? { rtcConfiguration } : {})
 

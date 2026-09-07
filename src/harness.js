@@ -440,8 +440,20 @@ window.__ablage = {
 
     /** Serialised: two passes at once would both see the same disagreement. */
     const pass = () => {
-      pending = pending.then(() => reconcile({ index, storage, content, base }))
-      return pending
+      const ran = pending.then(() => reconcile({ index, storage, content, base }))
+
+      // **The chain must survive one failure, the way `main.js` does.**
+      //
+      // `main.js` ends its chain with `.then(render, report)`, and that handler
+      // is what lets the next pass run after a failed one. This had no handler,
+      // so a single rejection left `pending` rejected for good and every later
+      // pass short-circuited without doing anything - which made #78 look worse
+      // here than it is in the app.
+      //
+      // The caller still gets the real outcome; only the *queue* forgets.
+      pending = ran.catch(() => {})
+
+      return ran
     }
 
     // One per peer, and each loop reads its own - the same shape `main.js`

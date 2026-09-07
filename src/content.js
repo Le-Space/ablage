@@ -33,12 +33,27 @@ export async function createContent (node, { overCircuits = false } = {}) {
       return (await fs.addBytes(bytes)).toString()
     },
 
-    /** @param {string} cid @returns {Promise<Uint8Array>} */
-    async get (cid) {
+    /**
+     * Bytes by address, or an error - but never an endless wait.
+     *
+     * `fs.cat` had no deadline, and bitswap waits for a block as long as it is
+     * asked to. On a relay-only connection it is asked forever, because the
+     * block cannot arrive at all (#72) - and `pass()` chains every
+     * reconciliation onto the last, so one unfetchable file stopped the device
+     * syncing entirely, its own local writes included (#78).
+     *
+     * The signal goes to `fs.cat`, which takes `AbortOptions`. An earlier
+     * attempt raced the iterator from outside instead and changed nothing.
+     *
+     * @param {string} cid
+     * @param {{ signal?: AbortSignal }} [options]
+     * @returns {Promise<Uint8Array>}
+     */
+    async get (cid, { signal = AbortSignal.timeout(30_000) } = {}) {
       const chunks = []
       let length = 0
 
-      for await (const chunk of fs.cat(cid)) {
+      for await (const chunk of fs.cat(cid, { signal })) {
         chunks.push(chunk)
         length += chunk.length
       }

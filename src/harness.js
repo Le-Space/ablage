@@ -101,6 +101,19 @@ window.__ablage = {
   },
 
   /**
+   * What the Aleph registration currently names, browser-dialable.
+   *
+   * The same lookup `find-a-relay.js` makes when the baked list produces no
+   * reservation. Exposed so the public smoke spec can ask it rather than carry
+   * an address that goes stale - which it did, three times in two weeks.
+   */
+  discoverRelays: async () => {
+    const { discoverRelays } = await import('./relay-sources.js')
+
+    return discoverRelays({})
+  },
+
+  /**
    * Dial a relay the way the app does, with the gate in a chosen state.
    *
    * Here rather than in a test file so the imports are the app's own - vite
@@ -675,7 +688,18 @@ window.__ablage = {
         const { peerIdFromString } = await import('@libp2p/peer-id')
 
         return peer.node.getConnections(peerIdFromString(peerId))
-          .map(c => ({ address: String(c.remoteAddr ?? ''), limited: c.limits != null }))
+          .map(c => ({
+            address: String(c.remoteAddr ?? ''),
+            limited: c.limits != null,
+            // What actually carries it. A relayed connection negotiates
+            // `/noise` and `/yamux`; a WebRTC one reports `native` and
+            // `/webrtc`, because DTLS did the encrypting and the data channel
+            // is the muxer. This is the only thing that says which is which
+            // without believing the address.
+            encryption: String(c.encryption ?? 'none'),
+            multiplexer: String(c.multiplexer ?? 'none'),
+            direction: String(c.direction ?? '?')
+          }))
       }
     }
 

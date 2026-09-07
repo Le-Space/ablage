@@ -112,6 +112,25 @@ a check that greps the address for `/p2p-circuit` passes just as happily on a
 connection the relay stopped carrying long ago. Specs in this repository were
 written that way and were measuring the wrong thing.
 
+Measured, between two browsers that met through a relay:
+
+| address | encryption | muxer | |
+| --- | --- | --- | --- |
+| `…/p2p-circuit/p2p/<peer>` | `/noise` | `/yamux` | **limited** — the relay carries it |
+| `…/p2p-circuit/webrtc/p2p/<peer>` | `native` | `/webrtc` | unlimited — outbound view |
+| `/webrtc/p2p/<peer>` | `native` | `/webrtc` | unlimited — inbound view of the same |
+
+**The last two are one connection seen from two ends.** The side that dialled
+records the whole route it signalled over; the side that answered sees only that
+a connection arrived. Both are real WebRTC — `native` means DTLS did the
+encrypting and the data channel is the muxer — and the relay carries neither.
+The `/p2p-circuit` in the address is a memory of the introduction, not the path
+in use.
+
+So `encryption` and `multiplexer` read it off without needing to know any of
+this: `/noise` + `/yamux` is relayed, `native` + `/webrtc` is not. `carriedBy`
+in the harness reports both.
+
 **And a relay that also holds the data is a different animal.** `orbitdb-relay`
 runs OrbitDB and pins databases, so simple-todo's browsers get their data *from
 the relay* over an ordinary unlimited WebSocket — never through a circuit at

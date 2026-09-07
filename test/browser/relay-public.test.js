@@ -21,28 +21,40 @@ import { expect, test } from '@playwright/test'
  * by no one.
  */
 
-const PUBLIC_RELAY = '/dns4/mosquito-sadness-before-search.2n6.me/tcp/443/tls/ws/p2p/12D3KooWNsf7FvEmh4Z89Ty4mk4xZgUWaqUiqjsznnyn5CwKfaKB'
-
 test.describe.configure({ retries: 0 })
 
 test.describe('the relay people actually use @public', () => {
   test.setTimeout(120_000)
 
   test('answers, advertises hop, and hands out a reservation', async ({ page }) => {
-    await page.addInitScript(address => {
-      /** @type {any} */ (window).__relay = address
-    }, PUBLIC_RELAY)
-
     await page.goto('/harness.html')
     await page.waitForFunction(() => window.__ablage != null)
 
+    /**
+     * **Asked of the registration, not of a constant.**
+     *
+     * This spec used to name an address. That address was deleted by a deploy's
+     * own retention step, and the spec then failed for weeks against a machine
+     * that no longer existed - reported as "the public relay is broken" when
+     * the truth was "this file is out of date". It has now happened three times
+     * in two weeks that a relay address written down by hand went stale.
+     *
+     * The registration is what the app itself consults when the baked list
+     * fails, so asking it here checks the relay users actually reach.
+     */
+    const addresses = await page.evaluate(() => window.__ablage.discoverRelays())
+
+    expect(addresses.length, 'the registration named no relay at all').toBeGreaterThan(0)
+
+    await page.evaluate(list => { /** @type {any} */ (window).__relay = list }, addresses)
+
     const out = await page.evaluate(
-      ([addr]) => window.__ablage.probeRelay(addr, true),
-      [PUBLIC_RELAY]
+      list => window.__ablage.probeRelay(list[0], true),
+      addresses
     )
 
     expect(out.reason).toBe(null)
-    expect(out.answered).toEqual([PUBLIC_RELAY])
+    expect(out.answered).toEqual([addresses[0]])
 
     // Connecting is the easy half. A relay that answers and then advertises
     // nothing is the failure this spec exists for, so the reservation is the

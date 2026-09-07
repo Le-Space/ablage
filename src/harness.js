@@ -14,6 +14,7 @@ import { SYNC_PROTOCOL, SYNC_PROTOCOL_FRAMED, createPeer } from './peer.js'
 import { reconcile } from './reconcile.js'
 import { baseline } from './sync/baseline.js'
 import { fileIndex } from './sync/file-index.js'
+import { INBOX_MESSAGE, inboxMessage, received } from './sync/inbox.js'
 import { Provider } from './sync/provider.js'
 import { directoryStorage } from './storage/directory.js'
 import { watchFolder } from './storage/watch.js'
@@ -436,6 +437,7 @@ window.__ablage = {
 
     const peers = new Map()
     const appMessages = []
+    const inbox = []
     let lastInbound = null
     let pending = Promise.resolve()
 
@@ -486,6 +488,17 @@ window.__ablage = {
           // does not know is dropped in silence - which made an early
           // measurement report that half a megabyte never crossed a circuit
           // when in truth it had crossed and been discarded here.
+            // Somebody who is not syncing with us said something. Read
+            // through the same function the application uses, so that what a
+            // test sees is what a person would be shown - including the
+            // refusals, which are most of what that function does.
+            if (message.type === INBOX_MESSAGE) {
+              const said = received(message, peerId)
+
+              if (said != null) inbox.push(said)
+              continue
+            }
+
             if (message.type !== 'update' && message.type !== 'sync-request' && message.type !== 'sync-response') {
               appMessages.push({ from: peerId, message })
               continue
@@ -558,6 +571,29 @@ window.__ablage = {
 
       /** Application messages that arrived on a sync stream. */
       appMessages: () => [...appMessages],
+
+      /** Messages left for us, as they would be shown. */
+      inbox: () => [...inbox],
+
+      /**
+       * Leave a message with somebody, built the way the application builds it.
+       *
+       * Not `sendApp` with a hand-written object: the point of driving it from
+       * here is that the real construction runs, so a test that passes says the
+       * shipped path works rather than that a literal survived a stream.
+       */
+      leaveMessage: async (peerId, fields) => {
+        const held = peers.get(peerId)
+
+        if (held == null) return { ok: false, error: 'no such peer' }
+
+        try {
+          await held.send(inboxMessage(fields))
+          return { ok: true, error: null }
+        } catch (error) {
+          return { ok: false, error: String(error?.message ?? error).slice(0, 160) }
+        }
+      },
 
       /**
        * Say no the way `main.js` does: send it, then close after a beat.
@@ -702,14 +738,6 @@ window.__ablage = {
       /** Which protocol this side negotiated with them. */
       spokenWith: peerId => peers.get(peerId)?.stream?.protocol ?? null,
 
-      /** Send an arbitrary message on the sync stream, for sizing it. */
-      sendApp: async (peerId, message) => {
-        const held = peers.get(peerId)
-        if (held == null) return { ok: false, error: 'no such peer' }
-        try { await held.send(message); return { ok: true, error: null } }
-        catch (error) { return { ok: false, error: String(error?.message ?? error).slice(0, 160) } }
-      },
-
       /** Every connection to them, and whether it is metered. */
       carriedBy: async peerId => {
         const { peerIdFromString } = await import('@libp2p/peer-id')
@@ -737,6 +765,6 @@ window.__ablage = {
 // One side per browser context, which is what a device is.
 let side = null
 
-for (const name of ['peerId', 'createOffer', 'acceptOffer', 'acceptAnswer', 'write', 'remove', 'read', 'list', 'paths', 'reconcile', 'connections', 'useFolder', 'syncPeers', 'identity', 'lastInbound', 'appMessages', 'refuse', 'heard', 'call', 'carriedBy', 'spokenWith', 'sendApp', 'sendApp', 'hold', 'fetch']) {
+for (const name of ['peerId', 'createOffer', 'acceptOffer', 'acceptAnswer', 'write', 'remove', 'read', 'list', 'paths', 'reconcile', 'connections', 'useFolder', 'syncPeers', 'identity', 'lastInbound', 'appMessages', 'refuse', 'heard', 'call', 'carriedBy', 'spokenWith', 'sendApp', 'leaveMessage', 'inbox', 'hold', 'fetch']) {
   window.__ablage[name] = (...args) => side[name](...args)
 }

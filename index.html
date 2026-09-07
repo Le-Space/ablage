@@ -356,6 +356,22 @@
         </div>
       </section>
 
+      <!--
+        Deliberately a card and not a `<dialog>`.
+
+        Every other interruption in this app is a question from a device you
+        already let in, and a modal is right for those: they need an answer
+        before anything else makes sense. This one is from somebody you have
+        never met, who reached you because the inbox is reachable by design -
+        and a stranger who can take over your screen is not a feature. It waits
+        instead, and it appears only once there is something in it.
+      -->
+      <section id="inbox" class="card" hidden>
+        <h2 data-i18n="inbox.heading">Messages</h2>
+        <p class="hint quiet" data-i18n="inbox.about">From people who are not syncing with this folder. Nothing here can reach your files on its own.</p>
+        <ul id="inbox-list" class="inbox-list"></ul>
+      </section>
+
       <section class="card">
         <h2 data-i18n="files.heading">Files</h2>
 

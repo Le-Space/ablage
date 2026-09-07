@@ -7,6 +7,7 @@
  * question "why does it say pending", and it would be describing a stage as
  * though it were a fault.
  */
+import { INBOX_MESSAGE, received } from '../sync/inbox.js'
 import { codecFor } from '../sync/framing.js'
 import '@le-space/libp2p-webrtc-qr/elements'
 import * as Y from 'yjs'
@@ -106,6 +107,8 @@ const myPeerEl = $('my-peer')
 const byCodeEl = $('by-code')
 const byRelayEl = $('by-relay')
 const peersEl = $('peers')
+const inboxEl = $('inbox')
+const inboxListEl = $('inbox-list')
 const peerListEl = $('peer-list')
 const peersEmptyEl = $('peers-empty')
 const peerFilterEl = $('peer-filter')
@@ -997,6 +1000,16 @@ function attach (stream, peerId, protocol = SYNC_PROTOCOL) {
         // The other side said no. Reported as an answer rather than as the
         // disconnection that follows it, which is the only thing this used to
         // look like.
+        // Somebody who is not syncing with us. Read through the shared
+        // function rather than trusted: everything in it is a stranger's
+        // input, arriving on a stream anyone who reaches us may open.
+        if (message.type === INBOX_MESSAGE) {
+          const said = received(message, peerId)
+
+          if (said != null) showMessage(said)
+          continue
+        }
+
         if (message.type === 'sync-refused') {
           setState(t('peers.refused', { id: shortId(peerId) }), 'idle')
           letGo.add(peerId)
@@ -1587,6 +1600,38 @@ function followPeer (peerId) {
   })
 }
 
+/**
+ * Put a stranger's message on screen.
+ *
+ * Newest first, and it never interrupts - see the card's own note in
+ * `index.html` for why this is not a dialog.
+ *
+ * Every field goes in through `textContent`. The text is a stranger's, and
+ * `innerHTML` here would be an invitation: not a decision anybody should have
+ * to remember, so the DOM is built rather than a string.
+ */
+function showMessage (said) {
+  const item = document.createElement('li')
+
+  const who = document.createElement('p')
+
+  who.className = 'inbox-who'
+  // A name is optional, so this falls back to the one thing that is always
+  // there. The peer id is shortened the way it is everywhere else.
+  who.textContent = said.name === ''
+    ? t('inbox.anonymous', { id: shortId(said.from) })
+    : t('inbox.from', { name: said.name, id: shortId(said.from) })
+
+  const body = document.createElement('p')
+
+  body.className = 'inbox-text'
+  body.textContent = said.text
+
+  item.append(who, body)
+  inboxListEl.prepend(item)
+  inboxEl.hidden = false
+}
+
 function toldAboutSwitch (peerId, message) {
   switchToldBodyEl.textContent = t('switched.body', { name: message.name })
   $('switch-select').hidden = !canPickFolder()
@@ -1860,6 +1905,12 @@ document.addEventListener('visibilitychange', () => {
 // `wanted` rather than `held`: a headless browser exposes the API and refuses
 // every request, having no screen, so asserting on `held` would be asserting on
 // the platform rather than on this code.
+// The wire this arrives on is measured over a real circuit in
+// `a-message-from-a-stranger.test.js`; what is left to check here is the
+// drawing, and a spec that had to pair two devices to reach it would be paying
+// two minutes for a `textContent`.
+window.__inboxForTest = showMessage
+
 window.__wakeLockForTest = wakeLock
 
 /**

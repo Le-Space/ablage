@@ -202,6 +202,14 @@ export default {
     no: 'Keep it to this device',
     stopped: 'Working on this device alone — the connected devices were not sent this folder.'
   },
+  inbox: {
+    heading: 'Messages',
+    about: 'From people who are not syncing with this folder. Nothing here can reach your files on its own.',
+    from: ({ name, id }) => `${name} — ${id}`,
+    // A name is optional on purpose, and somebody who withheld one should read
+    // as anonymous rather than as broken.
+    anonymous: ({ id }) => `Someone — ${id}`
+  },
   switched: {
     title: 'The other device switched folders',
     body: ({ name }) => `It is now working in a folder called ${name}, which is not the one you were sharing.`,

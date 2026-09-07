@@ -131,7 +131,22 @@ export function refuse () {
  * @param {(path: string, addresses: { entryCid: string | null, localCid: string }) => ({ rescueAs: string } | null)} [parts.resolve]
  * @returns {Promise<Array<{ path: string, action: string }>>} what was done
  */
-export async function reconcile ({ index, storage, content, base, resolve = keepBoth }) {
+export async function reconcile ({
+  index,
+  storage,
+  content,
+  base,
+  resolve = keepBoth,
+
+  /**
+   * Told which path could not be settled, and why.
+   *
+   * A callback rather than a return value, so the array this function has
+   * always returned keeps its shape - four specs compare it with `deepEqual`,
+   * and an extra property on it broke all four.
+   */
+  onFailed = () => {}
+}) {
   const entries = new Map(index.entries().map(entry => [entry.path, entry]))
   const present = new Set(await storage.list())
 
@@ -143,6 +158,30 @@ export async function reconcile ({ index, storage, content, base, resolve = keep
   const done = []
 
   for (const path of paths) {
+    try {
+      await settle(path)
+    } catch (error) {
+      /**
+       * **One path that cannot be settled must not stop the others.**
+       *
+       * This loop used to let the first failure out, which ended the whole
+       * pass - and `pass()` chains every reconciliation onto the last, so a
+       * file nobody could serve stopped the device syncing altogether, its own
+       * local writes included. Measured in #78: a write that never came back.
+       *
+       * The commonest cause is a fetch for a block that is not coming, which
+       * has a deadline of its own now. But the shape matters more than the
+       * cause: a folder is many independent decisions, and one of them going
+       * wrong says nothing about the rest.
+       *
+       * Reported rather than swallowed, so the caller can say which file is
+       * missing instead of going quiet.
+       */
+      onFailed(path, error)
+    }
+  }
+
+  async function settle (path) {
     const entry = entries.get(path)
     const local = present.has(path) ? { cid: await addressOf(path) } : undefined
     let action = decide(entry, local, base?.get(path) ?? null)

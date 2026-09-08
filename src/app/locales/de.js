@@ -200,6 +200,12 @@ export default {
     no: 'Auf diesem Gerät behalten',
     stopped: 'Arbeitet allein auf diesem Gerät — die verbundenen Geräte haben diesen Ordner nicht bekommen.'
   },
+  inbox: {
+    heading: 'Nachrichten',
+    about: 'Von Leuten, die nicht mit diesem Ordner synchronisieren. Nichts davon kommt von allein an Ihre Dateien.',
+    from: ({ name, id }) => `${name} — ${id}`,
+    anonymous: ({ id }) => `Jemand — ${id}`
+  },
   switched: {
     title: 'Das andere Gerät hat den Ordner gewechselt',
     body: ({ name }) => `Es arbeitet jetzt in einem Ordner namens ${name}, und das ist nicht der, den Sie geteilt haben.`,

@@ -630,3 +630,29 @@ html:has(dialog[open]) { overflow: hidden; }
 .reachable[hidden] { display: none; }
 .reachable.is-reachable { color: var(--ls-green); }
 .reachable.is-waiting { color: var(--ls-amber); }
+
+/*
+  A stranger's message.
+
+  Quiet on purpose: this card is the one thing on screen somebody you have never
+  met can cause to appear, so it reads as a note rather than as an alarm.
+*/
+.inbox-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.75rem; }
+
+.inbox-list li {
+  padding: 0.75rem;
+  border: 1px solid var(--ls-border);
+  border-radius: 0.5rem;
+}
+
+.inbox-who {
+  margin: 0 0 0.25rem;
+  font-size: 0.85rem;
+  color: var(--ls-text-dim);
+  /* A peer id has no spaces and would otherwise push the card wider than a
+     phone - the same fix `.files .name` needed. */
+  overflow-wrap: anywhere;
+}
+
+/* Theirs, and it may be a pasted paragraph with a very long word in it. */
+.inbox-text { margin: 0; overflow-wrap: anywhere; white-space: pre-wrap; }

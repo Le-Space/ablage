@@ -4,8 +4,9 @@
 # way for months - copied rather than reinvented, including the retry and the
 # note about which gateway to hand somebody.
 #
-# The tests gate the deploy. A folder-sync app that ships broken syncs somebody's
-# files wrongly, which is worse than not shipping.
+# The tests gate the deploy - a folder-sync app that ships broken syncs somebody's
+# files wrongly, which is worse than not shipping. They live in `tests.yml` now,
+# where a pull request can reach them too, and are called from here.
 name: Build & Deploy to Aleph IPFS
 
 permissions:
@@ -32,70 +33,10 @@ on:
         default: ''
 
 jobs:
+  # The same job a pull request runs, called rather than repeated. The deploy
+  # still waits on the suite; it just no longer owns the only copy of it.
   test:
-    runs-on: ubuntu-latest
-    container:
-      # Must match `@playwright/test` in package.json. The image ships the
-      # browsers for exactly its own version, and a mismatch does not say so:
-      # Firefox simply is not where the runner looks, and every Firefox test
-      # fails with an executable-not-found that reads like a broken container.
-      # The step below turns that into a sentence.
-      image: mcr.microsoft.com/playwright:v1.62.1-noble
-    # 436 tests, and a runner is slower than a laptop that does them in nine
-    # minutes. The last cancellation was not a hang: seven relay tests, each
-    # waiting out a 150s timeout and then retried twice, spent 1056 of the 1200
-    # seconds and the run was killed at test 121 having reported nothing.
-    #
-    # Those retries are off now (see the specs). This is the headroom for the
-    # suite having grown, not for that.
-    timeout-minutes: 30
-    env:
-      # Firefox refuses to start when $HOME is not owned by the current user,
-      # which is the case for the default HOME inside this container. Playwright
-      # names this fix in its own launch error.
-      HOME: /root
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-
-      - run: npm ci
-
-      - name: The image has to match the dependency
-        shell: bash
-        run: |
-          installed="$(node -p "require('@playwright/test/package.json').version")"
-          image="$(npx playwright --version | awk '{print $2}')"
-
-          if [ "$installed" != "$image" ]; then
-            echo "::error::@playwright/test is $installed but this container ships browsers for $image. Update the image tag in this workflow to v$installed-noble."
-            exit 1
-          fi
-
-          echo "Playwright $installed, browsers to match."
-
-      - run: npm run test:unit
-
-      # The container ships the browsers, so both engines run without an install.
-      #
-      # `@public` is left out on purpose. Those specs call the relay people
-      # actually use, which is a machine nobody here administers - on
-      # 2026-08-28 it stopped advertising its own protocols and twelve red
-      # tests kept a correct build from publishing, not one of them about this
-      # code. Everything that needs a relay to relay now runs against one
-      # started next to the tests.
-      - run: npx playwright test --grep-invert @public
-
-      # The public relay, still called, still reported - and unable to fail the
-      # deploy. `continue-on-error` is the whole point: when this turns red it
-      # means the relay drifted from what the app expects, which is worth
-      # knowing and is somebody's afternoon, not a blocked release.
-      - name: And the relay people actually use
-        continue-on-error: true
-        run: npx playwright test --grep @public
+    uses: ./.github/workflows/tests.yml
 
   deploy:
     needs: test

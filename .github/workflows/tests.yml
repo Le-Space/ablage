@@ -1,0 +1,110 @@
+# The suite, in one place, for everything that wants to run it.
+#
+# Extracted from `deploy.yml` rather than copied. That workflow gated the deploy
+# on these tests and did it well, but it only ever ran on a push to `main` -
+# which meant the tests ran *after* a pull request was merged. A red suite was
+# therefore something you found out about once it was already in the branch
+# everybody builds on, and the only thing standing between a broken merge and a
+# published build was somebody remembering to run 22 minutes of browser tests on
+# their laptop.
+#
+# Two entry points, one definition:
+#
+#   - `pull_request`, so a change is measured before it lands
+#   - `workflow_call`, so `deploy.yml` still gates on exactly the same job
+#
+# A second copy of these steps would have drifted from this one within a month;
+# the Playwright image tag alone is a standing appointment with that mistake.
+name: Tests
+
+permissions:
+  contents: read
+
+on:
+  pull_request:
+  workflow_call:
+
+# A pull request that is pushed to twice does not need the first run to finish.
+#
+# Grouped by event on purpose. On a pull request the group is the branch, so a
+# new push cancels the run it supersedes. Called from `deploy.yml` the event is
+# `push` and the group is the commit, which is unique - so a deploy is never
+# cancelled by anything, including a later one. Losing a deploy to save a runner
+# minute is not a trade worth making.
+concurrency:
+  group: tests-${{ github.event_name }}-${{ github.head_ref || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    container:
+      # Must match `@playwright/test` in package.json. The image ships the
+      # browsers for exactly its own version, and a mismatch does not say so:
+      # Firefox simply is not where the runner looks, and every Firefox test
+      # fails with an executable-not-found that reads like a broken container.
+      # The step below turns that into a sentence.
+      image: mcr.microsoft.com/playwright:v1.62.1-noble
+    # Measured, not guessed: the four runs before this workflow existed took
+    # 21, 22, 22 and 23 minutes for this job, and the suite has grown since.
+    # Thirty left about seven minutes of headroom, which is thin enough that an
+    # ordinary bad day - a slow runner, one spec retrying - reads as a hang.
+    #
+    # The last cancellation was not a hang either: seven relay tests, each
+    # waiting out a 150s timeout and then retried twice, spent 1056 of the 1200
+    # seconds and the run was killed at test 121 having reported nothing. Those
+    # retries are off now (see the specs). This is headroom for the suite having
+    # grown, not for that.
+    timeout-minutes: 45
+    env:
+      # Firefox refuses to start when $HOME is not owned by the current user,
+      # which is the case for the default HOME inside this container. Playwright
+      # names this fix in its own launch error.
+      HOME: /root
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: The image has to match the dependency
+        shell: bash
+        run: |
+          installed="$(node -p "require('@playwright/test/package.json').version")"
+          image="$(npx playwright --version | awk '{print $2}')"
+
+          if [ "$installed" != "$image" ]; then
+            echo "::error::@playwright/test is $installed but this container ships browsers for $image. Update the image tag in .github/workflows/tests.yml to v$installed-noble."
+            exit 1
+          fi
+
+          echo "Playwright $installed, browsers to match."
+
+      - run: npm run test:unit
+
+      # The container ships the browsers, so both engines run without an install.
+      #
+      # `@public` is left out on purpose. Those specs call the relay people
+      # actually use, which is a machine nobody here administers - on
+      # 2026-08-28 it stopped advertising its own protocols and twelve red
+      # tests kept a correct build from publishing, not one of them about this
+      # code. Everything that needs a relay to relay now runs against one
+      # started next to the tests.
+      - run: npx playwright test --grep-invert @public
+
+      # The public relay, still called, still reported - and unable to fail
+      # anything. `continue-on-error` is the whole point: when this turns red it
+      # means the relay drifted from what the app expects, which is worth
+      # knowing and is somebody's afternoon, not a blocked release.
+      #
+      # Skipped on pull requests. It measures a machine, not a change - it would
+      # report the same drift on every open branch at once, cost each of them
+      # minutes, and never once be about the code under review.
+      - name: And the relay people actually use
+        if: github.event_name != 'pull_request'
+        continue-on-error: true
+        run: npx playwright test --grep @public

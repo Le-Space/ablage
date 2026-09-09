@@ -210,6 +210,10 @@ export default {
     // as anonymous rather than as broken.
     anonymous: ({ id }) => `Someone — ${id}`
   },
+  fetchable: {
+    toggle: 'Let this share be fetched over a relay',
+    why: 'Off by default. With it on, a device that reaches this one through a relay can fetch this share\u2019s files by address, without being admitted to sync first. It applies to this share only, and takes effect when the page is loaded again.'
+  },
   switched: {
     title: 'The other device switched folders',
     body: ({ name }) => `It is now working in a folder called ${name}, which is not the one you were sharing.`,

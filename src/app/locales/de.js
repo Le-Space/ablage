@@ -206,6 +206,10 @@ export default {
     from: ({ name, id }) => `${name} — ${id}`,
     anonymous: ({ id }) => `Jemand — ${id}`
   },
+  fetchable: {
+    toggle: 'Diese Freigabe \u00fcber ein Relay abrufbar machen',
+    why: 'Standardm\u00e4\u00dfig aus. Eingeschaltet kann ein Ger\u00e4t, das dieses \u00fcber ein Relay erreicht, die Dateien dieser Freigabe \u00fcber ihre Adresse holen, ohne vorher zugelassen worden zu sein. Gilt nur f\u00fcr diese Freigabe und wirkt, sobald die Seite neu geladen wird.'
+  },
   switched: {
     title: 'Das andere Gerät hat den Ordner gewechselt',
     body: ({ name }) => `Es arbeitet jetzt in einem Ordner namens ${name}, und das ist nicht der, den Sie geteilt haben.`,

@@ -7,6 +7,7 @@
  * question "why does it say pending", and it would be describing a stage as
  * though it were a fault.
  */
+import { fetchable } from '../sync/fetchable.js'
 import { INBOX_MESSAGE, received } from '../sync/inbox.js'
 import { codecFor } from '../sync/framing.js'
 import '@le-space/libp2p-webrtc-qr/elements'
@@ -75,6 +76,8 @@ const viewModeEl = $('view-mode')
 const compactEl = $('compact-payload')
 const introViewEl = $('intro-view')
 const awakeEl = $('awake')
+const fetchableEl = $('fetchable')
+const fetchableWhyEl = $('fetchable-why')
 const reachableEl = $('reachable')
 const shareNameEl = $('share-name')
 const sharesEl = $('shares')
@@ -196,6 +199,7 @@ const peers = peerSet()
 
 /** What this device decided to send to whom. Per peer - see `sharing.js`. */
 const shared = sharing({ key: scoped('ablage.sharing', shareId) })
+const mayBeFetched = fetchable({ key: scoped('ablage.fetchable', shareId) })
 
 /**
  * The end, because that is the part that differs.
@@ -1097,7 +1101,11 @@ async function start () {
       askToAdmit(stream, peerId)
     }
   })
-  content = await createContent(peer.node)
+  // **The one place the share's answer is applied.** `overCircuits` is
+  // `runOnLimitedConnections` on bitswap, and #72 called it unsafe because the
+  // flag is node-wide. True about the flag; in this app the node is per share
+  // (`blockstore-scope.test.js`), so node-wide *is* share-wide.
+  content = await createContent(peer.node, { overCircuits: mayBeFetched.get() })
 
   // The index changing is the other trigger - a local write is the first.
   index.observe(() => render())
@@ -1882,6 +1890,27 @@ const wakeLock = createWakeLock()
  * does nothing - the same reasoning as the music's blocked line: a control that
  * silently fails is worse than one that says it cannot.
  */
+/**
+ * Show this share's answer, and record a change.
+ *
+ * **It does not apply the change.** `overCircuits` is decided once, when
+ * `createContent` builds the node, so switching it here without saying so would
+ * leave somebody looking at a ticked box that means nothing until they happen
+ * to reload. The hint says when it takes effect; a forced reload would be worse
+ * on a phone mid-transfer.
+ */
+function startFetchable () {
+  fetchableEl.checked = mayBeFetched.get()
+
+  fetchableEl.addEventListener('change', event => {
+    mayBeFetched.set(event.target.checked === true)
+    // Read back rather than trusted: a storage that refuses the write leaves
+    // the box lying about what the next start will do.
+    fetchableEl.checked = mayBeFetched.get()
+    fetchableWhyEl.textContent = t('fetchable.why')
+  })
+}
+
 function startAwake () {
   awakeEl.checked = applyAwakeChoice()
   awakeEl.disabled = !wakeLock.supported
@@ -1889,6 +1918,8 @@ function startAwake () {
   awakeWhyEl.textContent = t(awakeWhyEl.dataset.i18n)
 
   if (awakeEl.checked) wakeLock.sync(true).catch(() => {})
+
+  startFetchable()
 }
 
 awakeEl.addEventListener('change', event => {

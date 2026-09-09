@@ -713,6 +713,24 @@ window.__ablage = {
       connections: () => peer.connections(),
 
       /**
+       * Every connection this node has, not only the ones to a given peer.
+       *
+       * `carriedBy` asks `getConnections(peerId)` and therefore cannot see the
+       * connection to the relay at all - which is most of what somebody means
+       * when they ask what a device is connected to after a hole punch.
+       */
+      allConnections: () => peer.node.getConnections().map(c => ({
+        peer: String(c.remotePeer),
+        address: String(c.remoteAddr ?? ''),
+        limited: c.limits != null,
+        encryption: String(c.encryption ?? 'none'),
+        multiplexer: String(c.multiplexer ?? 'none'),
+        direction: c.direction,
+        status: c.status
+      })),
+
+
+      /**
        * Put bytes in the blockstore without writing them to storage.
        *
        * That is what a block belonging to a *different* share would look like
@@ -927,6 +945,6 @@ window.__ablage = {
 // One side per browser context, which is what a device is.
 let side = null
 
-for (const name of ['peerId', 'createOffer', 'acceptOffer', 'acceptAnswer', 'write', 'remove', 'read', 'list', 'paths', 'reconcile', 'connections', 'useFolder', 'syncPeers', 'identity', 'lastInbound', 'appMessages', 'refuse', 'heard', 'call', 'carriedBy', 'spokenWith', 'sendApp', 'pushHard', 'pushBulk', 'askPeerForFile', 'leaveMessage', 'inbox', 'hold', 'fetch']) {
+for (const name of ['peerId', 'createOffer', 'acceptOffer', 'acceptAnswer', 'write', 'remove', 'read', 'list', 'paths', 'reconcile', 'connections', 'useFolder', 'syncPeers', 'identity', 'lastInbound', 'appMessages', 'refuse', 'heard', 'call', 'carriedBy', 'spokenWith', 'sendApp', 'pushHard', 'pushBulk', 'allConnections', 'askPeerForFile', 'leaveMessage', 'inbox', 'hold', 'fetch']) {
   window.__ablage[name] = (...args) => side[name](...args)
 }

@@ -1,0 +1,31 @@
+diff --git a/node_modules/@helia/bitswap/dist/src/network.js b/node_modules/@helia/bitswap/dist/src/network.js
+index c81c63a..a157946 100644
+--- a/node_modules/@helia/bitswap/dist/src/network.js
++++ b/node_modules/@helia/bitswap/dist/src/network.js
+@@ -81,6 +81,11 @@ export class Network extends TypedEventEmitter {
+         });
+         // register protocol with topology
+         const topology = {
++            // Patched (ablage): without this the registrar never tells bitswap about a
++            // peer on a limited connection (libp2p registrar.js:219), so no wantlist is
++            // ever sent to it and the patched dial below is never reached. Second of the
++            // two call sites in ipfs/helia#1124.
++            notifyOnLimitedConnection: this.runOnLimitedConnections,
+             onConnect: (peerId) => {
+                 this.safeDispatchEvent('peer:connected', {
+                     detail: peerId
+@@ -243,7 +248,13 @@ export class Network extends TypedEventEmitter {
+             }
+             this.log('sendMessage to %p', peerId);
+             options.onProgress?.(new CustomProgressEvent('bitswap:send-wantlist', peerId));
+-            const stream = await this.libp2p.dialProtocol(peerId, BITSWAP_120, options);
++            // Patched (ablage): the flag reaches `handle` and `isDialable` but not the
++            // dial, and libp2p refuses a stream on a limited connection unless BOTH
++            // sides pass it - see ipfs/helia#1124.
++            const stream = await this.libp2p.dialProtocol(peerId, BITSWAP_120, {
++                ...options,
++                runOnLimitedConnection: this.runOnLimitedConnections
++            });
+             await stream.closeRead(options);
+             try {
+                 for (const buf of splitMessage(message, this.maxOutgoingMessageSize)) {

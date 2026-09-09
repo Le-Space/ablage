@@ -77,3 +77,47 @@ test('a message does not take the screen', async ({ page }) => {
   await arrive(page, { name: 'Jo', text: 'still there?' })
   expect(await page.evaluate(() => document.activeElement?.id)).toBe('invite')
 })
+
+test('a message is still there after a reload', async ({ page }) => {
+  // #84 drew it and forgot it - for "somebody left you something while you
+  // were not looking", that was most of the feature missing. The hook goes
+  // through `takeIn`, the same path the sync stream uses, so this is the real
+  // thing being kept and not a drawing.
+  await open(page)
+  await arrive(page, { name: 'Jo', text: 'still here tomorrow?' })
+
+  await page.reload()
+  await expect(page.locator('#invite')).toBeEnabled()
+
+  await expect(page.locator('#inbox')).toBeVisible()
+  await expect(page.locator('#inbox-list li')).toHaveCount(1)
+  await expect(page.locator('.inbox-text')).toHaveText('still here tomorrow?')
+  await expect(page.locator('.inbox-who')).toContainText('Jo')
+})
+
+test('and reloading twice does not turn one message into two', async ({ page }) => {
+  // Restoring draws; it must not *add*. A restore that went through `takeIn`
+  // would keep the message again on every load, and the list would grow by
+  // itself.
+  await open(page)
+  await arrive(page, { name: 'Jo', text: 'once' })
+
+  for (let i = 0; i < 2; i++) {
+    await page.reload()
+    await expect(page.locator('#invite')).toBeEnabled()
+  }
+
+  await expect(page.locator('#inbox-list li')).toHaveCount(1)
+})
+
+test('newest stays on top across a reload', async ({ page }) => {
+  await open(page)
+  await arrive(page, { name: 'First', text: 'one' })
+  await arrive(page, { name: 'Second', text: 'two' })
+
+  await page.reload()
+  await expect(page.locator('#invite')).toBeEnabled()
+
+  await expect(page.locator('#inbox-list li').first()).toContainText('two')
+  await expect(page.locator('#inbox-list li').last()).toContainText('one')
+})

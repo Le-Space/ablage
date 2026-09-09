@@ -8,7 +8,7 @@
  * though it were a fault.
  */
 import { fetchable } from '../sync/fetchable.js'
-import { INBOX_MESSAGE, received } from '../sync/inbox.js'
+import { INBOX_MESSAGE, inbox, received } from '../sync/inbox.js'
 import { codecFor } from '../sync/framing.js'
 import '@le-space/libp2p-webrtc-qr/elements'
 import * as Y from 'yjs'
@@ -200,6 +200,7 @@ const peers = peerSet()
 /** What this device decided to send to whom. Per peer - see `sharing.js`. */
 const shared = sharing({ key: scoped('ablage.sharing', shareId) })
 const mayBeFetched = fetchable({ key: scoped('ablage.fetchable', shareId) })
+const kept = inbox({ key: scoped('ablage.inbox', shareId) })
 
 /**
  * The end, because that is the part that differs.
@@ -1010,7 +1011,7 @@ function attach (stream, peerId, protocol = SYNC_PROTOCOL) {
         if (message.type === INBOX_MESSAGE) {
           const said = received(message, peerId)
 
-          if (said != null) showMessage(said)
+          if (said != null) takeIn(said)
           continue
         }
 
@@ -1618,6 +1619,25 @@ function followPeer (peerId) {
  * `innerHTML` here would be an invitation: not a decision anybody should have
  * to remember, so the DOM is built rather than a string.
  */
+/**
+ * Remember it, then show it - in that order, so a page that dies between the
+ * two has the message and not only the drawing of it.
+ */
+function takeIn (said) {
+  kept.add(said)
+  showMessage(said)
+}
+
+/**
+ * What was here before this page loaded.
+ *
+ * Oldest first on purpose: `showMessage` prepends, so walking the newest-first
+ * list backwards ends with the newest on top - the order somebody left it in.
+ */
+function restoreInbox () {
+  for (const said of kept.all().reverse()) showMessage(said)
+}
+
 function showMessage (said) {
   const item = document.createElement('li')
 
@@ -1920,6 +1940,7 @@ function startAwake () {
   if (awakeEl.checked) wakeLock.sync(true).catch(() => {})
 
   startFetchable()
+  restoreInbox()
 }
 
 awakeEl.addEventListener('change', event => {
@@ -1940,7 +1961,8 @@ document.addEventListener('visibilitychange', () => {
 // `a-message-from-a-stranger.test.js`; what is left to check here is the
 // drawing, and a spec that had to pair two devices to reach it would be paying
 // two minutes for a `textContent`.
-window.__inboxForTest = showMessage
+// The real path, not only the drawing: a spec that reloads has to find it again.
+window.__inboxForTest = takeIn
 
 window.__wakeLockForTest = wakeLock
 

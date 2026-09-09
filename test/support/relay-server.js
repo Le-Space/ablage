@@ -22,6 +22,7 @@ import { webSockets } from '@libp2p/websockets'
 import { createServer } from 'node:http'
 import { createLibp2p } from 'libp2p'
 
+import { createContent } from '../../src/content.js'
 import { DISCOVERY_TOPICS } from '../../src/peer.js'
 import { RELAY_HEALTH_PORT, RELAY_KEY, RELAY_PORT } from './local-relay.js'
 
@@ -99,6 +100,23 @@ const node = await createLibp2p({
 await node.start()
 
 /**
+ * A relay that *can* hold a block - and holds nothing until asked.
+ *
+ * The question "does bitswap work over a relay" was argued more than once, and
+ * the answer turned out to depend on something nobody was saying out loud:
+ * whether the relay has the bytes. `orbitdb-relay` runs OrbitDB and pins what
+ * it sees, so simple-todo's browsers fetch *from the relay* over an ordinary
+ * unlimited connection and never through a circuit at all. This relay holds
+ * nothing, which is why the same limitation is visible here.
+ *
+ * So the spec that settles it needs both relays, on one setup. `POST /hold` on
+ * the health port puts bytes into this relay's blockstore and answers with the
+ * address - exactly what a pinning relay does by itself. Nothing else changes:
+ * a run that never posts sees the relay it always had.
+ */
+const content = await createContent(node)
+
+/**
  * Subscribe to the discovery topics the app publishes on.
  *
  * gossipsub forwards a topic to peers, but only for topics it carries itself -
@@ -114,7 +132,25 @@ for (const address of node.getMultiaddrs()) console.log('relay listening on', ad
 // A plain HTTP endpoint, only so a test runner has something to wait for. A
 // libp2p listener answers no GET, and a runner that cannot tell "starting" from
 // "started" races the first test.
-createServer((_request, response) => {
+createServer((request, response) => {
+  if (request.method === 'POST' && request.url === '/hold') {
+    const chunks = []
+
+    request.on('data', chunk => chunks.push(chunk))
+    request.on('end', () => {
+      content.add(new Uint8Array(Buffer.concat(chunks)))
+        .then(cid => {
+          response.writeHead(200, { 'content-type': 'application/json' })
+          response.end(JSON.stringify({ cid }))
+        })
+        .catch(error => {
+          response.writeHead(500, { 'content-type': 'application/json' })
+          response.end(JSON.stringify({ error: String(error?.message ?? error) }))
+        })
+    })
+    return
+  }
+
   response.writeHead(200, { 'content-type': 'application/json' })
   const pubsub = node.services.pubsub
 

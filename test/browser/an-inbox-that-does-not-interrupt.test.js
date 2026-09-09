@@ -121,3 +121,34 @@ test('newest stays on top across a reload', async ({ page }) => {
   await expect(page.locator('#inbox-list li').first()).toContainText('two')
   await expect(page.locator('#inbox-list li').last()).toContainText('one')
 })
+
+test('clearing empties the inbox, and it stays empty after a reload', async ({ page }) => {
+  // Emptied on disk before on screen - the same order `takeIn` keeps in - so a
+  // reload does not bring back what the person already dismissed.
+  await open(page)
+  await arrive(page, { name: 'Jo', text: 'one' })
+  await arrive(page, { name: 'Jo', text: 'two' })
+  await expect(page.locator('#inbox-list li')).toHaveCount(2)
+
+  await page.locator('#inbox-clear').click()
+
+  await expect(page.locator('#inbox')).toBeHidden()
+  await expect(page.locator('#inbox-list li')).toHaveCount(0)
+
+  await page.reload()
+  await expect(page.locator('#invite')).toBeEnabled()
+
+  await expect(page.locator('#inbox')).toBeHidden()
+  await expect(page.locator('#inbox-list li')).toHaveCount(0)
+})
+
+test('and a message arriving after a clear shows up as the only one', async ({ page }) => {
+  await open(page)
+  await arrive(page, { name: 'Jo', text: 'before' })
+  await page.locator('#inbox-clear').click()
+  await arrive(page, { name: 'Jo', text: 'after' })
+
+  await expect(page.locator('#inbox')).toBeVisible()
+  await expect(page.locator('#inbox-list li')).toHaveCount(1)
+  await expect(page.locator('.inbox-text')).toHaveText('after')
+})

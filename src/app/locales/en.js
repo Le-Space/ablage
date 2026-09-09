@@ -208,7 +208,8 @@ export default {
     from: ({ name, id }) => `${name} — ${id}`,
     // A name is optional on purpose, and somebody who withheld one should read
     // as anonymous rather than as broken.
-    anonymous: ({ id }) => `Someone — ${id}`
+    anonymous: ({ id }) => `Someone — ${id}`,
+    clear: 'Clear'
   },
   fetchable: {
     toggle: 'Let this share be fetched over a relay',

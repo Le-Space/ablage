@@ -401,6 +401,18 @@
         <h2 data-i18n="inbox.heading">Messages</h2>
         <p class="hint quiet" data-i18n="inbox.about">From people who are not syncing with this folder. Nothing here can reach your files on its own.</p>
         <ul id="inbox-list" class="inbox-list"></ul>
+        <!--
+          One button, and it empties everything. Messages are from people who
+          are not syncing with this folder, so there is nothing to mark as
+          read and nothing to keep in step with anybody - "I have seen these"
+          is the whole of what somebody wants to say, and per-message controls
+          on a list that is usually short would be furniture. No confirmation:
+          the list holds two hundred at most, from strangers, and undoing a
+          mistaken clear is asking again.
+        -->
+        <div class="actions">
+          <button id="inbox-clear" type="button" data-i18n="inbox.clear">Clear</button>
+        </div>
       </section>
 
       <section class="card">

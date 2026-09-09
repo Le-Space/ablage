@@ -204,7 +204,8 @@ export default {
     heading: 'Nachrichten',
     about: 'Von Leuten, die nicht mit diesem Ordner synchronisieren. Nichts davon kommt von allein an Ihre Dateien.',
     from: ({ name, id }) => `${name} — ${id}`,
-    anonymous: ({ id }) => `Jemand — ${id}`
+    anonymous: ({ id }) => `Jemand — ${id}`,
+    clear: 'Leeren'
   },
   fetchable: {
     toggle: 'Diese Freigabe \u00fcber ein Relay abrufbar machen',

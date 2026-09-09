@@ -112,6 +112,7 @@ const byRelayEl = $('by-relay')
 const peersEl = $('peers')
 const inboxEl = $('inbox')
 const inboxListEl = $('inbox-list')
+const inboxClearEl = $('inbox-clear')
 const peerListEl = $('peer-list')
 const peersEmptyEl = $('peers-empty')
 const peerFilterEl = $('peer-filter')
@@ -1634,6 +1635,17 @@ function takeIn (said) {
  * Oldest first on purpose: `showMessage` prepends, so walking the newest-first
  * list backwards ends with the newest on top - the order somebody left it in.
  */
+/**
+ * Empty it - on disk first, then on screen, in that order for the same
+ * reason `takeIn` keeps before it draws: a page that dies between the two
+ * should not come back with messages the person had already dismissed.
+ */
+function clearInbox () {
+  kept.clear()
+  inboxListEl.replaceChildren()
+  inboxEl.hidden = true
+}
+
 function restoreInbox () {
   for (const said of kept.all().reverse()) showMessage(said)
 }
@@ -1941,6 +1953,7 @@ function startAwake () {
 
   startFetchable()
   restoreInbox()
+  inboxClearEl.addEventListener('click', clearInbox)
 }
 
 awakeEl.addEventListener('change', event => {

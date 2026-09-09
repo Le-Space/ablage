@@ -13,6 +13,7 @@ import { createContent } from './content.js'
 import { SYNC_PROTOCOL, SYNC_PROTOCOL_FRAMED, createPeer } from './peer.js'
 import { reconcile } from './reconcile.js'
 import { baseline } from './sync/baseline.js'
+import { sendBulk } from './sync/bulk.js'
 import { fileIndex } from './sync/file-index.js'
 import { INBOX_MESSAGE, inboxMessage, received } from './sync/inbox.js'
 import { Provider } from './sync/provider.js'
@@ -468,7 +469,7 @@ window.__ablage = {
       const provider = new Provider(doc, send)
 
       peers.get(peerId)?.provider.destroy()
-      peers.set(peerId, { provider, send, stream })
+      peers.set(peerId, { provider, send, stream, codec })
 
       // Both sides ask, the same as `main.js`. A `sync-request` is answered
       // with what its *sender* lacks, so one request moves a folder one way
@@ -735,6 +736,107 @@ window.__ablage = {
         }
       },
 
+      /**
+       * Push hard and report what the stream said.
+       *
+       * #74 step 3 is backpressure, and the question it turns on is whether
+       * `send()` ever actually refuses here. The interface says it returns
+       * false when the internal buffer is full **and may throw for the same
+       * reason** - so this sends without waiting and counts both, rather than
+       * assuming either.
+       */
+      /**
+       * The same push, through the bulk path - so the two can be compared.
+       *
+       * Same messages, same stream, same run: the only difference is who
+       * decides when the next block goes out.
+       */
+      pushBulk: async (peerId, { count = 8, bytes = 1024 * 1024 } = {}) => {
+        const held = peers.get(peerId)
+
+        if (held == null) return { error: 'no such peer' }
+
+        const stream = held.stream
+        const payload = 'x'.repeat(bytes)
+        const out = { sent: 0, threw: 0, firstError: null, peakBuffer: 0 }
+
+        // Sampled at every single `send()`, not on a timer and not between
+        // messages. A timer reported a peak of zero, which was true whenever it
+        // happened to fire and said nothing: `sendBulk` only yields when the
+        // stream refuses, so a run where nothing is refused never gives the
+        // timer a turn. Wrapping the call is the only place the number is real.
+        out.refused = 0
+        out.blocks = 0
+
+        const realSend = stream.send.bind(stream)
+
+        stream.send = block => {
+          const accepted = realSend(block)
+
+          out.blocks += 1
+          if (accepted === false) out.refused += 1
+          out.peakBuffer = Math.max(out.peakBuffer, stream.writeBufferLength ?? 0)
+
+          return accepted
+        }
+
+        const watching = { restore: () => { stream.send = realSend } }
+
+        try {
+          for (let i = 0; i < count; i++) {
+            try {
+              await sendBulk(stream, held.codec.encode({ type: 'push-probe', i, payload }))
+              out.sent += 1
+            } catch (error) {
+              out.threw += 1
+              out.firstError ??= String(error?.message ?? error).slice(0, 160)
+            }
+
+            out.peakBuffer = Math.max(out.peakBuffer, stream?.writeBufferLength ?? 0)
+          }
+        } finally {
+          watching.restore()
+        }
+
+        return out
+      },
+
+      pushHard: async (peerId, { count = 8, bytes = 1024 * 1024 } = {}) => {
+        const held = peers.get(peerId)
+
+        if (held == null) return { error: 'no such peer' }
+
+        const stream = held.stream
+        const payload = 'x'.repeat(bytes)
+        const out = { sent: 0, refused: 0, threw: 0, firstError: null, peakBuffer: 0, neededDrain: 0 }
+
+        // Sampled the same way as the bulk probe, so the peaks are comparable.
+        // This path never yields, so the interval only fires once it is done -
+        // which is why the in-loop reading below is kept as well.
+        const watching = setInterval(() => {
+          out.peakBuffer = Math.max(out.peakBuffer, stream?.writeBufferLength ?? 0)
+        }, 1)
+
+        for (let i = 0; i < count; i++) {
+          try {
+            const ok = held.send({ type: 'push-probe', i, payload })
+
+            out.sent += 1
+            if (ok === false) out.refused += 1
+          } catch (error) {
+            out.threw += 1
+            out.firstError ??= String(error?.message ?? error).slice(0, 160)
+          }
+
+          out.peakBuffer = Math.max(out.peakBuffer, stream?.writeBufferLength ?? 0)
+          if (stream?.writableNeedsDrain === true) out.neededDrain += 1
+        }
+
+        clearInterval(watching)
+
+        return out
+      },
+
       /** Which protocol this side negotiated with them. */
       spokenWith: peerId => peers.get(peerId)?.stream?.protocol ?? null,
 
@@ -765,6 +867,6 @@ window.__ablage = {
 // One side per browser context, which is what a device is.
 let side = null
 
-for (const name of ['peerId', 'createOffer', 'acceptOffer', 'acceptAnswer', 'write', 'remove', 'read', 'list', 'paths', 'reconcile', 'connections', 'useFolder', 'syncPeers', 'identity', 'lastInbound', 'appMessages', 'refuse', 'heard', 'call', 'carriedBy', 'spokenWith', 'sendApp', 'leaveMessage', 'inbox', 'hold', 'fetch']) {
+for (const name of ['peerId', 'createOffer', 'acceptOffer', 'acceptAnswer', 'write', 'remove', 'read', 'list', 'paths', 'reconcile', 'connections', 'useFolder', 'syncPeers', 'identity', 'lastInbound', 'appMessages', 'refuse', 'heard', 'call', 'carriedBy', 'spokenWith', 'sendApp', 'pushHard', 'pushBulk', 'leaveMessage', 'inbox', 'hold', 'fetch']) {
   window.__ablage[name] = (...args) => side[name](...args)
 }

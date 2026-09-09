@@ -29,9 +29,10 @@
  * evaluated *before* the `try` below. In a browser where merely reaching
  * `localStorage` throws - some privacy settings, some private windows - that
  * threw during startup and the app did not come up at all. Guarded here rather
- * than at every call site.
+ * than at every call site - and exported, because "here" was private and the
+ * next setting (`fetchable.js`) reintroduced the exact bug one file over.
  */
-function safeStore () {
+export function safeStore () {
   try {
     return globalThis.localStorage ?? null
   } catch {

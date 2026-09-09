@@ -223,26 +223,37 @@ test('and a stranger never gets the direct connection that would serve them', as
 })
 
 /**
- * The option that ought to lift this does nothing, and that is upstream.
+ * The option lifts it — with the patch in `patches/`, until helia#1124 lands.
  *
- * `@helia/bitswap` documents `runOnLimitedConnections`. Setting it to `true`
- * should let blocks cross a circuit — and it does not, because two call sites
- * drop the flag: the registrar topology never sets `notifyOnLimitedConnection`,
- * so bitswap is never told the peer exists, and `sendMessage()` dials without
- * merging the flag into its options. **Each alone is enough to break it** -
- * patching either changes nothing, patching both makes a read succeed.
+ * `@helia/bitswap` documents `runOnLimitedConnections`. Unpatched, setting it
+ * does nothing, because two call sites drop the flag: the registrar topology
+ * never sets `notifyOnLimitedConnection`, so bitswap is never told the peer
+ * exists, and `sendMessage()` dials without merging the flag into its options.
+ * **Each alone is enough to break it.** Checked across every published version
+ * from 0.0.0 to 4.0.14: the option has existed in all of them and been wired to
+ * neither site in any — it was never a regression, it was never finished.
  *
- * Measured here against a patched copy of the dependency, then reported as
- * ipfs/helia#1124. `handle()` and `findProviders()` both honour the flag; the
- * call that actually asks a peer for a block is the one that does not.
+ * `patches/@helia+bitswap+4.0.11.patch` fixes both, and this spec measures the
+ * result: with the option on, a block crosses a circuit-only connection.
+ * `bitswap-gate:116` beside it measures the other half — with the option *off*,
+ * the default, nothing crosses. The patch lifts the restriction only for a node
+ * that asked, which is what makes it safe to carry: the default is the app's
+ * claim, and it is unchanged.
  *
- * **This spec asserts the broken behaviour on purpose.** It is a tripwire: when
- * the fix lands upstream and this repository picks it up, it turns red, and the
- * thing to do is invert it rather than to go looking for a regression. That
- * also matters for the guard in `peer.js` — while this holds, a stranger on the
- * relay is refused twice over, and afterwards only once.
+ * **This spec used to assert the broken behaviour on purpose** and said to
+ * invert it when the fix landed. It landed as our patch rather than upstream,
+ * and it is inverted. It is still a tripwire, now the other way: if the patch
+ * stops applying — a bitswap version bump `patch-package` cannot match — this
+ * goes red, and the thing to do is re-fit the patch or confirm upstream fixed
+ * it, not to look for a regression in this repository.
+ *
+ * It also changes what guards a stranger. While the option was inert, a
+ * stranger on the relay was refused twice over — by bitswap's own inability and
+ * by the guard in `peer.js`. Now a share that turns the option on is refusing
+ * them only once. That is the design (#72's per-share choice, off by default),
+ * and `bitswap-gate:168` is the spec that keeps the remaining refusal honest.
  */
-test('and the documented option does not lift that, until helia#1124 lands', async ({ page }) => {
+test('and the documented option lifts it, with the patch that helia#1124 still needs', async ({ page }) => {
   await page.goto('/harness.html')
   await page.waitForFunction(() => window.__ablage != null)
 
@@ -250,7 +261,7 @@ test('and the documented option does not lift that, until helia#1124 lands', asy
     const pair = await window.__ablage.bitswapAcrossTheRelay({
       holePunch: false,
       admitAll: true,
-      // The whole point: asking for it, and being refused anyway.
+      // The whole point: asking for it, and now being served.
       overCircuits: true
     })
 
@@ -264,9 +275,10 @@ test('and the documented option does not lift that, until helia#1124 lands', asy
 
       const dialled = await pair.connect()
 
-      // The discriminating fact. libp2p does *not* refuse the protocol over the
-      // circuit - the stream opens when dialled by hand. So the failure below
-      // is bitswap never asking, not the transport saying no.
+      // Still measured, because it is what once pointed at the two call sites:
+      // libp2p never refused the protocol over the circuit. The stream opened
+      // when dialled by hand while a read timed out, so the fault was bitswap
+      // never asking, not the transport saying no.
       const stream = await pair.canOpenBitswap()
 
       return { connection: dialled, stream, ...await pair.readWithoutAsking(cid, 25000) }
@@ -278,7 +290,8 @@ test('and the documented option does not lift that, until helia#1124 lands', asy
   expect(out.connection, JSON.stringify(out)).toMatchObject({ ok: true, limited: true })
   expect(out.stream, JSON.stringify(out)).toMatchObject({ ok: true })
 
-  // Invert these two when the fix is in.
-  expect(out.got, JSON.stringify(out)).toBe(null)
-  expect(out.error, JSON.stringify(out)).toMatch(/timed out/i)
+  // Inverted from the tripwire this used to be. If these go red, see the
+  // comment above before looking anywhere in this repository.
+  expect(out.error, JSON.stringify(out)).toBe(null)
+  expect(out.got, JSON.stringify(out)).toBe('only one side put this in its folder')
 })

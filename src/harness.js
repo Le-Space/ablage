@@ -15,7 +15,8 @@ import { reconcile } from './reconcile.js'
 import { baseline } from './sync/baseline.js'
 import { sendBulk } from './sync/bulk.js'
 import { fileIndex } from './sync/file-index.js'
-import { FILE_GIVE, FILE_NONE, answer, ask, asked, take } from './sync/file-transfer.js'
+import { askEach, askRegistry, withPeerFallback } from './sync/ask-peers.js'
+import { FILE_GIVE, FILE_NONE, answer, asked } from './sync/file-transfer.js'
 import { INBOX_MESSAGE, inbox as keepInbox, inboxMessage, received } from './sync/inbox.js'
 import { Provider } from './sync/provider.js'
 import { directoryStorage } from './storage/directory.js'
@@ -441,14 +442,14 @@ window.__ablage = {
     const appMessages = []
     // Kept, not held: a reload of this side finds what arrived before it.
     const inbox = keepInbox({ key: `ablage.inbox.${name}` })
-    /** Content addresses this side is waiting on, by cid. */
-    const waitingFor = new Map()
+    /** Content addresses this side is waiting on - the same registry `main.js` uses. */
+    const asks = askRegistry()
     let lastInbound = null
     let pending = Promise.resolve()
 
     /** Serialised: two passes at once would both see the same disagreement. */
     const pass = () => {
-      const ran = pending.then(() => reconcile({ index, storage, content, base }))
+      const ran = pending.then(() => reconcile({ index, storage, content: fetching, base }))
 
       // **The chain must survive one failure, the way `main.js` does.**
       //
@@ -517,12 +518,7 @@ window.__ablage = {
             // address in the first place, and storing it locally is what we
             // wanted anyway.
             if (message?.type === FILE_GIVE || message?.type === FILE_NONE) {
-              const waiting = waitingFor.get(message.cid)
-
-              if (waiting != null) {
-                waitingFor.delete(message.cid)
-                take(message, message.cid, bytes => content.add(bytes)).then(waiting, waiting)
-              }
+              asks.settle(message, bytes => content.add(bytes))
               continue
             }
 
@@ -593,6 +589,12 @@ window.__ablage = {
     peer.node.addEventListener('peer:discovery', event => heardOnRelay.add(event.detail.id.toString()))
 
     const content = await createContent(peer.node)
+    // What `pass()` reconciles through: bitswap, then every peer we hold, in
+    // turn. `fetch` below stays the raw thing on purpose - it is how a spec
+    // measures whether bitswap alone crosses.
+    const fetching = withPeerFallback(content, {
+      askAll: cid => askEach(cid, [...peers].map(([id, held]) => ({ id, send: held.send })), asks)
+    })
 
     side = {
       peerId: () => peer.peerId(),
@@ -752,19 +754,10 @@ window.__ablage = {
 
         if (held == null) return { error: 'no such peer' }
 
-        const settled = new Promise(resolve => {
-          waitingFor.set(cid, resolve)
-          setTimeout(() => {
-            if (waitingFor.delete(cid)) resolve({ refused: 'nobody answered' })
-          }, timeoutMs)
-        })
-
-        await sendBulk(held.stream, held.codec.encode(ask(cid)))
-
-        const out = await settled
+        const out = await askEach(cid, [{ id: peerId, send: held.send }], asks, { timeoutMs })
 
         return out.bytes == null
-          ? { got: null, refused: out.refused }
+          ? { got: null, refused: out.refused.join('; ').replace(/^[^:]+: /, '') }
           : { got: new TextDecoder().decode(out.bytes), refused: null }
       },
 

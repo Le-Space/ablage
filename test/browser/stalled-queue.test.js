@@ -66,6 +66,13 @@ test('a file that cannot be fetched does not stop the rest of the folder', async
       .poll(() => b.page.evaluate(() => window.__ablage.paths()), { timeout: 60_000 })
       .toContain('unreachable.txt')
 
+    // **Nobody can serve it - genuinely.** A wrote it, so A has the bytes,
+    // and since #72's second door B would simply ask A over the sync stream
+    // and get them. That would make this spec measure a file that arrives.
+    // The case it exists for is a holder that is gone: a tab closed, a phone
+    // put down. So A goes away here, and B's ask meets "nobody answered".
+    await a.context.close()
+
     // Now B does something entirely of its own, touching nobody else.
     const own = b.page.evaluate(() => window.__ablage.write('mine.txt', 'written locally'))
 

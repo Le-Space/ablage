@@ -136,3 +136,42 @@ test('a stranger does not get to say who they are', async () => {
     await browser.close()
   }
 })
+
+test('a message that crossed the relay is still there after the owner reloads', async () => {
+  test.setTimeout(300_000)
+
+  const browser = await chromium.launch()
+  const visitor = await start(browser, 'stranger-keeps-visitor')
+  const owner = await start(browser, 'stranger-keeps-owner')
+
+  try {
+    await expect
+      .poll(() => visitor.page.evaluate(id => window.__ablage.heard().includes(id), owner.id), { timeout: 120_000 })
+      .toBe(true)
+
+    expect(await visitor.page.evaluate(id => window.__ablage.call(id), owner.id)).toMatchObject({ ok: true })
+
+    expect(
+      await visitor.page.evaluate(id => window.__ablage.leaveMessage(id, { name: 'Jo', text: 'read this after you come back' }), owner.id)
+    ).toMatchObject({ ok: true })
+
+    await expect
+      .poll(() => owner.page.evaluate(() => window.__ablage.inbox().map(m => m.text)), { timeout: 60_000 })
+      .toContain('read this after you come back')
+
+    // The owner's page goes away and comes back - a phone that was put down,
+    // a tab that was closed. The visitor is gone by then, and cannot resend.
+    await visitor.context.close()
+    await owner.page.reload()
+    await owner.page.waitForFunction(() => window.__ablage != null)
+    await owner.page.evaluate(n => window.__ablage.start(n, { overRelay: true }), 'stranger-keeps-owner')
+
+    const after = await owner.page.evaluate(() => window.__ablage.inbox())
+
+    expect(after.map(m => m.text)).toContain('read this after you come back')
+    expect(after[0].from, 'and who said it is kept with it').toBe(visitor.id)
+  } finally {
+    await owner.context.close()
+    await browser.close()
+  }
+})

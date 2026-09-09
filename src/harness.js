@@ -16,7 +16,7 @@ import { baseline } from './sync/baseline.js'
 import { sendBulk } from './sync/bulk.js'
 import { fileIndex } from './sync/file-index.js'
 import { FILE_GIVE, FILE_NONE, answer, ask, asked, take } from './sync/file-transfer.js'
-import { INBOX_MESSAGE, inboxMessage, received } from './sync/inbox.js'
+import { INBOX_MESSAGE, inbox as keepInbox, inboxMessage, received } from './sync/inbox.js'
 import { Provider } from './sync/provider.js'
 import { directoryStorage } from './storage/directory.js'
 import { watchFolder } from './storage/watch.js'
@@ -439,7 +439,8 @@ window.__ablage = {
 
     const peers = new Map()
     const appMessages = []
-    const inbox = []
+    // Kept, not held: a reload of this side finds what arrived before it.
+    const inbox = keepInbox({ key: `ablage.inbox.${name}` })
     /** Content addresses this side is waiting on, by cid. */
     const waitingFor = new Map()
     let lastInbound = null
@@ -528,7 +529,7 @@ window.__ablage = {
             if (message.type === INBOX_MESSAGE) {
               const said = received(message, peerId)
 
-              if (said != null) inbox.push(said)
+              if (said != null) inbox.add(said)
               continue
             }
 
@@ -606,7 +607,7 @@ window.__ablage = {
       appMessages: () => [...appMessages],
 
       /** Messages left for us, as they would be shown. */
-      inbox: () => [...inbox],
+      inbox: () => inbox.all(),
 
       /**
        * Leave a message with somebody, built the way the application builds it.

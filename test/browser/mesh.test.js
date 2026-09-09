@@ -6,10 +6,20 @@ import { RELAY_ID } from '../support/local-relay.js'
 /**
  * The meeting place, and the list it fills.
  *
- * These reach a real relay on the public internet. That is deliberate: whether
- * two devices find each other is the claim, and a mock confirms it whether or
- * not it is true - which is exactly how the relay came to be wired up and
- * unreachable for a week.
+ * **Against a relay of our own, not the public one.** The claim is that two
+ * devices find each other, and a mock would confirm that whether or not it is
+ * true - which is exactly how the relay came to be wired up and unreachable for
+ * a week. So these run against a real relay, started next to them by
+ * `test/support/local-relay.js`.
+ *
+ * That file is worth reading for why it is not the public relay any more: on
+ * 2026-08-28 a machine nobody here administers stopped advertising its own
+ * protocols, and twelve red tests kept a correct build from publishing. One
+ * separate `@public` smoke test still calls it, and reports rather than gates.
+ *
+ * This comment said the opposite until today, having outlived the change by
+ * about two weeks - and it cost a quarter of an hour chasing a public relay
+ * that nothing here dials.
  */
 
 test.describe.configure({ mode: 'serial' })

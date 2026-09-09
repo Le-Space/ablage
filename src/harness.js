@@ -15,6 +15,7 @@ import { reconcile } from './reconcile.js'
 import { baseline } from './sync/baseline.js'
 import { sendBulk } from './sync/bulk.js'
 import { fileIndex } from './sync/file-index.js'
+import { FILE_GIVE, FILE_NONE, answer, ask, asked, take } from './sync/file-transfer.js'
 import { INBOX_MESSAGE, inboxMessage, received } from './sync/inbox.js'
 import { Provider } from './sync/provider.js'
 import { directoryStorage } from './storage/directory.js'
@@ -439,6 +440,8 @@ window.__ablage = {
     const peers = new Map()
     const appMessages = []
     const inbox = []
+    /** Content addresses this side is waiting on, by cid. */
+    const waitingFor = new Map()
     let lastInbound = null
     let pending = Promise.resolve()
 
@@ -493,6 +496,35 @@ window.__ablage = {
             // through the same function the application uses, so that what a
             // test sees is what a person would be shown - including the
             // refusals, which are most of what that function does.
+            // Somebody wants a file. Answered over the same stream that
+            // carried the ask - the one path measured to cross a circuit.
+            if (asked(message) != null) {
+              answer(message, async cid => {
+                try {
+                  return await content.get(cid, { signal: AbortSignal.timeout(10_000) })
+                } catch {
+                  return null
+                }
+              })
+                .then(reply => reply != null && sendBulk(stream, codec.encode(reply)))
+                .catch(() => {})
+              continue
+            }
+
+            // The answer to one of ours. Believed only if it hashes to what was
+            // asked for - `content.add` is the same function that produced the
+            // address in the first place, and storing it locally is what we
+            // wanted anyway.
+            if (message?.type === FILE_GIVE || message?.type === FILE_NONE) {
+              const waiting = waitingFor.get(message.cid)
+
+              if (waiting != null) {
+                waitingFor.delete(message.cid)
+                take(message, message.cid, bytes => content.add(bytes)).then(waiting, waiting)
+              }
+              continue
+            }
+
             if (message.type === INBOX_MESSAGE) {
               const said = received(message, peerId)
 
@@ -689,6 +721,34 @@ window.__ablage = {
        */
       hold: async text => content.add(new TextEncoder().encode(text)),
 
+      /**
+       * Ask a *peer* for a file, rather than the network.
+       *
+       * This is #72's other path: bitswap refuses a limited connection, the
+       * sync stream does not. Everything about who may ask is already settled -
+       * the stream exists because the admission dialog said yes.
+       */
+      askPeerForFile: async (peerId, cid, timeoutMs = 60_000) => {
+        const held = peers.get(peerId)
+
+        if (held == null) return { error: 'no such peer' }
+
+        const settled = new Promise(resolve => {
+          waitingFor.set(cid, resolve)
+          setTimeout(() => {
+            if (waitingFor.delete(cid)) resolve({ refused: 'nobody answered' })
+          }, timeoutMs)
+        })
+
+        await sendBulk(held.stream, held.codec.encode(ask(cid)))
+
+        const out = await settled
+
+        return out.bytes == null
+          ? { got: null, refused: out.refused }
+          : { got: new TextDecoder().decode(out.bytes), refused: null }
+      },
+
       /** Ask for bytes by address, the way an admitted peer would. */
       fetch: async (cid, timeoutMs = 15000) => {
         try {
@@ -867,6 +927,6 @@ window.__ablage = {
 // One side per browser context, which is what a device is.
 let side = null
 
-for (const name of ['peerId', 'createOffer', 'acceptOffer', 'acceptAnswer', 'write', 'remove', 'read', 'list', 'paths', 'reconcile', 'connections', 'useFolder', 'syncPeers', 'identity', 'lastInbound', 'appMessages', 'refuse', 'heard', 'call', 'carriedBy', 'spokenWith', 'sendApp', 'pushHard', 'pushBulk', 'leaveMessage', 'inbox', 'hold', 'fetch']) {
+for (const name of ['peerId', 'createOffer', 'acceptOffer', 'acceptAnswer', 'write', 'remove', 'read', 'list', 'paths', 'reconcile', 'connections', 'useFolder', 'syncPeers', 'identity', 'lastInbound', 'appMessages', 'refuse', 'heard', 'call', 'carriedBy', 'spokenWith', 'sendApp', 'pushHard', 'pushBulk', 'askPeerForFile', 'leaveMessage', 'inbox', 'hold', 'fetch']) {
   window.__ablage[name] = (...args) => side[name](...args)
 }

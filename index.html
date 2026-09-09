@@ -296,6 +296,37 @@
         </div>
 
         <!--
+          Letting this share be fetched by anyone who can reach us.
+
+          Inside the relay half on purpose, and it was not always here. It sat
+          in the connection card above the file list, where its own comment
+          said it belonged "because this only means anything once a relay is in
+          play" - and cost every Firefox preview test its thumbnail. The list
+          reads a thumbnail only once its row is within 200px of the viewport
+          (`whenVisible` in main.js); on a 720px Firefox viewport the first row
+          already sits ~100px past the fold, and this block's 107px pushed it
+          to 210. Nothing failed - nothing was ever asked for.
+
+          Here it is hidden with everything else relay-shaped until a relay is
+          switched on, so a device that never uses one never pays for it, in
+          height or in reading. And it sits where the consequence is visible:
+          the devices listed above are the ones that could reach us this way.
+
+          Unticked, and that is the app's claim rather than a preference. With
+          it on, a device that reaches us through a relay can fetch any block of
+          *this* share by address, without ever having been admitted to sync.
+          Per share, because in this app a share is its own peer with its own
+          blockstore - so the answer for one is not the answer for another.
+        -->
+        <div class="fetchable">
+          <label class="option">
+            <input id="fetchable" type="checkbox" />
+            <span data-i18n="fetchable.toggle">Let this share be fetched over a relay</span>
+          </label>
+          <p class="hint" id="fetchable-why" data-i18n="fetchable.why"></p>
+        </div>
+
+        <!--
           For a device the meeting place has not turned up. Folded, because it
           is the rarer way in and an address is not something anybody types by
           choice.

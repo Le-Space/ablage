@@ -35,7 +35,7 @@ const start = async (browser, name) => {
   return { page, context, errors, id: await page.evaluate(() => window.__ablage.peerId()) }
 }
 
-test('the list crosses a relay-only connection and the file does not', async () => {
+test('the list crosses a relay-only connection, and now so does the file', async () => {
   test.setTimeout(300_000)
 
   const browser = await chromium.launch()
@@ -90,7 +90,9 @@ test('the list crosses a relay-only connection and the file does not', async () 
     // Inverting this line is the definition of done for #72. When it turns
     // green on its own, the fix landed somewhere upstream and the spec should
     // be turned around rather than investigated.
-    expect(arrived, 'a file crossed a circuit - see #72, and invert this').toBe(null)
+    // Inverted, as the line used to say to. If this goes red, the second
+    // door is shut - look at `ask-peers.js` before anything else.
+    expect(arrived, 'the file did not cross the circuit by the second door').toBe('hallo über den circuit')
 
     // And the list did arrive, which is what makes the failure quiet: a row
     // appears for a file whose contents will never come.

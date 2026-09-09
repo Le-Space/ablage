@@ -8,6 +8,9 @@
  * though it were a fault.
  */
 import { fetchable } from '../sync/fetchable.js'
+import { askEach, askRegistry, withPeerFallback } from '../sync/ask-peers.js'
+import { sendBulk } from '../sync/bulk.js'
+import { FILE_GIVE, FILE_NONE, answer, asked } from '../sync/file-transfer.js'
 import { INBOX_MESSAGE, inbox, received } from '../sync/inbox.js'
 import { codecFor } from '../sync/framing.js'
 import '@le-space/libp2p-webrtc-qr/elements'
@@ -182,6 +185,8 @@ const base = baseline({ key: scoped('ablage.baseline', shareId) })
 
 let storage = null
 let content = null
+/** `content` with the peers as a second try - what `reconcile` reads through. */
+let fetching
 let peer = null
 /**
  * One provider per connected peer, keyed by peer id.
@@ -201,6 +206,8 @@ const peers = peerSet()
 const shared = sharing({ key: scoped('ablage.sharing', shareId) })
 const mayBeFetched = fetchable({ key: scoped('ablage.fetchable', shareId) })
 const kept = inbox({ key: scoped('ablage.inbox', shareId) })
+/** Content addresses this device is waiting on from a peer - see `askAll`. */
+const asks = askRegistry()
 
 /**
  * The end, because that is the part that differs.
@@ -509,7 +516,7 @@ let pending = Promise.resolve()
  * act on it - and the second would be acting on a world that no longer exists.
  */
 function pass () {
-  pending = pending.then(() => reconcile({ index, storage, content, base })).then(render, report)
+  pending = pending.then(() => reconcile({ index, storage, content: fetching, base })).then(render, report)
   return pending
 }
 
@@ -1005,6 +1012,25 @@ function attach (stream, peerId, protocol = SYNC_PROTOCOL) {
         // The other side said no. Reported as an answer rather than as the
         // disconnection that follows it, which is the only thing this used to
         // look like.
+        // Somebody wants a file we have. Answered over this same stream - the
+        // one path measured to cross a circuit - and in bulk, because a file
+        // is the payload `sendBulk` exists for. The read is our own
+        // blockstore; a short deadline so a file we cannot read ourselves
+        // becomes a "not here" rather than a silence on their side.
+        if (asked(message) != null) {
+          answer(message, cid => content.get(cid, { signal: AbortSignal.timeout(10_000) }).catch(() => null))
+            .then(reply => reply != null && sendBulk(stream, codec.encode(reply)))
+            .catch(report)
+          continue
+        }
+
+        // The answer to something we asked. `settle` verifies it against the
+        // address before anybody gets to see the bytes.
+        if (message?.type === FILE_GIVE || message?.type === FILE_NONE) {
+          asks.settle(message, bytes => content.add(bytes))
+          continue
+        }
+
         // Somebody who is not syncing with us. Read through the shared
         // function rather than trusted: everything in it is a stranger's
         // input, arriving on a stream anyone who reaches us may open.
@@ -1107,6 +1133,14 @@ async function start () {
   // flag is node-wide. True about the flag; in this app the node is per share
   // (`blockstore-scope.test.js`), so node-wide *is* share-wide.
   content = await createContent(peer.node, { overCircuits: mayBeFetched.get() })
+  // **#72, in the app.** bitswap first; when it fails - and on a relayed
+  // connection it always does, ipfs/helia#1124 - each peer we are syncing
+  // with is asked over the sync stream, in turn, until one hands over bytes
+  // that hash to the address. `reconcile` is given this and never learns the
+  // difference.
+  fetching = withPeerFallback(content, {
+    askAll: cid => askEach(cid, [...syncing].map(id => ({ id, send: peers.get(id)?.send ?? (() => { throw new Error('not connected') }) })), asks)
+  })
 
   // The index changing is the other trigger - a local write is the first.
   index.observe(() => render())

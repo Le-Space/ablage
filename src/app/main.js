@@ -886,7 +886,21 @@ function folderRow (node) {
   // The chevron says open or shut; the folder mark says what kind of thing this
   // is. Two different questions, so two different marks rather than one glyph
   // doing both jobs badly.
-  head.innerHTML = `<span class="chev">${shut ? '▸' : '▾'}</span>${folderIcon()}<span>${node.name}</span>`
+  // Built, not templated. `node.name` comes from the index, and the index is
+  // the shared document - a peer's text, never markup. The icon is ours and
+  // stays an HTML string; the name goes in through `textContent`, the same way
+  // a file row's always has (see `row()` above) and the inbox's does.
+  const chev = document.createElement('span')
+
+  chev.className = 'chev'
+  chev.textContent = shut ? '▸' : '▾'
+
+  const label = document.createElement('span')
+
+  label.textContent = node.name
+  head.replaceChildren(chev)
+  head.insertAdjacentHTML('beforeend', folderIcon())
+  head.append(label)
   head.addEventListener('click', () => {
     // Toggling is a view, not a change: no reconciliation, no network.
     if (shut) collapsed.delete(node.path)

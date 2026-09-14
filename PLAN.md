@@ -1,7 +1,7 @@
 # Implementation plan
 
-The README holds the decisions. This holds the shape of the code and the order
-things get built in.
+The decisions are in [docs/](docs/). This holds the shape of the code and the
+order things get built in.
 
 ## The program, in one paragraph
 
@@ -81,4 +81,4 @@ Written in this order, because each one can fail on its own terms:
 
 Conflicts, updates to an existing file, directories, the picked folder, more than
 two peers, and anything about delivery when the two sides are not both present.
-Each has a line in the README saying why.
+Each has a line in [docs/](docs/) saying why.

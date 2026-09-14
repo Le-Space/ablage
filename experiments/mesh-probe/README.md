@@ -1,7 +1,8 @@
 # mesh-probe
 
-The evidence behind "one direct stream, not pubsub" in the root README. Kept so
-the measurement can be repeated rather than believed.
+The evidence behind "one direct stream, not pubsub" in
+[docs/sync.md](../../docs/sync.md#how-the-two-sides-sync-one-direct-stream-not-pubsub).
+Kept so the measurement can be repeated rather than believed.
 
 ```bash
 npm install

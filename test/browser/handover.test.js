@@ -51,7 +51,7 @@ const isOpen = page => page.evaluate(() => document.getElementById('invite-box')
  * where there is no camera. It passed on a laptop and failed every run on CI.
  *
  * None of these tests is *about* the camera, so none of them opens one. The
- * lens stays the one part nothing here covers, which the README says.
+ * lens stays the one part nothing here covers, which docs/pairing.md says.
  */
 const handReply = async (page, reply) => {
   await page.locator('#paste-fold summary').click()

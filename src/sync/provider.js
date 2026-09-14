@@ -4,7 +4,7 @@ import * as Y from 'yjs'
  * Yjs over a channel. The channel is an argument.
  *
  * Today that channel is one direct libp2p stream, because gossipsub does not
- * carry over a bare QR connection - see the README and
+ * carry over a bare QR connection - see docs/sync.md and
  * libp2p-webrtc-qr#98. Tomorrow, with three peers, it can be a pubsub publisher
  * instead:
  *

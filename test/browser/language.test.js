@@ -176,8 +176,8 @@ test.describe('the introduction', () => {
   test('says plainly that both devices have to be open', async ({ page }) => {
     await open(page)
 
-    // The decision from the README, on screen: a stage described as a stage,
-    // rather than a limitation left for somebody to discover.
+    // The decision from docs/pairing.md, on screen: a stage described as a
+    // stage, rather than a limitation left for somebody to discover.
     //
     // Addressed by its key, not by position: Playwright locators pierce an open
     // shadow root, so `qr-intro p` also matches the element's own paragraphs

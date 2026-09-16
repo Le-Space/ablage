@@ -17,6 +17,7 @@
  */
 
 import { IDENTITY_FILE } from './identity.js'
+import { writeInWorker } from './write-in-worker.js'
 
 /**
  * Where the folders of shares other than the first one live.
@@ -95,6 +96,17 @@ export async function directoryStorage ({ root } = {}) {
     async write (path, bytes) {
       const { dir, name } = await walk(base, path, { create: true })
       const handle = await dir.getFileHandle(name, { create: true })
+
+      // Safari before 26 has no `createWritable()`, and this used to fail there
+      // without a word: no row for a file somebody added, nothing on disk for a
+      // file that arrived. Its private folder can still be written, from a
+      // worker. A picked folder never gets here - only Chromium can pick one,
+      // and Chromium has the method.
+      if (typeof handle.createWritable !== 'function') {
+        await writeInWorker(handle, bytes)
+        return
+      }
+
       const writable = await handle.createWritable()
 
       await writable.write(bytes)

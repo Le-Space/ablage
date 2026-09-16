@@ -55,8 +55,8 @@ test.describe('reaching a relay', () => {
 
     const out = await page.evaluate(([addr]) => window.__ablage.probeRelay(addr, false), [RELAY])
 
-    // The promise in AGENTS.md: a start nobody asked anything of makes no
-    // outbound call. This is that promise being kept, from the inside.
+    // The promise in AGENTS.md: a start nobody asked anything of contacts no
+    // relay. This is that promise being kept, from the inside.
     expect(out.answered).toEqual([])
     expect(out.reason).toMatch(/gater denied/i)
   })

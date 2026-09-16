@@ -56,6 +56,27 @@ test('it says the relay cannot read the files, and says what it can see', async 
   await expect(relay).toContainText(/public key|öffentlichen Schlüssel/i)
 })
 
+test('it names the STUN servers a start and every code ask, and what they learn', async ({ page }) => {
+  // The sentences this replaced said a start without a relay made no outbound
+  // call, and that the page had nowhere to send anything to. The network check
+  // asks two STUN servers on every start, and since libp2p-webrtc-qr 0.14.0
+  // every invite and every reply does too - that is how two networks meet by
+  // code. What leaves the device is the question this chapter answers, so the
+  // answer has to include it.
+  for (const locale of ['en', 'de']) {
+    await page.goto(`/?intro=off&lang=${locale}`)
+    await page.locator('#privacy-open').click()
+
+    // `textContent`, for the same reason as above: the answers are folded.
+    const text = await page.evaluate(() => document.getElementById('privacy').textContent)
+
+    expect(text, locale).toMatch(/Cloudflare/)
+    expect(text, locale).toMatch(/Google/)
+    expect(text, locale).toMatch(/public address|öffentlichen? Adresse/)
+    expect(text, locale).not.toMatch(/no outbound call|nowhere to send anything|keine einzige Verbindung nach außen|niemanden, an den sie etwas senden/)
+  }
+})
+
 test('and it admits the hole rather than describing the design it meant', async ({ page }) => {
   // The assertion this file exists for. `bitswap-gate.test.js` measures the
   // hole; this one keeps the page honest about it. If the gate lands and the

@@ -60,12 +60,15 @@ button.primary {
 }
 button.primary:hover:not(:disabled) { background: var(--ls-red-bright); border-color: var(--ls-red-bright); }
 
-/* The three states differ in weight as well as colour: a status that is only a
-   colour is no status to anyone who cannot see the difference. */
+/* The states differ in weight as well as colour: a status that is only a colour
+   is no status to anyone who cannot see the difference. The two connected
+   states share the weight and differ in colour and in what they say - green is
+   kept for direct, amber names the relay (#60). */
 .state { margin: 0; font-size: 0.92rem; }
 .state.is-idle { color: var(--ls-text-dim); }
 .state.is-waiting { color: var(--ls-accent); }
 .state.is-connected { color: var(--ls-green); font-weight: 600; }
+.state.is-relayed { color: var(--ls-amber); font-weight: 600; }
 
 .fold { margin-top: 0.9rem; font-size: 0.9rem; }
 .fold summary { cursor: pointer; color: var(--ls-text-dim); }

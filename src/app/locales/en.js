@@ -45,6 +45,7 @@ export default {
     answering: 'Answering…',
     showBack: 'Show this back to the other device.',
     connected: 'Connected. Changes travel directly between the two devices.',
+    connectedRelayed: 'Connected. Changes travel through a relay, which cannot read them.',
     gone: 'The other device went away. Show a code to reconnect.',
     fromLink: 'Answering the invite you opened…',
     modalTitle: 'Show this to the other device',

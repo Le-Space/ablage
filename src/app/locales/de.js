@@ -42,6 +42,7 @@ export default {
     answering: 'Antworte…',
     showBack: 'Zeigen Sie das dem anderen Gerät zurück.',
     connected: 'Verbunden. Änderungen laufen direkt zwischen den beiden Geräten.',
+    connectedRelayed: 'Verbunden. Änderungen laufen über ein Relay, das sie nicht lesen kann.',
     gone: 'Das andere Gerät ist weg. Zeigen Sie einen Code, um neu zu verbinden.',
     fromLink: 'Beantworte die Einladung, die Sie geöffnet haben…',
     modalTitle: 'Zeigen Sie das dem anderen Gerät',

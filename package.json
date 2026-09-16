@@ -1,6 +1,6 @@
 {
   "name": "ablage",
-  "version": "0.1.40",
+  "version": "0.1.41",
   "private": true,
   "type": "module",
   "description": "A folder that stays the same on two devices. No account, nothing in the middle.",
@@ -9,13 +9,12 @@
     "test": "npm run test:unit && npm run test:browser",
     "test:unit": "vite build --logLevel error && node --test test/*.test.js",
     "test:browser": "playwright test",
-    "dev": "vite --host 127.0.0.1",
-    "postinstall": "patch-package"
+    "dev": "vite --host 127.0.0.1"
   },
   "dependencies": {
     "@chainsafe/libp2p-noise": "^17.0.0",
     "@chainsafe/libp2p-yamux": "^8.0.1",
-    "@helia/bitswap": "^4.0.11",
+    "@helia/bitswap": "4.0.16-bbf05cb7",
     "@helia/libp2p": "^1.0.8",
     "@helia/unixfs": "^8.0.5",
     "@le-space/aleph-bootstrap": "^0.9.3",
@@ -41,7 +40,6 @@
   "license": "Apache-2.0 OR MIT",
   "devDependencies": {
     "@playwright/test": "^1.62.1",
-    "patch-package": "^8.0.1",
     "vite": "^8.2.2"
   }
 }

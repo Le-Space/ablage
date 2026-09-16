@@ -278,6 +278,10 @@ test.describe('saying which path the bytes take', () => {
       const green = await a.page.evaluate(() =>
         document.getElementById('link-state').classList.contains('is-connected'))
 
+      // Never the key itself. `link.connectedRelayed` stood in this line for
+      // weeks and passed the match below, because the key contains "Relayed".
+      expect(said, JSON.stringify({ green, said })).not.toMatch(/^[a-z]+\.[a-zA-Z]+$/)
+
       // Green is reserved for direct. If it says green it must say "directly",
       // and if it does not it must name the relay - the pairing is the claim.
       expect(said, JSON.stringify({ green, said })).toMatch(

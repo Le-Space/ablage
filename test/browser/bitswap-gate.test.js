@@ -223,29 +223,29 @@ test('and a stranger never gets the direct connection that would serve them', as
 })
 
 /**
- * The option lifts it — with the patch in `patches/`, until helia#1124 lands.
+ * The option lifts it — since `@helia/bitswap` 4.0.17 (ipfs/helia#1129).
  *
- * `@helia/bitswap` documents `runOnLimitedConnections`. Unpatched, setting it
- * does nothing, because two call sites drop the flag: the registrar topology
- * never sets `notifyOnLimitedConnection`, so bitswap is never told the peer
- * exists, and `sendMessage()` dials without merging the flag into its options.
- * **Each alone is enough to break it.** Checked across every published version
- * from 0.0.0 to 4.0.14: the option has existed in all of them and been wired to
+ * `@helia/bitswap` documents `runOnLimitedConnections`. Before 4.0.17 setting
+ * it did nothing, because two call sites dropped the flag: the registrar
+ * topology never set `notifyOnLimitedConnection`, so bitswap was never told
+ * the peer exists, and `sendMessage()` dialled without merging the flag in.
+ * **Each alone was enough to break it.** Checked across every published
+ * version up to 4.0.16: the option existed in all of them and was wired to
  * neither site in any — it was never a regression, it was never finished.
  *
- * `patches/@helia+bitswap+4.0.11.patch` fixes both, and this spec measures the
- * result: with the option on, a block crosses a circuit-only connection.
- * `bitswap-gate:116` beside it measures the other half — with the option *off*,
- * the default, nothing crosses. The patch lifts the restriction only for a node
- * that asked, which is what makes it safe to carry: the default is the app's
- * claim, and it is unchanged.
+ * 4.0.17 fixes both, the same two changes this repository carried as a patch
+ * until then, and this spec measures the result: with the option on, a block
+ * crosses a circuit-only connection. `bitswap-gate:116` beside it measures the
+ * other half — with the option *off*, the default, nothing crosses. The fix
+ * lifts the restriction only for a node that asked, which is what makes it
+ * safe: the default is the app's claim, and it is unchanged.
  *
  * **This spec used to assert the broken behaviour on purpose** and said to
- * invert it when the fix landed. It landed as our patch rather than upstream,
- * and it is inverted. It is still a tripwire, now the other way: if the patch
- * stops applying — a bitswap version bump `patch-package` cannot match — this
- * goes red, and the thing to do is re-fit the patch or confirm upstream fixed
- * it, not to look for a regression in this repository.
+ * invert it when the fix landed. It landed as our patch first and upstream in
+ * 4.0.17, and it is inverted. It is still a tripwire, now the other way: if a
+ * bitswap upgrade loses either call site again, this goes red, and the thing
+ * to look at is `@helia/bitswap`'s `network.js`, not a regression in this
+ * repository.
  *
  * It also changes what guards a stranger. While the option was inert, a
  * stranger on the relay was refused twice over — by bitswap's own inability and
@@ -253,7 +253,7 @@ test('and a stranger never gets the direct connection that would serve them', as
  * them only once. That is the design (#72's per-share choice, off by default),
  * and `bitswap-gate:168` is the spec that keeps the remaining refusal honest.
  */
-test('and the documented option lifts it, with the patch that helia#1124 still needs', async ({ page }) => {
+test('and the documented option lifts it, since @helia/bitswap 4.0.17', async ({ page }) => {
   await page.goto('/harness.html')
   await page.waitForFunction(() => window.__ablage != null)
 

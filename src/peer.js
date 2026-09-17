@@ -9,7 +9,7 @@ import { identify, identifyPush } from '@libp2p/identify'
 import { ping } from '@libp2p/ping'
 import { webRTC } from '@libp2p/webrtc'
 import { webSockets } from '@libp2p/websockets'
-import { decodePayload, QRSession, QR_TYPE_ANSWER, QR_TYPE_OFFER, webRTCQR } from '@le-space/libp2p-webrtc-qr'
+import { DEFAULT_RTC_CONFIGURATION, decodePayload, QRSession, QR_TYPE_ANSWER, QR_TYPE_OFFER, webRTCQR } from '@le-space/libp2p-webrtc-qr'
 import { createLibp2p } from 'libp2p'
 
 import { denyDial, relayBootstrapList } from './relay-policy.js'
@@ -278,8 +278,10 @@ export async function createPeer ({
       webRTCQR({ getOutboundSession: remotePeerId => session?.getOutboundSession(remotePeerId) ?? null }),
       // The way out of the relay. Two devices that met over a circuit try to
       // connect directly here; if they cannot, the circuit carries them and
-      // nothing above this line notices the difference.
-      webRTC(),
+      // nothing above this line notices the difference. With the STUN servers
+      // the QR session and the network check ask, rather than @libp2p/webrtc's
+      // own four, so the privacy chapter can name everybody who is asked.
+      webRTC({ rtcConfiguration: DEFAULT_RTC_CONFIGURATION }),
       // Twenty seconds rather than the default. A reservation is a round trip
       // to a machine on the public internet, and a phone on mobile data is
       // slower at it than a laptop on a desk - which is the case this app is

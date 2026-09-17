@@ -84,7 +84,8 @@ export default {
     leaves: {
       q: 'Was verlässt dieses Gerät überhaupt?',
       a: `<p>Zweierlei, und nur an ein Gerät, dem Sie zugestimmt haben: <strong>die Liste der Dateien</strong> — Namen, Größen und je eine Inhaltsadresse — und <strong>die Dateiinhalte selbst</strong>.</p>
-<p>Es gibt kein Konto, keinen Server, der Ihren Ordner hält, und keine Kopie, die irgendwo für Sie aufbewahrt wird. Diese Seite ist ein statisches Bündel; sie hat gar niemanden, an den sie etwas senden könnte.</p>
+<p>Es gibt kein Konto, keinen Server, der Ihren Ordner hält, und keine Kopie, die irgendwo für Sie aufbewahrt wird. Diese Seite ist ein statisches Bündel; sie hat niemanden, an den sie Ihre Dateien senden könnte.</p>
+<p>Eine Anfrage verlässt es doch, und sie betrifft nicht Ihre Dateien. Um herauszufinden, wie dieses Gerät aus einem anderen Netz erreichbar ist, fragt die App zwei STUN-Server, die von Cloudflare und Google, nach seiner öffentlichen Adresse: beim Start und jedes Mal, wenn ein Code erzeugt oder beantwortet wird. Sie sehen diese Adresse und wann gefragt wurde, sonst nichts: keine Datei, keinen Namen, nichts über den Ordner.</p>
 <p>Alles läuft in einer verschlüsselten Verbindung, und die Schlüssel haben nur die beiden Geräte. Welches Verfahren die Arbeit tut, hängt vom Weg ab: WebRTCs eigenes DTLS, wenn sie direkt verbunden sind, Noise, wenn alles über ein Relay läuft. Nie beides — eine Schicht pro Verbindung.</p>`
     },
 
@@ -93,7 +94,7 @@ export default {
       a: `<p><strong>Ihre Dateien nicht.</strong> Ein Relay reicht Bytes weiter, die es nicht entschlüsseln kann; genau das macht es unbedenklich, ein fremdes zu benutzen.</p>
 <p>Es sieht aber, <em>dass</em> Sie da sind, und das ist nicht nichts: den öffentlichen Schlüssel Ihres Geräts, die Adressen, die es ankündigt, mit welchem anderen Gerät Sie sprechen, wann, wie lange und ungefähr wie viel. Das ist eine Aufzeichnung Ihrer Gewohnheiten, auch ohne einen einzigen Dateinamen darin.</p>
 <p>Sobald sich die beiden Geräte direkt erreichen können, läuft die Übertragung nicht mehr über das Relay und es fällt aus dem Weg. Können sie es nicht, funktioniert alles weiter darüber.</p>
-<p>Mit ausgeschaltetem Relay existiert nichts davon: die App baut keine einzige Verbindung nach außen auf, bevor jemand einen Code scannt.</p>`
+<p>Mit ausgeschaltetem Relay existiert nichts davon. Mit eingeschaltetem helfen dieselben beiden STUN-Server den Geräten außerdem, einen direkten Weg zueinander zu finden.</p>`
     },
 
     reading: {

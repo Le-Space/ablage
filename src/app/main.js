@@ -2301,13 +2301,41 @@ async function acceptReply (text) {
   }
 }
 
-scanReplyButton.addEventListener('click', () => {
-  scannerEl.validate = text => ({ ok: text.includes('r=') || text.startsWith('q') })
-  scannerEl.open()
-  scannerEl.addEventListener('scan', event => {
+// What the scanner does with the text it reads next. One at a time; see `scanFor`.
+let onScan = null
+
+/**
+ * Open the scanner for one purpose.
+ *
+ * What it lets through and what happens to the text are both set here, on every
+ * opening. They used to be set by the button that opened it and to outlive that
+ * opening: after looking for a reply, the check for a reply stayed on and turned
+ * every invite away, and a scanner closed without reading anything kept the
+ * reply's handler for the next scan, which then took an invite as a reply first.
+ *
+ * @param {((text: string) => { ok: boolean }) | null} validate
+ * @param {(text: string) => void} handle
+ */
+function scanFor (validate, handle) {
+  scannerEl.removeEventListener('scan', onScan)
+
+  onScan = event => {
+    scannerEl.removeEventListener('scan', onScan)
     scannerEl.close()
-    acceptReply(event.detail.text)
-  }, { once: true })
+    handle(event.detail.text)
+  }
+
+  scannerEl.validate = validate
+  scannerEl.addEventListener('scan', onScan)
+
+  // The element says what went wrong - no camera, a refusal - in its own dialog,
+  // and also throws it for a host that wants to know. Nothing here does, and
+  // left unhandled it reached the console as an error on every such opening.
+  scannerEl.open().catch(() => {})
+}
+
+scanReplyButton.addEventListener('click', () => {
+  scanFor(text => ({ ok: text.includes('r=') || text.startsWith('q') }), acceptReply)
 })
 
 useReplyButton.addEventListener('click', () => {
@@ -2328,13 +2356,12 @@ useReplyButton.addEventListener('click', () => {
 })
 
 scanButton.addEventListener('click', () => {
-  scannerEl.open()
-  scannerEl.addEventListener('scan', async event => {
-    scannerEl.close()
-
+  // No check here, as before the reply's check leaked into it: an invite is
+  // whatever `acceptOffer` can read, and it says so when it cannot.
+  scanFor(null, async text => {
     try {
       setState(t('link.answering'), 'waiting')
-      const answer = await peer.acceptOffer(payloadOf(event.detail.text))
+      const answer = await peer.acceptOffer(payloadOf(text))
       const url = new URL(window.location.href)
       url.hash = `r=${encodeURIComponent(answer)}`
 
@@ -2347,7 +2374,7 @@ scanButton.addEventListener('click', () => {
     } catch (error) {
       report(error)
     }
-  }, { once: true })
+  })
 })
 
 copyButton.addEventListener('click', async () => {

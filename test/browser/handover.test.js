@@ -185,3 +185,87 @@ test('the answering side can invite somebody itself afterwards', async () => {
     await browser.close()
   }
 })
+
+/**
+ * Bob has an invite of his own out, opens the scanner for its reply, and closes
+ * it without reading anything - then turns round to scan Alice's code instead.
+ * Nothing unusual: the other person offered first.
+ */
+const lookForAReplyThenScan = async (alice, bob) => {
+  await alice.page.locator('#invite').click()
+  await expect.poll(() => isOpen(alice.page), { timeout: 60_000 }).toBe(true)
+  const invite = await alice.page.locator('#invite-link').inputValue()
+
+  await bob.page.locator('#invite').click()
+  await expect.poll(() => isOpen(bob.page), { timeout: 60_000 }).toBe(true)
+  await bob.page.locator('#scan-reply').click()
+  await bob.page.evaluate(() => {
+    document.getElementById('scanner').close()
+    document.getElementById('invite-box').close()
+  })
+  await bob.page.locator('#scan').click()
+
+  return invite
+}
+
+test('after looking for a reply, the scanner lets an invite through', async () => {
+  const browser = await chromium.launch()
+  const alice = await openSide(browser)
+  const bob = await openSide(browser)
+
+  try {
+    const invite = await lookForAReplyThenScan(alice, bob)
+
+    // Asked of the element the way its scan loop asks it. The check for a reply
+    // stayed set, so every invite after it was turned away with "that code is
+    // not the one this screen is waiting for" until the page was reloaded.
+    const verdict = await bob.page.evaluate(async text => {
+      const scanner = document.getElementById('scanner')
+      return (await scanner.validate?.(text)) ?? { ok: true }
+    }, invite)
+
+    expect(verdict.ok).not.toBe(false)
+  } finally {
+    await alice.context.close()
+    await bob.context.close()
+    await browser.close()
+  }
+})
+
+test('a scanner closed unread does not hand the next scan to its old purpose', async () => {
+  const browser = await chromium.launch()
+  const alice = await openSide(browser)
+  const bob = await openSide(browser)
+
+  try {
+    const invite = await lookForAReplyThenScan(alice, bob)
+
+    // Every state the status line passes through from here on.
+    await bob.page.evaluate(() => {
+      const state = document.getElementById('link-state')
+      window.statesSeen = []
+      new MutationObserver(() => window.statesSeen.push(state.className))
+        .observe(state, { attributes: true, attributeFilter: ['class'] })
+    })
+
+    // The invite arrives as the `scan` event the element emits for a real one.
+    await bob.page.evaluate(text => {
+      document.getElementById('scanner').dispatchEvent(new CustomEvent('scan', { detail: { text } }))
+    }, invite)
+
+    // Bob answers it and shows his reply, which is all a scan of an invite does.
+    await expect(bob.page.locator('#invite-link')).toHaveValue(/#r=/, { timeout: 60_000 })
+    await expect.poll(() => isOpen(bob.page), { timeout: 60_000 }).toBe(true)
+
+    // The reply handler from the closed scanner used to still be listening. It
+    // took the invite first, as a reply, failed on it, and put that failure in
+    // the status line while the invite was being answered.
+    const states = await bob.page.evaluate(() => window.statesSeen)
+    expect(states.filter(state => !/is-waiting/.test(state))).toEqual([])
+    expect(bob.errors).toEqual([])
+  } finally {
+    await alice.context.close()
+    await bob.context.close()
+    await browser.close()
+  }
+})

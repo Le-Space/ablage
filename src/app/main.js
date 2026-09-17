@@ -47,7 +47,6 @@ import { askForFolder, canPickFolder, pickFolder } from '../storage/handle.js'
 import { watchFolder } from '../storage/watch.js'
 
 const $ = id => document.getElementById(id)
-const encode = text => new TextEncoder().encode(text)
 const decode = bytes => new TextDecoder().decode(bytes)
 
 const inviteButton = $('invite')
@@ -1140,7 +1139,7 @@ async function start () {
         return
       }
 
-      askToAdmit(stream, peerId)
+      askToAdmit(stream, peerId, protocol)
     }
   })
   // **The one place the share's answer is applied.** `overCircuits` is
@@ -1590,8 +1589,10 @@ function announceSwitch (name, id) {
  * but nothing is attached, so nothing they send reaches the document and
  * nothing is written to disk. A refusal closes the stream, which is the only
  * way the other side learns the answer at all.
+ *
+ * @param {string} protocol the one negotiated for this stream, as `attach` takes it
  */
-function askToAdmit (stream, peerId) {
+function askToAdmit (stream, peerId, protocol) {
   $('admit-who').textContent = peerId
   $('admit-remember').checked = false
 
@@ -1602,8 +1603,13 @@ function askToAdmit (stream, peerId) {
       // Said, then closed. A stream that simply ends looks exactly like a
       // connection that dropped, and the device on the other end is left
       // waiting for an answer it already got.
+      //
+      // Written through the same codec as every other message on this stream.
+      // It used to be written raw, so on a framed stream it was one message
+      // without a length: the asking side could not read it, and went on
+      // saying it was connected.
       try {
-        stream.send(encode(JSON.stringify({ type: 'sync-refused' })))
+        stream.send(codecFor(protocol, SYNC_PROTOCOL_FRAMED).encode({ type: 'sync-refused' }))
       } catch {
         // Already gone. Then the close below is redundant and harmless.
       }
@@ -1621,7 +1627,7 @@ function askToAdmit (stream, peerId) {
 
     if ($('admit-remember').checked) admitted.remember(peerId)
 
-    attach(stream, peerId, stream.protocol ?? SYNC_PROTOCOL)
+    attach(stream, peerId, protocol)
     setState(t('admit.admitted'), 'connected')
   }
 

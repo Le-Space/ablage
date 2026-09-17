@@ -294,3 +294,53 @@ test.describe('saying which path the bytes take', () => {
     }
   })
 })
+
+/**
+ * A "no" has to arrive as a no.
+ *
+ * The device that is asked sends one message and closes the stream, and that
+ * message is the only way the asking side learns it was refused rather than
+ * dropped. It was written without the length every other message on a framed
+ * stream carries, so the asking side could not read it.
+ */
+test.describe('being refused', () => {
+  test.setTimeout(300_000)
+
+  test('the asking device hears that it was refused, not that the other went away', async () => {
+    const { chromium } = await import('@playwright/test')
+    const browser = await chromium.launch()
+
+    const device = async () => {
+      const context = await browser.newContext()
+      const page = await context.newPage()
+
+      await page.addInitScript(() => localStorage.setItem('ablage.relay', 'true'))
+      await page.goto('/?intro=off')
+      await expect(page.locator('#my-peer')).toHaveAttribute('title', /12D3Koo/, { timeout: 60_000 })
+
+      return { page, context, id: await page.locator('#my-peer').getAttribute('title') }
+    }
+
+    const a = await device()
+    const b = await device()
+
+    try {
+      const row = a.page.locator('#peer-list li', { hasText: b.id.slice(-10) })
+
+      await expect(row).toBeVisible({ timeout: 150_000 })
+      await row.getByRole('button').click()
+
+      await expect(b.page.locator('#admit-ask')).toBeVisible({ timeout: 90_000 })
+      await b.page.locator('#admit-no').click()
+
+      // "did not accept" is `peers.refused`. "went away" is how a stream that
+      // simply ended reads, which is what the refusal used to arrive as.
+      await expect(a.page.locator('#link-state')).toContainText('did not accept', { timeout: 60_000 })
+      await expect(a.page.locator('#link-state')).not.toContainText('went away')
+    } finally {
+      await a.context.close()
+      await b.context.close()
+      await browser.close()
+    }
+  })
+})

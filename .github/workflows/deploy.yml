@@ -74,8 +74,12 @@ jobs:
         env:
           VITE_RELAY_ADDRESSES: ${{ steps.relays.outputs.addresses }}
 
+      # **0.9.9 or later, not 0.6.22.** Every publish adds a STORE message that
+      # Aleph bills for as long as it is kept, and 0.6.22 never forgot one: the
+      # address this deploys from held 569, all but 12 stale, when uploads started
+      # failing with HTTP 402 on 2026-09-17 (NiKrause/relay-button#143).
       - name: Install isolated Aleph deploy tooling
-        run: npm install --prefix /tmp/le-space-deployer @le-space/node@0.6.22
+        run: npm install --prefix /tmp/le-space-deployer @le-space/node@0.9.9
 
       - name: Publish to Aleph IPFS
         id: publish
@@ -83,7 +87,12 @@ jobs:
           ALEPH_VM_MODE: site-publish
           ALEPH_SITE_DIRECTORY: ${{ github.workspace }}/dist
           ALEPH_SITE_PIN: 'true'
+          # The name is also how retention knows which uploads are ablage's.
           ALEPH_SITE_NAME: ablage
+          # The newest three stay, and so does anything the domain still points
+          # to. The rest is forgotten after each publish. 3 is the default,
+          # written here so a change of default does not change this silently.
+          ALEPH_SITE_RETENTION_KEEP_COUNT: '3'
           ALEPH_SITE_CHANNEL: ALEPH-CLOUDSOLUTIONS
           ALEPH_PRIVATE_KEY: ${{ secrets.ALEPH_PRIVATE_KEY }}
         run: |
@@ -144,7 +153,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install isolated Aleph deploy tooling
-        run: npm install --prefix /tmp/le-space-deployer @le-space/node@0.6.22
+        run: npm install --prefix /tmp/le-space-deployer @le-space/node@0.9.9
 
       - name: Link the custom domain
         env:

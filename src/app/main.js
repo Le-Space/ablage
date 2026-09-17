@@ -1174,6 +1174,15 @@ async function start () {
   // than asked - `self:peer:update` is libp2p's own event for it.
   peer.watchOwnAddresses(showReachable)
 
+  // A reply that will not connect. The answering device kept showing it, and the
+  // status line kept saying to show it, after the device it was for had gone.
+  // Taken down only while it is the reply on screen, and said only when nothing
+  // else is connected - a failure here is not news to somebody already syncing.
+  peer.onAnswerFailed(error => {
+    if (inviteBox.open && scanReplyButton.hidden) inviteBox.close()
+    if (!connected()) report(error)
+  })
+
   /**
    * If the relay we started with turns out to be dead, look for another.
    *

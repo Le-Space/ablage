@@ -200,6 +200,10 @@ export async function createPeer ({
    */
   const scanned = new Set()
 
+  // Whose invite this device answered last. Only that reply can still be on
+  // screen, so only its failure is news; see `onAnswerFailed`.
+  let answeringTo = null
+
   // Live, not captured. The checkbox in the introduction checks the moment it
   // is ticked - that is the element's promise, and a good one - but the gate
   // was fixed when the node was made, so the probe was refused by this node's
@@ -415,15 +419,18 @@ export async function createPeer ({
    *
    * @param {string} payload
    * @param {unknown} type
+   * @returns {Promise<string | null>} who signed it, when that could be verified
    */
   async function noteScan (payload, type) {
     try {
       const { peerId } = await decodePayload(payload, type)
 
       scanned.add(String(peerId))
+      return String(peerId)
     } catch {
       // Unverifiable, so not consent. The peer is asked about rather than
       // admitted, which is the direction to fail in.
+      return null
     }
   }
 
@@ -616,9 +623,31 @@ export async function createPeer ({
      * consent to anything.
      */
     acceptOffer: async offer => {
-      await noteScan(offer, QR_TYPE_OFFER)
+      // Before the session is asked, not after: it starts waiting for the
+      // connection while it makes the reply, and a failure can come that early.
+      answeringTo = await noteScan(offer, QR_TYPE_OFFER)
 
       return session.acceptOffer(offer)
+    },
+
+    /**
+     * Hear when the reply this device made last will not connect.
+     *
+     * The offering side learns that from `acceptAnswer` throwing. The answering
+     * side has nothing to await - its reply is for the other screen - and the
+     * session reports the failure as an `error` event or not at all. A reply
+     * made earlier failing says nothing about the one on screen now, so only
+     * the latest counts.
+     *
+     * @param {(error: Error) => void} listener
+     */
+    onAnswerFailed: listener => {
+      session.addEventListener('error', ({ detail }) => {
+        if (detail?.direction !== 'inbound') return
+        if (answeringTo == null || String(detail.peerId) !== answeringTo) return
+
+        listener(detail.error)
+      })
     },
 
     /** Back on the offering side: read the reply and connect. */

@@ -108,12 +108,12 @@ one unless the protocol says it may — and **both sides have to say it**, on
 | --- | --- |
 | `/ablage/sync/1.0.0` — sets it on both sides | **yes** |
 | gossipsub — `runOnLimitedConnection: true` | **yes** |
-| bitswap unpatched — sets it on `handle`, drops it on the dial, and never asks to hear about limited peers (ipfs/helia#1124) | no |
-| bitswap with `patches/@helia+bitswap+*.patch`, option on | **yes** |
+| bitswap up to 4.0.16 — sets it on `handle`, drops it on the dial, and never asks to hear about limited peers (ipfs/helia#1124) | no |
+| bitswap 4.0.17 and later, option on (ipfs/helia#1129) | **yes** |
 
 So "files do not cross a relay" is the wrong sentence. The right one is
 "bitswap declines to run on a limited connection", and that is a property of one
-library, not of the network — and of two lines in it:
+library, not of the network — and of two lines in it, both fixed in 4.0.17:
 
 - `network.js` registers a topology without `notifyOnLimitedConnection`, so
   libp2p's registrar (`registrar.js:219`) never tells bitswap a relayed peer
@@ -122,26 +122,27 @@ library, not of the network — and of two lines in it:
   merging `runOnLimitedConnections` in, so libp2p's own check
   (`connection.js:81`) refuses the stream
 
-**Setting the documented option changes nothing on its own.** Measured with
-`overCircuits: true` on a circuit-only pair: `{ limited: true, got: null,
-error: 'timed out' }`. Somebody who sets it and sees that will suspect their own
-setup; it is the library. Checked across every published version from 0.0.0 to
-4.0.14: the option has existed in all of them and been wired to neither site in
-any. It was never a regression — it was never finished.
+**Before 4.0.17, setting the documented option changed nothing on its own.**
+Measured with `overCircuits: true` on a circuit-only pair: `{ limited: true,
+got: null, error: 'timed out' }`. Somebody who set it and saw that would
+suspect their own setup; it was the library. Checked across every published
+version up to 4.0.16: the option existed in all of them and was wired to
+neither site in any. It was never a regression — it was never finished.
 
-**`patches/` fixes both, and only for a node that asked.** With the patch and
-the option on, a block crosses a circuit-only connection in eleven seconds
-(`bitswap-gate:256`). With the patch and the option *off* — the default —
-nothing crosses (`bitswap-gate:116`). The default is the app's claim, and it is
-unchanged; `content.js` takes `overCircuits` per share, because in this app the
-node is per share.
+**4.0.17 fixes both, and only for a node that asked.** Until it was released,
+ablage carried the same two changes as a `patch-package` patch. With the option
+on, a block crosses a circuit-only connection in eleven seconds
+(`bitswap-gate:256`). With the option *off* — the default — nothing crosses
+(`bitswap-gate:116`). The default is the app's claim, and it is unchanged;
+`content.js` takes `overCircuits` per share, because in this app the node is
+per share.
 
 **Files cross either way, by the other door.** `file-transfer.js` asks an
 admitted peer over the sync stream, which sets the flag on both sides. What
 makes that safe to write to a folder is not who answered but what: the bytes are
 hashed with the function that produced the address, and a mismatch is refused.
-Measured on one circuit-only pair, in one run: bitswap unpatched `null`, sync
-stream the file (`a-file-over-the-sync-stream.test.js`).
+Measured on one circuit-only pair, in one run: bitswap with the option off
+`null`, sync stream the file (`a-file-over-the-sync-stream.test.js`).
 
 **Tell relayed from direct by `connection.limits == null`, never by the
 address.** A hole-punched connection still reads `/p2p-circuit/webrtc/p2p/…`, so

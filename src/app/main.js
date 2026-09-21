@@ -47,7 +47,6 @@ import { askForFolder, canPickFolder, pickFolder } from '../storage/handle.js'
 import { watchFolder } from '../storage/watch.js'
 
 const $ = id => document.getElementById(id)
-const encode = text => new TextEncoder().encode(text)
 const decode = bytes => new TextDecoder().decode(bytes)
 
 const inviteButton = $('invite')
@@ -1140,7 +1139,7 @@ async function start () {
         return
       }
 
-      askToAdmit(stream, peerId)
+      askToAdmit(stream, peerId, protocol)
     }
   })
   // **The one place the share's answer is applied.** `overCircuits` is
@@ -1173,6 +1172,15 @@ async function start () {
   // The reservation arrives after the connection does, so this is told rather
   // than asked - `self:peer:update` is libp2p's own event for it.
   peer.watchOwnAddresses(showReachable)
+
+  // A reply that will not connect. The answering device kept showing it, and the
+  // status line kept saying to show it, after the device it was for had gone.
+  // Taken down only while it is the reply on screen, and said only when nothing
+  // else is connected - a failure here is not news to somebody already syncing.
+  peer.onAnswerFailed(error => {
+    if (inviteBox.open && scanReplyButton.hidden) inviteBox.close()
+    if (!connected()) report(error)
+  })
 
   /**
    * If the relay we started with turns out to be dead, look for another.
@@ -1590,8 +1598,10 @@ function announceSwitch (name, id) {
  * but nothing is attached, so nothing they send reaches the document and
  * nothing is written to disk. A refusal closes the stream, which is the only
  * way the other side learns the answer at all.
+ *
+ * @param {string} protocol the one negotiated for this stream, as `attach` takes it
  */
-function askToAdmit (stream, peerId) {
+function askToAdmit (stream, peerId, protocol) {
   $('admit-who').textContent = peerId
   $('admit-remember').checked = false
 
@@ -1602,8 +1612,13 @@ function askToAdmit (stream, peerId) {
       // Said, then closed. A stream that simply ends looks exactly like a
       // connection that dropped, and the device on the other end is left
       // waiting for an answer it already got.
+      //
+      // Written through the same codec as every other message on this stream.
+      // It used to be written raw, so on a framed stream it was one message
+      // without a length: the asking side could not read it, and went on
+      // saying it was connected.
       try {
-        stream.send(encode(JSON.stringify({ type: 'sync-refused' })))
+        stream.send(codecFor(protocol, SYNC_PROTOCOL_FRAMED).encode({ type: 'sync-refused' }))
       } catch {
         // Already gone. Then the close below is redundant and harmless.
       }
@@ -1621,7 +1636,7 @@ function askToAdmit (stream, peerId) {
 
     if ($('admit-remember').checked) admitted.remember(peerId)
 
-    attach(stream, peerId, stream.protocol ?? SYNC_PROTOCOL)
+    attach(stream, peerId, protocol)
     setState(t('admit.admitted'), 'connected')
   }
 
@@ -2301,13 +2316,41 @@ async function acceptReply (text) {
   }
 }
 
-scanReplyButton.addEventListener('click', () => {
-  scannerEl.validate = text => ({ ok: text.includes('r=') || text.startsWith('q') })
-  scannerEl.open()
-  scannerEl.addEventListener('scan', event => {
+// What the scanner does with the text it reads next. One at a time; see `scanFor`.
+let onScan = null
+
+/**
+ * Open the scanner for one purpose.
+ *
+ * What it lets through and what happens to the text are both set here, on every
+ * opening. They used to be set by the button that opened it and to outlive that
+ * opening: after looking for a reply, the check for a reply stayed on and turned
+ * every invite away, and a scanner closed without reading anything kept the
+ * reply's handler for the next scan, which then took an invite as a reply first.
+ *
+ * @param {((text: string) => { ok: boolean }) | null} validate
+ * @param {(text: string) => void} handle
+ */
+function scanFor (validate, handle) {
+  scannerEl.removeEventListener('scan', onScan)
+
+  onScan = event => {
+    scannerEl.removeEventListener('scan', onScan)
     scannerEl.close()
-    acceptReply(event.detail.text)
-  }, { once: true })
+    handle(event.detail.text)
+  }
+
+  scannerEl.validate = validate
+  scannerEl.addEventListener('scan', onScan)
+
+  // The element says what went wrong - no camera, a refusal - in its own dialog,
+  // and also throws it for a host that wants to know. Nothing here does, and
+  // left unhandled it reached the console as an error on every such opening.
+  scannerEl.open().catch(() => {})
+}
+
+scanReplyButton.addEventListener('click', () => {
+  scanFor(text => ({ ok: text.includes('r=') || text.startsWith('q') }), acceptReply)
 })
 
 useReplyButton.addEventListener('click', () => {
@@ -2328,13 +2371,12 @@ useReplyButton.addEventListener('click', () => {
 })
 
 scanButton.addEventListener('click', () => {
-  scannerEl.open()
-  scannerEl.addEventListener('scan', async event => {
-    scannerEl.close()
-
+  // No check here, as before the reply's check leaked into it: an invite is
+  // whatever `acceptOffer` can read, and it says so when it cannot.
+  scanFor(null, async text => {
     try {
       setState(t('link.answering'), 'waiting')
-      const answer = await peer.acceptOffer(payloadOf(event.detail.text))
+      const answer = await peer.acceptOffer(payloadOf(text))
       const url = new URL(window.location.href)
       url.hash = `r=${encodeURIComponent(answer)}`
 
@@ -2347,7 +2389,7 @@ scanButton.addEventListener('click', () => {
     } catch (error) {
       report(error)
     }
-  }, { once: true })
+  })
 })
 
 copyButton.addEventListener('click', async () => {

@@ -45,6 +45,7 @@ export default {
     answering: 'Answering…',
     showBack: 'Show this back to the other device.',
     connected: 'Connected. Changes travel directly between the two devices.',
+    connectedRelayed: 'Connected. Changes travel through a relay, which cannot read them.',
     gone: 'The other device went away. Show a code to reconnect.',
     fromLink: 'Answering the invite you opened…',
     modalTitle: 'Show this to the other device',
@@ -85,7 +86,8 @@ export default {
     leaves: {
       q: 'What actually leaves this device?',
       a: `<p>Two things, and only to a device you agreed to sync with: <strong>the list of files</strong> — names, sizes and a content address for each — and <strong>the file contents themselves</strong>.</p>
-<p>There is no account, no server holding your folder and no copy kept anywhere for you. This page is a static bundle; it has nowhere to send anything to.</p>
+<p>There is no account, no server holding your folder and no copy kept anywhere for you. This page is a static bundle; it has nowhere to send your files to.</p>
+<p>One request does leave it, and it is not about your files. To learn how this device can be reached from another network, the app asks two STUN servers, Cloudflare's and Google's, for its public address: when it starts, and each time a code is made or answered. They see that address and when it asked, and nothing else: no file, no name, nothing about the folder.</p>
 <p>Everything travels inside an encrypted connection, and the two devices are the only ones holding the keys. Which cipher does the work depends on the path: WebRTC's own DTLS when they are connected directly, Noise when everything goes through a relay. It is never both — one layer per connection.</p>`
     },
 
@@ -94,7 +96,7 @@ export default {
       a: `<p><strong>Not your files.</strong> A relay forwards bytes it cannot decrypt — that is what makes it safe to use somebody else's.</p>
 <p>It does see <em>that you are there</em>, which is not nothing: your device's public key, the addresses it announces, which other device you talk to, when, for how long, and roughly how much. That is a record of your habits even without a single filename in it.</p>
 <p>Whenever the two devices can reach each other directly, they stop using the relay for the transfer and it drops out of the path. If they cannot, everything keeps working through it.</p>
-<p>With the relay switched off, none of this exists: the app makes no outbound call at all until somebody scans a code.</p>`
+<p>With the relay switched off, none of this exists. With it on, the same two STUN servers also help the devices find a direct path to each other.</p>`
     },
 
     reading: {

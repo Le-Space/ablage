@@ -37,9 +37,17 @@ code for months. Tracking issue:
 ### The promise
 
 The node stays fully functional **without** a relay. That is a guarantee, not a
-default: the checkbox is off, a start without it makes no outbound network call
-at all, and no relay is contacted without an explicit choice. Someone using the
-app in one room leaves metadata nowhere.
+default: the checkbox is off, and no relay and no directory is contacted without
+an explicit choice.
+
+It is not silence, though, and this paragraph once said it was. Two STUN
+servers, Cloudflare's and Google's (`DEFAULT_RTC_CONFIGURATION` from
+libp2p-webrtc-qr), are asked for this device's public address: by the network
+check on every start, by every invite and every reply (the library's default
+since 0.14.0), and by `webRTC()` when a relayed pair tries to go direct. They
+learn that address and nothing about the folder. It is what lets two devices on
+different networks pair by code, and the privacy chapter says it in both
+languages.
 
 A relay is a second way in, for the case the QR path cannot serve: the other
 person is not here to scan anything. It is added, never substituted.

@@ -55,8 +55,8 @@ test.describe('reaching a relay', () => {
 
     const out = await page.evaluate(([addr]) => window.__ablage.probeRelay(addr, false), [RELAY])
 
-    // The promise in AGENTS.md: a start nobody asked anything of makes no
-    // outbound call. This is that promise being kept, from the inside.
+    // The promise in AGENTS.md: a start nobody asked anything of contacts no
+    // relay. This is that promise being kept, from the inside.
     expect(out.answered).toEqual([])
     expect(out.reason).toMatch(/gater denied/i)
   })
@@ -278,11 +278,65 @@ test.describe('saying which path the bytes take', () => {
       const green = await a.page.evaluate(() =>
         document.getElementById('link-state').classList.contains('is-connected'))
 
+      // Never the key itself. `link.connectedRelayed` stood in this line for
+      // weeks and passed the match below, because the key contains "Relayed".
+      expect(said, JSON.stringify({ green, said })).not.toMatch(/^[a-z]+\.[a-zA-Z]+$/)
+
       // Green is reserved for direct. If it says green it must say "directly",
       // and if it does not it must name the relay - the pairing is the claim.
       expect(said, JSON.stringify({ green, said })).toMatch(
         green ? /directly|Direkt/i : /relay|Relay/i
       )
+    } finally {
+      await a.context.close()
+      await b.context.close()
+      await browser.close()
+    }
+  })
+})
+
+/**
+ * A "no" has to arrive as a no.
+ *
+ * The device that is asked sends one message and closes the stream, and that
+ * message is the only way the asking side learns it was refused rather than
+ * dropped. It was written without the length every other message on a framed
+ * stream carries, so the asking side could not read it.
+ */
+test.describe('being refused', () => {
+  test.setTimeout(300_000)
+
+  test('the asking device hears that it was refused, not that the other went away', async () => {
+    const { chromium } = await import('@playwright/test')
+    const browser = await chromium.launch()
+
+    const device = async () => {
+      const context = await browser.newContext()
+      const page = await context.newPage()
+
+      await page.addInitScript(() => localStorage.setItem('ablage.relay', 'true'))
+      await page.goto('/?intro=off')
+      await expect(page.locator('#my-peer')).toHaveAttribute('title', /12D3Koo/, { timeout: 60_000 })
+
+      return { page, context, id: await page.locator('#my-peer').getAttribute('title') }
+    }
+
+    const a = await device()
+    const b = await device()
+
+    try {
+      const row = a.page.locator('#peer-list li', { hasText: b.id.slice(-10) })
+
+      await expect(row).toBeVisible({ timeout: 150_000 })
+      await row.getByRole('button').click()
+
+      await expect(b.page.locator('#admit-ask')).toBeVisible({ timeout: 90_000 })
+      await b.page.locator('#admit-no').click()
+
+      // "did not accept" is `peers.refused`. "went away" is how a stream that
+      // simply ended reads, which is what the refusal used to arrive as.
+      await expect(a.page.locator('#link-state')).toContainText('did not accept', { timeout: 60_000 })
+      await expect(a.page.locator('#link-state')).not.toContainText('went away')
     } finally {
       await a.context.close()
       await b.context.close()

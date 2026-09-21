@@ -9,7 +9,7 @@ import { identify, identifyPush } from '@libp2p/identify'
 import { ping } from '@libp2p/ping'
 import { webRTC } from '@libp2p/webrtc'
 import { webSockets } from '@libp2p/websockets'
-import { decodePayload, QRSession, QR_TYPE_ANSWER, QR_TYPE_OFFER, webRTCQR } from '@le-space/libp2p-webrtc-qr'
+import { DEFAULT_RTC_CONFIGURATION, decodePayload, QRSession, QR_TYPE_ANSWER, QR_TYPE_OFFER, webRTCQR } from '@le-space/libp2p-webrtc-qr'
 import { createLibp2p } from 'libp2p'
 
 import { denyDial, relayBootstrapList } from './relay-policy.js'
@@ -200,6 +200,10 @@ export async function createPeer ({
    */
   const scanned = new Set()
 
+  // Whose invite this device answered last. Only that reply can still be on
+  // screen, so only its failure is news; see `onAnswerFailed`.
+  let answeringTo = null
+
   // Live, not captured. The checkbox in the introduction checks the moment it
   // is ticked - that is the element's promise, and a good one - but the gate
   // was fixed when the node was made, so the probe was refused by this node's
@@ -278,8 +282,10 @@ export async function createPeer ({
       webRTCQR({ getOutboundSession: remotePeerId => session?.getOutboundSession(remotePeerId) ?? null }),
       // The way out of the relay. Two devices that met over a circuit try to
       // connect directly here; if they cannot, the circuit carries them and
-      // nothing above this line notices the difference.
-      webRTC(),
+      // nothing above this line notices the difference. With the STUN servers
+      // the QR session and the network check ask, rather than @libp2p/webrtc's
+      // own four, so the privacy chapter can name everybody who is asked.
+      webRTC({ rtcConfiguration: DEFAULT_RTC_CONFIGURATION }),
       // Twenty seconds rather than the default. A reservation is a round trip
       // to a machine on the public internet, and a phone on mobile data is
       // slower at it than a laptop on a desk - which is the case this app is
@@ -413,15 +419,18 @@ export async function createPeer ({
    *
    * @param {string} payload
    * @param {unknown} type
+   * @returns {Promise<string | null>} who signed it, when that could be verified
    */
   async function noteScan (payload, type) {
     try {
       const { peerId } = await decodePayload(payload, type)
 
       scanned.add(String(peerId))
+      return String(peerId)
     } catch {
       // Unverifiable, so not consent. The peer is asked about rather than
       // admitted, which is the direction to fail in.
+      return null
     }
   }
 
@@ -614,9 +623,31 @@ export async function createPeer ({
      * consent to anything.
      */
     acceptOffer: async offer => {
-      await noteScan(offer, QR_TYPE_OFFER)
+      // Before the session is asked, not after: it starts waiting for the
+      // connection while it makes the reply, and a failure can come that early.
+      answeringTo = await noteScan(offer, QR_TYPE_OFFER)
 
       return session.acceptOffer(offer)
+    },
+
+    /**
+     * Hear when the reply this device made last will not connect.
+     *
+     * The offering side learns that from `acceptAnswer` throwing. The answering
+     * side has nothing to await - its reply is for the other screen - and the
+     * session reports the failure as an `error` event or not at all. A reply
+     * made earlier failing says nothing about the one on screen now, so only
+     * the latest counts.
+     *
+     * @param {(error: Error) => void} listener
+     */
+    onAnswerFailed: listener => {
+      session.addEventListener('error', ({ detail }) => {
+        if (detail?.direction !== 'inbound') return
+        if (answeringTo == null || String(detail.peerId) !== answeringTo) return
+
+        listener(detail.error)
+      })
     },
 
     /** Back on the offering side: read the reply and connect. */

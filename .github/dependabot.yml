@@ -1,19 +1,15 @@
 # Dependabot, for helia only.
 #
-# The reason it exists: ablage patches @helia/bitswap (patches/, applied by
-# patch-package on every install) for a bug that was fixed upstream in
-# ipfs/helia#1129 and has not been released yet. This watches npm so that
-# nobody has to, and says so with a pull request when a new helia arrives.
+# It came in to notice one release: ablage patched @helia/bitswap until the fix
+# from ipfs/helia#1129 was published in 4.0.17 (#99 dropped the patch). It
+# stays to keep helia current, and opens a pull request when a new one arrives.
 #
 # What to expect from it:
 #
-# - The pull request that brings the fixed @helia/bitswap will fail CI, and
-#   that is the signal rather than a fault. `npm ci` runs patch-package, and
-#   the local patch does not apply to a bitswap that already has the fix
-#   (checked against 4.0.16-0d5e5015, which does). Finishing it means deleting
-#   the patch and adjusting test/browser/bitswap-gate.test.js - see #99.
 # - Every pull request it opens runs the whole browser suite, and it rebases
 #   after every merge to main, because the version hook changes package.json.
+# - For a bitswap bump the spec to look at is bitswap-gate:256: a share that
+#   asks for it must still get a block across a relayed connection.
 # - Nothing is merged automatically.
 version: 2
 updates:

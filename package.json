@@ -1,6 +1,6 @@
 {
   "name": "ablage",
-  "version": "0.1.45",
+  "version": "0.1.46",
   "private": true,
   "type": "module",
   "description": "A folder that stays the same on two devices. No account, nothing in the middle.",
@@ -9,15 +9,14 @@
     "test": "npm run test:unit && npm run test:browser",
     "test:unit": "vite build --logLevel error && node --test test/*.test.js",
     "test:browser": "playwright test",
-    "dev": "vite --host 127.0.0.1",
-    "postinstall": "patch-package"
+    "dev": "vite --host 127.0.0.1"
   },
   "dependencies": {
     "@chainsafe/libp2p-noise": "^17.0.0",
     "@chainsafe/libp2p-yamux": "^8.0.1",
-    "@helia/bitswap": "^4.0.11",
+    "@helia/bitswap": "^4.0.17",
     "@helia/libp2p": "^1.0.8",
-    "@helia/unixfs": "^8.0.5",
+    "@helia/unixfs": "^8.0.7",
     "@le-space/aleph-bootstrap": "^0.9.3",
     "@le-space/libp2p-webrtc-qr": "^0.14.0",
     "@libp2p/bootstrap": "^12.0.29",
@@ -31,7 +30,7 @@
     "@libp2p/webrtc": "^6.0.30",
     "@libp2p/websockets": "^10.1.19",
     "@multiformats/multiaddr": "^13.0.3",
-    "helia": "^7.1.7",
+    "helia": "^7.1.13",
     "libp2p": "^3.3.8",
     "yjs": "^13.6.32"
   },
@@ -41,7 +40,6 @@
   "license": "Apache-2.0 OR MIT",
   "devDependencies": {
     "@playwright/test": "^1.62.1",
-    "patch-package": "^8.0.1",
     "vite": "^8.2.2"
   }
 }

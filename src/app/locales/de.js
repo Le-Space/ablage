@@ -248,6 +248,17 @@ export default {
     secure: 'Die Verbindung ist Ende zu Ende verschlüsselt. Niemand dazwischen kann mitlesen: nicht Ihr Internetanbieter, nicht ein Server auf dem Weg, und wir auch nicht.',
     who: 'Beide Geräte müssen gleichzeitig geöffnet sein. Wenn das andere zu ist, wird nichts übertragen. Die App kann das noch nicht nachholen, und sie sagt es, statt es zu verschweigen.'
   },
+  give: {
+    open: 'Unterstützen',
+    title: 'Diese Arbeit unterstützen',
+    why: 'Dahinter stecken Mannjahre Arbeit, nicht Feierabende: Laptops und Telefone zum Testen, Server, Reisen zu Konferenzen, Jahre an Entwurf und Fehlersuche. Nichts davon ist finanziert, und nichts ist käuflich — der Quelltext ist offen und bleibt es.',
+    copy: 'Kopieren',
+    copied: 'Kopiert',
+    close: 'Schließen',
+    sponsor: 'Auf GitHub sponsern',
+    bank: 'Le Space UG (Nico Krause) · GLS Bank Bochum',
+    checked: 'Jede Adresse wurde an ihrer eigenen Prüfsumme geprüft: bech32 für Bitcoin, EIP-55 für Ethereum, Keccak-256 für Monero, Mod-97 für die IBAN.'
+  },
   how: {
     heading: 'Woran das hängt',
     dtls: 'Verschlüsselt wird mit DTLS, derselben Schicht, die ein Browser für jede WebRTC-Verbindung benutzt. Das ist nichts Aufgesetztes und lässt sich nicht abschalten.',

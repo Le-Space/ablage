@@ -767,3 +767,45 @@ html:has(dialog[open]) { overflow: hidden; }
 
 /* Theirs, and it may be a pasted paragraph with a very long word in it. */
 .inbox-text { margin: 0; overflow-wrap: anywhere; white-space: pre-wrap; }
+
+/* ---------- four ways to support this ---------- */
+
+/*
+  Ported from Le-Space/landing's `DonateModal.svelte`, which carries its own
+  styles in a Svelte block. The shape is the same; the colours come from this
+  app's tokens rather than from that component's.
+*/
+.give-list { list-style: none; margin: 0.9rem 0; padding: 0; display: flex; flex-direction: column; gap: 0.75rem; }
+.give-list li {
+  padding: 0.6rem 0.7rem;
+  border: 1px solid var(--ls-card-border);
+  border-radius: 10px;
+  background: var(--ls-bg-2);
+}
+.give-head { display: flex; align-items: center; gap: 0.45rem; flex-wrap: wrap; }
+.give-mark { display: inline-flex; }
+.give-note { color: var(--ls-text-dim); font-size: 0.78rem; }
+
+/*
+  The address wraps and the button does not. An address that is cut off is one
+  somebody copies by hand and gets wrong, which is the whole thing this dialog
+  is trying to prevent.
+*/
+.give-row { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.4rem; }
+.give-row code {
+  flex: 1 1 auto; min-width: 0;
+  font-size: 0.72rem; line-height: 1.5;
+  overflow-wrap: anywhere;
+  color: var(--ls-text-dim);
+}
+.give-copy {
+  flex: 0 0 auto;
+  display: inline-flex; align-items: center; gap: 0.3rem;
+  border: 1px solid var(--ls-card-border); border-radius: 999px;
+  background: transparent; color: var(--ls-text-dim);
+  font: inherit; font-size: 0.78rem; padding: 0.3rem 0.7rem;
+  cursor: pointer;
+}
+.give-copy:hover { color: var(--ls-text); border-color: var(--ls-accent); }
+.donate-foot { display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap; margin-top: 0.9rem; }
+.donate-foot button { margin-inline-start: auto; }

@@ -30,6 +30,7 @@ import { createKeepAlive, createWakeLock } from '@le-space/libp2p-webrtc-qr'
 import { createIntroPolicy } from '@le-space/libp2p-webrtc-qr/elements'
 import { elementStrings, initialLocale, locale, setLocale, t, translateDocument } from './i18n.js'
 import { binIcon, fileIcon, folderIcon, mark, pencilIcon, qrGlyph } from './icons.js'
+import { startDonate } from './donate.js'
 import { startPageQr } from './page-qr.js'
 import { looksLikeAudio, looksLikeImage, looksLikeMedia, looksLikeVideo, previews } from './previews.js'
 import { soundWaveform } from './sound.js'
@@ -1353,6 +1354,8 @@ function applyLocale (next) {
   networkEl.strings = strings.status
   introEl.strings = strings.intro
 
+  donate.redraw()
+
   document.documentElement.lang = locale()
   // `aria-pressed` rather than a class, because that is what a screen reader
   // reads out; the dimming in the stylesheet follows from it.
@@ -1420,6 +1423,21 @@ markEl.innerHTML = mark()
 // drawing happens when it is asked for - `page-qr.js` says why the pairing
 // halves of the fragment are taken out of it first.
 const pageQrButton = $('page-qr-button')
+
+/**
+ * Four ways to support this, in the footer.
+ *
+ * Wired here with the rest of the page rather than inside its own module
+ * because the dialog's contents are written from JavaScript and therefore
+ * invisible to `data-i18n` - `applyLocale` has to be able to reach it, which
+ * is what `redraw` is for.
+ */
+const donate = startDonate({
+  button: $('donate-open'),
+  box: $('donate'),
+  list: $('donate-list'),
+  close: $('donate-close')
+})
 
 pageQrButton.innerHTML = qrGlyph()
 startPageQr({

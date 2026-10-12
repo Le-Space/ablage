@@ -1175,7 +1175,15 @@ async function start () {
 
   // The reservation arrives after the connection does, so this is told rather
   // than asked - `self:peer:update` is libp2p's own event for it.
-  peer.watchOwnAddresses(showReachable)
+  //
+  // The wake lock follows it for the same reason the line does: a reservation
+  // is the moment this device becomes callable, and being callable is one of
+  // the three things worth keeping a screen on for. Without this the lock
+  // would wait for the next tick of something else.
+  peer.watchOwnAddresses(() => {
+    showReachable()
+    syncWakeLock()
+  })
 
   // A reply that will not connect. The answering device kept showing it, and the
   // status line kept saying to show it, after the device it was for had gone.
@@ -2000,16 +2008,40 @@ const wakeLock = createWakeLock()
  *
  * The box is a permission rather than a state: somebody granting it means "keep
  * the screen on when it matters", and what matters is named in the sentence
- * beside it. A code on display, because somebody is about to point a camera at
- * it, and a device connected, because that is the connection a dozing phone
- * drops. A page left open on a folder with nobody there is neither, and holding
- * a lock through an afternoon of that spends a battery to prevent nothing.
+ * beside it. Three things do:
+ *
+ * - **a code on display**, because somebody is about to point a camera at it
+ * - **a device connected**, because that is the connection a dozing phone drops
+ * - **a relay taking calls for this device**, because then an invitation can
+ *   arrive at any moment and the screen going dark is what loses it
+ *
+ * The third one was missing, and it is the half that matters most on a phone.
+ * The device being *asked* is the one with nothing on screen and nobody
+ * connected yet - so it dozed off precisely while it waited, and the question
+ * arrived at a page that was no longer there. Reported from a phone, twice.
+ *
+ * A page left open on a folder with no relay is still none of the three, which
+ * is what `awake.test.js` pins: a ticked box on a quiet page holds nothing.
+ * With a relay the quiet page *is* reachable, and holding the screen is what
+ * the box was ticked for.
  *
  * Both halves still have to be true, so unticking the box releases it at once -
  * see `awake.js` for the remembered choice.
  */
 function awakeNeeded () {
-  return awakeWanted() && (inviteBox.open || connected())
+  return awakeWanted() && (inviteBox.open || connected() || waitingOnRelay())
+}
+
+/**
+ * Callable, and nobody has called yet.
+ *
+ * The reservation rather than the opt-in: a relay that was asked and has not
+ * answered leaves this device with no address anybody could dial, so there is
+ * nothing to stay awake for. `relayAddresses` is the same list the line under
+ * the peer id counts.
+ */
+function waitingOnRelay () {
+  return readRelayOptIn(localStore, RELAY_OPT_IN_KEY) && (peer?.relayAddresses() ?? []).length > 0
 }
 
 function syncWakeLock () {

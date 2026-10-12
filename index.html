@@ -636,6 +636,25 @@
         -->
         <img id="preview-image" alt="" draggable="false" />
         <video id="preview-video" controls preload="metadata" hidden playsinline></video>
+
+        <!--
+          A recording, and the shape of it.
+
+          The player is the browser's own: play, scrubber, volume, the keyboard,
+          and the lock-screen controls on a phone. The canvas above it is the
+          part a browser does not give - a picture of the whole recording, so
+          where the quiet part is and whether there is anything on it at all can
+          be seen before a second has played.
+
+          Pressing it seeks. The native scrubber is still the accessible way to
+          do that, which is why this stays `aria-hidden` rather than becoming a
+          second slider nobody maintains.
+        -->
+        <div id="preview-sound" class="preview-sound" hidden>
+          <canvas id="preview-wave" class="preview-wave" aria-hidden="true"></canvas>
+          <audio id="preview-audio" class="preview-audio" controls preload="metadata"
+                 data-i18n-attr="aria-label:preview.sound"></audio>
+        </div>
         <p id="preview-name" class="preview-name"></p>
       </dialog>
 

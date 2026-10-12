@@ -44,7 +44,16 @@ const withMedia = async page => {
 const openFromRow = async (page, name, what) => {
   const row = page.locator('.file', { hasText: name })
 
-  await row.scrollIntoViewIfNeeded()
+  // **Retried, because the list redraws underneath it.** `render()` runs on
+  // every index change, so adding three files replaces these rows several
+  // times - and a row found a moment ago can be detached before the scroll
+  // reaches it, which arrives as "Element is not attached to the DOM" in a test
+  // that is not about rendering at all. It is the same row, drawn again.
+  //
+  // Measured while the sound player was being added: without this, two of six
+  // runs failed here; the six before it, on a page one module lighter, did not.
+  // The race was always there - the change only moved the timing into it.
+  await expect(async () => { await row.scrollIntoViewIfNeeded() }).toPass({ timeout: 30_000 })
 
   const mark = row.locator(what)
 
@@ -206,4 +215,21 @@ test.describe('a swipe made by a finger', () => {
       await browser.close()
     }
   })
+})
+
+test('and Escape stops a video, rather than leaving it playing behind a closed dialog', async ({ page }) => {
+  // `cancel` cleared the picture and only the picture, which was invisible for
+  // as long as the viewer held pictures. A video kept its source and its sound
+  // after the dialog had gone. Found while adding the sound player, which has
+  // the same closing path.
+  await withMedia(page)
+  await openFromRow(page, 'b-film.webm', '.play-mark')
+
+  await expect(page.locator('#preview-video')).toBeVisible()
+
+  await page.keyboard.press('Escape')
+
+  await expect(page.locator('#preview')).toBeHidden()
+  await expect(page.locator('#preview-video')).toHaveJSProperty('paused', true)
+  expect(await page.locator('#preview-video').getAttribute('src')).toBe(null)
 })

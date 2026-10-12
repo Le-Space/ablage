@@ -14,6 +14,7 @@
 
 const IMAGE = /\.(?:png|jpe?g|gif|webp|avif|bmp|svg)$/i
 const VIDEO = /\.(?:mp4|m4v|mov|webm|ogv)$/i
+const AUDIO = /\.(?:mp3|m4a|aac|wav|flac|ogg|oga|opus|weba)$/i
 
 /** By extension rather than by sniffing: this decides whether to *read* at all. */
 export const looksLikeImage = path => IMAGE.test(String(path ?? ''))
@@ -29,14 +30,32 @@ export const looksLikeImage = path => IMAGE.test(String(path ?? ''))
  */
 export const looksLikeVideo = path => VIDEO.test(String(path ?? ''))
 
+/**
+ * A recording is a file somebody taps expecting it to play.
+ *
+ * Its own test for the same reason as video: whether to read a file for a
+ * *thumbnail* and whether the viewer can open it are different questions, and
+ * sound has no thumbnail at all.
+ *
+ * `ogg` is in both this list and the video one by extension, which cannot tell
+ * them apart - an `.ogg` holding video opens in the sound player and plays its
+ * audio track. The alternative is reading every file to find out, which is what
+ * this module exists not to do.
+ */
+export const looksLikeAudio = path => AUDIO.test(String(path ?? ''))
+
 /** What the viewer can open, which is the union. */
-export const looksLikeMedia = path => looksLikeImage(path) || looksLikeVideo(path)
+export const looksLikeMedia = path => looksLikeImage(path) || looksLikeVideo(path) || looksLikeAudio(path)
 
 const TYPES = {
   png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif',
   webp: 'image/webp', avif: 'image/avif', bmp: 'image/bmp', svg: 'image/svg+xml',
   mp4: 'video/mp4', m4v: 'video/mp4', mov: 'video/quicktime',
-  webm: 'video/webm', ogv: 'video/ogg'
+  webm: 'video/webm', ogv: 'video/ogg',
+  // `audio/mp4` rather than `audio/aac` for m4a: Safari refuses the second.
+  mp3: 'audio/mpeg', m4a: 'audio/mp4', aac: 'audio/aac', wav: 'audio/wav',
+  flac: 'audio/flac', ogg: 'audio/ogg', oga: 'audio/ogg', opus: 'audio/ogg',
+  weba: 'audio/webm'
 }
 
 export const mediaType = path =>

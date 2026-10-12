@@ -151,7 +151,10 @@ export default {
     another: 'Anderen Ordner wählen',
     resume: ({ name }) => `${name} wieder benutzen`
   },
-  preview: { counted: ({ name, at, of }) => `${name} — ${at} von ${of}` },
+  preview: {
+    counted: ({ name, at, of }) => `${name} — ${at} von ${of}`,
+    sound: 'Aufnahme abspielen'
+  },
   shares: {
     label: 'Freigabe',
     manage: 'Freigaben…',

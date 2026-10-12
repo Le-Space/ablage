@@ -32,7 +32,7 @@ import { elementStrings, initialLocale, locale, setLocale, t, translateDocument 
 import { binIcon, fileIcon, folderIcon, mark, pencilIcon, qrGlyph } from './icons.js'
 import { startPageQr } from './page-qr.js'
 import { looksLikeAudio, looksLikeImage, looksLikeMedia, looksLikeVideo, previews } from './previews.js'
-import { soundLevels } from './sound.js'
+import { soundWaveform } from './sound.js'
 import { tree } from './tree.js'
 import { applyMusicChoice, musicWanted } from './music.js'
 import { multiaddr } from '@multiformats/multiaddr'
@@ -109,7 +109,7 @@ const previewImageEl = $('preview-image')
 const previewVideoEl = $('preview-video')
 const previewSoundEl = $('preview-sound')
 const previewAudioEl = $('preview-audio')
-const previewLevelsEl = $('preview-levels')
+const previewWaveEl = $('preview-wave')
 const previewNameEl = $('preview-name')
 const folderDetailEl = $('folder-detail')
 const folderNoteEl = $('folder-note')
@@ -540,18 +540,36 @@ function report (error) {
 const thumbnails = previews()
 
 /**
- * The bars beside the player.
+ * The picture of the recording, beside the player.
  *
- * Started from `play` rather than when the file opens, because an `AudioContext`
- * a browser has suspended is resumed by a gesture, and pressing play is the
- * gesture. Stopped on `pause` and `ended` so a finished recording is not left
- * with a meter twitching at silence.
+ * The shape appears as soon as the file decodes; the cursor follows only while
+ * it plays, which is why `pause` and `ended` stop the frames rather than leaving
+ * one running against a recording that has finished. `seeking` redraws for a
+ * drag on the native scrubber, which moves the cursor without playing anything.
  */
-const levels = soundLevels({ audio: previewAudioEl, canvas: previewLevelsEl })
+const wave = soundWaveform({ audio: previewAudioEl, canvas: previewWaveEl })
 
-previewAudioEl.addEventListener('play', () => levels.start())
-previewAudioEl.addEventListener('pause', () => levels.stop())
-previewAudioEl.addEventListener('ended', () => levels.stop())
+previewAudioEl.addEventListener('play', () => wave.start())
+previewAudioEl.addEventListener('pause', () => wave.stop())
+previewAudioEl.addEventListener('ended', () => wave.stop())
+previewAudioEl.addEventListener('seeking', () => wave.stop())
+
+/**
+ * Press the picture to go there, and drag along it to scrub.
+ *
+ * `pointerdown` rather than `click`, with the pointer captured: a drag should
+ * move while it is being dragged rather than once it is let go, and capturing
+ * keeps it moving when the finger leaves the canvas.
+ */
+const seekFrom = event => wave.seekTo(event.clientX - previewWaveEl.getBoundingClientRect().left)
+
+previewWaveEl.addEventListener('pointerdown', event => {
+  previewWaveEl.setPointerCapture(event.pointerId)
+  seekFrom(event)
+})
+previewWaveEl.addEventListener('pointermove', event => {
+  if (previewWaveEl.hasPointerCapture(event.pointerId)) seekFrom(event)
+})
 
 /**
  * Read a thumbnail only once its row is on screen.
@@ -644,6 +662,7 @@ async function showPreviewAt (position) {
     previewVideoEl.src = url
   } else if (kind === 'sound') {
     previewAudioEl.src = url
+    wave.show(url)
   } else {
     previewImageEl.src = url
     previewImageEl.alt = path
@@ -689,7 +708,7 @@ function hidePreview () {
 function quietSound () {
   previewAudioEl.pause()
   previewAudioEl.removeAttribute('src')
-  levels.stop()
+  wave.clear()
 }
 
 /**
@@ -732,7 +751,7 @@ previewEl.addEventListener('pointerdown', event => {
   // every video and the only way on was to close it. Reported from a phone.
   //
   // The controls sit along the bottom, so that is the strip that is spared.
-  if (event.target.closest?.('video, audio') != null) {
+  if (event.target.closest?.('video, audio, .preview-sound') != null) {
     const box = event.target.getBoundingClientRect()
 
     // Never more than a share of the element. A fixed 56px swallowed a video
@@ -773,7 +792,9 @@ previewEl.addEventListener('pointerup', event => {
 previewEl.addEventListener('click', event => {
   // Pressing play is not asking to leave. Every control a video has is a click
   // inside the element, and closing on it would make a video unplayable.
-  if (event.target.closest?.('video, audio') != null) return
+  // The whole sound block, not only the player: a press on the waveform is a
+  // seek, and closing the viewer on it would make the picture untouchable.
+  if (event.target.closest?.('video, audio, .preview-sound') != null) return
 
   // The click that ends a swipe is not a tap. Without this, every swipe would
   // also close the picture it had just turned to.

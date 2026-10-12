@@ -133,3 +133,51 @@ test('and closing it lets go of the sound', async ({ page }) => {
   await expect(page.locator('#preview-audio')).toHaveJSProperty('paused', true)
   expect(await page.locator('#preview-audio').getAttribute('src')).toBe(null)
 })
+
+test('the whole recording is drawn, not only the part that has played', async ({ page }) => {
+  // The picture is the point: it says where the quiet part is and whether there
+  // is anything on the file at all, before a second has played. Asserted on
+  // pixels rather than on a call, because a canvas that is wired up and draws
+  // nothing looks exactly like one that is not wired up.
+  await withRecording(page)
+  await openFromRow(page, 'aufnahme.wav')
+
+  await expect(page.locator('#preview-wave')).toBeVisible()
+
+  const drawn = await page.waitForFunction(() => {
+    const canvas = document.getElementById('preview-wave')
+
+    if (canvas == null || canvas.width === 0) return false
+
+    const pixels = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data
+    let lit = 0
+
+    for (let i = 3; i < pixels.length; i += 4) if (pixels[i] > 0) lit++
+
+    return lit > canvas.width ? lit : false
+  }, undefined, { timeout: 30_000 })
+
+  expect(await drawn.jsonValue()).toBeGreaterThan(0)
+})
+
+test('and pressing it moves the player there', async ({ page }) => {
+  // A press on the picture is a seek. It is also a press inside the viewer,
+  // which closes on a press - so this is as much a test of that guard as of the
+  // seeking.
+  await withRecording(page)
+  await openFromRow(page, 'aufnahme.wav')
+
+  await page.waitForFunction(() => Number.isFinite(document.getElementById('preview-audio')?.duration),
+    undefined, { timeout: 30_000 })
+
+  const box = await page.locator('#preview-wave').boundingBox()
+
+  await page.mouse.click(box.x + box.width * 0.75, box.y + box.height / 2)
+
+  const at = await page.locator('#preview-audio').evaluate(audio => audio.currentTime)
+
+  // Three quarters through a one-second recording, give or take where a browser
+  // can actually land in a WAV.
+  expect(at).toBeGreaterThan(0.5)
+  await expect(page.locator('#preview')).toBeVisible()
+})

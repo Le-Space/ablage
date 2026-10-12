@@ -159,3 +159,45 @@ test('and it still runs when nobody is being told', async () => {
 
   assert.deepEqual(order, ['fresh document'])
 })
+
+/**
+ * The count, which is what the screen's wake lock follows: a device connected is
+ * the connection a dozing phone would drop, and nothing else about a peer
+ * changes that answer.
+ */
+test('the count is reported when it changes', async () => {
+  const counts = []
+  const peers = peerSet({ onCountChange: count => counts.push(count) })
+
+  peers.add('a', fake(), () => {})
+  peers.add('b', fake(), () => {})
+  peers.drop('a')
+  peers.drop('b')
+
+  assert.deepEqual(counts, [1, 2, 1, 0])
+})
+
+test('and not when a reconnection replaces somebody, or a drop finds nobody', async () => {
+  const counts = []
+  const peers = peerSet({ onCountChange: count => counts.push(count) })
+
+  peers.add('a', fake(), () => {})
+  // Same peer, new provider: still one device here.
+  peers.add('a', fake(), () => {})
+  peers.drop('nobody')
+  // `follow` rebuilds on the new document over the channel that was there.
+  peers.follow('a', () => fake())
+
+  assert.deepEqual(counts, [1])
+})
+
+test('and a folder switch reports who is left', async () => {
+  const counts = []
+  const peers = peerSet({ onCountChange: count => counts.push(count) })
+
+  peers.add('a', fake(), () => {})
+  peers.add('b', fake(), () => {})
+  peers.switchFolder({ tell: ['a'], message: {}, rebuild: () => fake() })
+
+  assert.deepEqual(counts, [1, 2, 1])
+})

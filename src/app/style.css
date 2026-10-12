@@ -311,6 +311,55 @@ html:has(dialog[open]) { overflow: hidden; }
 }
 .toggle:hover { color: var(--ls-text); border-color: var(--ls-accent); }
 
+/*
+  This page as a code, hanging under the button that opens it.
+
+  The plaque is white in both themes, and that is not a theming slip: the thing
+  reading it is a camera, and a code on a dark card is one a phone has to work
+  for. The quiet zone is the padding around it - a code flush to an edge is a
+  code a camera may not find at all.
+
+  On a phone it is pinned across the top instead of anchored to the button: the
+  header wraps there, and a box hanging off a button near the right edge would
+  run off the screen.
+*/
+.page-qr { position: relative; display: flex; }
+.page-qr-box {
+  position: absolute;
+  top: calc(100% + 0.4rem);
+  right: 0;
+  z-index: 40;
+  width: 15rem;
+  padding: 0.75rem;
+  border: 1px solid var(--ls-card-border);
+  border-radius: 12px;
+  background: var(--ls-bg-2);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+}
+.page-qr-box[hidden] { display: none; }
+.page-qr-code { background: #fff; border-radius: 8px; padding: 0.5rem; }
+.page-qr-code svg { display: block; width: 100%; height: auto; }
+.page-qr-url {
+  margin: 0.6rem 0 0.35rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.66rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  color: var(--ls-text-faint);
+}
+.page-qr-box .hint { margin: 0; }
+
+@media (max-width: 30rem) {
+  .page-qr-box {
+    position: fixed;
+    inset-inline: 1rem;
+    top: 4.75rem;
+    width: auto;
+    max-width: 17rem;
+    margin-inline: auto;
+  }
+}
+
 .flags { display: flex; gap: 0.15rem; }
 /* Dimmed rather than hidden: both flags stay visible so the choice is legible
    as a choice, and the pressed one is the bright one. */

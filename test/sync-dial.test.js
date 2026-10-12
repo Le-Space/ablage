@@ -108,6 +108,44 @@ test('a stream that stays reset is reported as reset, not as an absence', async 
   )
 })
 
+test('a connection it already has is used, rather than dialled for again', async () => {
+  // Measured in a browser: with two open circuit connections to the peer,
+  // `dialProtocol` timed out after fifteen seconds, while `newStream` on one of
+  // those connections opened in 112 ms. Handed a peer id and no *unlimited*
+  // connection, libp2p goes looking for one - and the looking is the fifty-four
+  // addresses, each with its own deadline. That wait is the whole bug.
+  const asked = []
+  const node = {
+    getConnections: () => [{ status: 'open', newStream: (protocol, options) => { asked.push({ protocol, options }); return { status: 'open' } } }],
+    dialProtocol: () => { throw new Error('dialProtocol must not be reached when a connection is open') }
+  }
+
+  const stream = await openSyncStream(node, A_PEER, ['/x/1.1.0', '/x/1.0.0'], fastOptions)
+
+  assert.equal(stream.status, 'open')
+  assert.deepEqual(asked[0].protocol, ['/x/1.1.0', '/x/1.0.0'])
+  // The same flag the handler carries. Either side alone is still a refusal.
+  assert.equal(asked[0].options.runOnLimitedConnection, true)
+})
+
+test('and a closed one is not, because it is not a connection', async () => {
+  const node = {
+    getConnections: () => [{ status: 'closed', newStream: () => { throw new Error('a closed connection was used') } }],
+    dialProtocol: () => ({ status: 'open' })
+  }
+
+  assert.equal((await openSyncStream(node, A_PEER, '/x/1.0.0', fastOptions)).status, 'open')
+})
+
+test('a node that cannot be asked about its connections still dials', async () => {
+  // `getConnections` is optional here on purpose: the QR session hands over a
+  // node shape of its own, and an absent method is not an error.
+  const node = nodeThatRecords({ status: 'open' })
+
+  assert.equal((await openSyncStream(node, A_PEER, '/x/1.0.0', fastOptions)).status, 'open')
+  assert.equal(node.seen.length, 1)
+})
+
 /**
  * Which address to dial, out of fifty-four.
  *
@@ -121,13 +159,31 @@ test('a stream that stays reset is reported as reset, not as an absence', async 
 const RELAY = '/dns4/relay.example/tcp/443/tls/ws/p2p/12D3KooWRelay'
 const THEM = '/p2p/12D3KooWThem'
 
-test('a webrtc address wins, because it is the one that stops being relayed', async () => {
+test('the plain circuit wins, because it is the one that opens', async () => {
+  // This assertion used to be the other way round, and the reason it changed is
+  // a measurement rather than an opinion. Two browsers through the production
+  // relay, 2026-10-12: the plain circuit address connected in 489 ms, the same
+  // peer's `/p2p-circuit/webrtc/` address timed out at 20 s. Ranked first, it
+  // was also what every retry spent itself on - 45 seconds, and the other
+  // device was never asked.
+  //
+  // It is also the address `strangerHere` refuses on first contact, which is
+  // the only contact that matters here.
   const ranked = rankAddresses([
-    `${RELAY}/p2p-circuit${THEM}`,
-    `${RELAY}/p2p-circuit/webrtc${THEM}`
+    `${RELAY}/p2p-circuit/webrtc${THEM}`,
+    `${RELAY}/p2p-circuit${THEM}`
   ])
 
-  assert.equal(ranked[0], `${RELAY}/p2p-circuit/webrtc${THEM}`)
+  assert.equal(ranked[0], `${RELAY}/p2p-circuit${THEM}`)
+})
+
+test('and a webrtc address is still offered, just not first', async () => {
+  // Below, not dropped: a peer whose only address is that one is better dialled
+  // than not, and after admission it is the address that stops being relayed.
+  assert.deepEqual(
+    rankAddresses([`${RELAY}/p2p-circuit/webrtc${THEM}`]),
+    [`${RELAY}/p2p-circuit/webrtc${THEM}`]
+  )
 })
 
 test('loopback and private addresses are not offered at all', async () => {

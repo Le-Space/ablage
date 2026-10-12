@@ -59,9 +59,32 @@ export function rankAddresses (addresses) {
 
     let points = 0
 
-    // The whole point: a `/webrtc` address is signalled over the circuit and
-    // then carries its own bytes. Without it the connection stays relayed.
-    if (address.includes('/p2p-circuit/webrtc/')) points += 100
+    // **The plain circuit is the way in. `/webrtc` is the way out of it.**
+    //
+    // This preference used to be the other way round, and the argument was
+    // sound: a `/p2p-circuit/webrtc/` address is signalled over the circuit and
+    // then carries its own bytes, so the connection stops being relayed. What
+    // was never measured is whether it *opens* on first contact.
+    //
+    // Measured 2026-10-12, two browsers through the production relay: the plain
+    // circuit address connected in **489 ms**. The same peer's
+    // `/p2p-circuit/webrtc/` address **timed out after 20 s** - and because it
+    // ranked first, it was also what every retry spent its ten seconds on. Forty-
+    // five seconds later the app said "no stream after 45s", and the other
+    // device had never been asked anything.
+    //
+    // There is a reason first contact is the case that fails: `strangerHere` in
+    // `peer.js` refuses a `/webrtc` connection to a peer that was neither
+    // scanned nor admitted, which is exactly what both devices are before the
+    // first invitation. The ranking wanted the one address this app's own gate
+    // is built to refuse.
+    //
+    // Staying relayed afterwards is what `dcutr` is in the configuration for:
+    // it upgrades a circuit that already carries something. Ranked below rather
+    // than dropped, because a peer whose only address is that one is still
+    // better dialled than not.
+    if (address.includes('/p2p-circuit/webrtc/')) points += 1
+    else if (address.includes('/p2p-circuit/')) points += 100
     // A name outlives an address, and the relay's own certificate is issued
     // for one.
     if (/\/dns[46]?\//.test(address)) points += 10
@@ -145,6 +168,27 @@ export async function openSyncStream (node, peerId, protocol, options = {}) {
   } = options
   const id = typeof peerId === 'string' ? peerIdFromString(peerId) : peerId
 
+  /**
+   * A connection this node already has to them, if there is one.
+   *
+   * **`dialProtocol` will not use a limited one.** Measured in a browser
+   * holding two open circuit connections to the peer: `dialProtocol(id, …,
+   * { runOnLimitedConnection: true })` timed out after fifteen seconds, while
+   * `connection.newStream(…)` on one of those very connections opened the
+   * stream in **112 ms** and the dialog appeared on the other device. Handed a
+   * peer id and no *unlimited* connection, libp2p goes looking for one - and
+   * the looking is the fifty-four addresses again, each with its own deadline.
+   *
+   * So: the connection where there is one, the peer id only where there is not.
+   */
+  const openConnection = () => {
+    try {
+      return node.getConnections?.(id)?.find(connection => connection.status === 'open') ?? null
+    } catch {
+      return null
+    }
+  }
+
   // The best address this device knows for them, or the peer id if it knows
   // none. Read once: the store does not change usefully inside a retry loop,
   // and re-reading it every attempt would be one more thing to go wrong.
@@ -199,10 +243,11 @@ export async function openSyncStream (node, peerId, protocol, options = {}) {
       // and a protocol stream on one is refused unless both sides say it may -
       // the handler in `peer.js` carries the same flag, and either alone is
       // still a refusal.
-      const stream = await node.dialProtocol(id, offered, {
-        runOnLimitedConnection: true,
-        signal: AbortSignal.timeout(Math.min(dialTimeout, Math.max(0, deadline - Date.now())))
-      })
+      const signal = AbortSignal.timeout(Math.min(dialTimeout, Math.max(0, deadline - Date.now())))
+      const connection = openConnection()
+      const stream = connection != null
+        ? await connection.newStream(offered, { runOnLimitedConnection: true, signal })
+        : await node.dialProtocol(id, offered, { runOnLimitedConnection: true, signal })
 
       await new Promise(resolve => setTimeout(resolve, settleDelay))
 

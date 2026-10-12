@@ -29,7 +29,8 @@ import { openStorage } from '../storage/index.js'
 import { createKeepAlive, createWakeLock } from '@le-space/libp2p-webrtc-qr'
 import { createIntroPolicy } from '@le-space/libp2p-webrtc-qr/elements'
 import { elementStrings, initialLocale, locale, setLocale, t, translateDocument } from './i18n.js'
-import { binIcon, fileIcon, folderIcon, mark, pencilIcon } from './icons.js'
+import { binIcon, fileIcon, folderIcon, mark, pencilIcon, qrGlyph } from './icons.js'
+import { startPageQr } from './page-qr.js'
 import { looksLikeImage, looksLikeMedia, looksLikeVideo, previews } from './previews.js'
 import { tree } from './tree.js'
 import { applyMusicChoice, musicWanted } from './music.js'
@@ -1324,6 +1325,19 @@ viewModeEl.addEventListener('click', viewChanged)
 introViewEl.addEventListener('click', viewChanged)
 
 markEl.innerHTML = mark()
+
+// This page as a code, for carrying it to a device that has not got it yet. The
+// drawing happens when it is asked for - `page-qr.js` says why the pairing
+// halves of the fragment are taken out of it first.
+const pageQrButton = $('page-qr-button')
+
+pageQrButton.innerHTML = qrGlyph()
+startPageQr({
+  button: pageQrButton,
+  box: $('page-qr-box'),
+  code: $('page-qr-code'),
+  address: $('page-qr-url')
+})
 
 // ---- the introduction ------------------------------------------------------
 

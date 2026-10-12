@@ -23,6 +23,11 @@ export default {
     why: 'Ein schlafendes Telefon trennt die Verbindung. Kostet Akku, deshalb nur bei gezeigtem Code oder verbundenem Gerät.',
     unsupported: 'Dieser Browser kann den Bildschirm nicht wachhalten. Hier hilft nur, die Seite offen und den Bildschirm von Hand hell zu lassen, damit eine lange Übertragung durchläuft.'
   },
+  pageQr: {
+    open: 'Diese Seite als QR-Code',
+    dialog: 'QR-Code dieser Seite',
+    hint: 'Mit dem Telefon scannen — das öffnet genau diese Seite.'
+  },
   lang: { label: 'Sprache' },
   view: {
     switchToTechnical: 'Technische Angaben zeigen',

@@ -69,6 +69,18 @@ export const pencilIcon = () => svg('0 0 24 24', `
   <path d="M13.5 6.5 l4 4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" />
 `, 'aria-hidden="true"')
 
+/**
+ * This page as a code.
+ *
+ * Filled, unlike everything else in this file, and that is not a slip: a QR
+ * code *is* filled squares, so an outlined one would be a drawing of a frame.
+ * Three finder squares and a few modules is the least that still reads as one.
+ */
+export const qrGlyph = () => svg('0 0 24 24', `
+  <path d="M3 3h8v8H3zm2 2v4h4V5zM13 3h8v8h-8zm2 2v4h4V5zM3 13h8v8H3zm2 2v4h4v-4zM13 13h3v3h-3zM18 13h3v3h-3zM13 18h3v3h-3zM18 18h3v3h-3z"
+        fill="currentColor" />
+`, 'aria-hidden="true"')
+
 export const binIcon = () => svg('0 0 24 24', `
   <path d="M4 7 h16 M10 4.5 h4 M6.5 7 l1 12.5 a1 1 0 0 0 1 .9 h7 a1 1 0 0 0 1-.9 l1-12.5"
         stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" />

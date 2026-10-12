@@ -1,6 +1,6 @@
 {
   "name": "ablage",
-  "version": "0.1.47",
+  "version": "0.1.48",
   "private": true,
   "type": "module",
   "description": "A folder that stays the same on two devices. No account, nothing in the middle.",
@@ -32,6 +32,7 @@
     "@multiformats/multiaddr": "^13.0.3",
     "helia": "^7.1.16",
     "libp2p": "^3.3.12",
+    "uqr": "^0.1.3",
     "yjs": "^13.6.33"
   },
   "engines": {

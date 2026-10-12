@@ -26,6 +26,11 @@ export default {
     why: 'A sleeping phone drops the connection. Costs battery, so only while a code is shown or a device is connected.',
     unsupported: 'This browser cannot hold the screen awake. Leaving the page open and the screen lit by hand is the only thing that keeps a long transfer going here.'
   },
+  pageQr: {
+    open: 'This page as a QR code',
+    dialog: 'QR code of this page',
+    hint: 'Scan it with your phone — it opens exactly this page.'
+  },
   lang: { label: 'Language' },
   view: {
     switchToTechnical: 'Show the technical detail',

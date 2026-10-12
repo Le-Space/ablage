@@ -149,7 +149,16 @@ html:has(dialog[open]) { overflow: hidden; }
 
 /* ---------- header and language ---------- */
 
-.top { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
+/*
+  Wrapping, because the header gained a third control.
+
+  Measured at 344px, the width `app.test.js` calls the fold: the name is 121px
+  and the three switches 203px, which with the gap is 340 in a row of 312. Held
+  in one line that pushes the whole page sideways - and a page that scrolls
+  horizontally on a phone is what that test exists to catch. Wrapped, the
+  switches take the line below, and nothing changes on a screen where they fit.
+*/
+.top { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 1rem; }
 
 .locale select {
   appearance: none;
@@ -298,7 +307,11 @@ html:has(dialog[open]) { overflow: hidden; }
 .music-now .why.blocked { color: var(--ls-red-bright); }
 
 /* The switches, in the header and again in the dialog. */
-.switches { display: flex; align-items: center; gap: 0.5rem; }
+/* `auto` keeps them at the right edge on the line of their own that a narrow
+   screen gives them - `space-between` alone would put a single item at the
+   start, and the page code is meant to be in the same corner as in the other
+   apps. */
+.switches { display: flex; align-items: center; gap: 0.5rem; margin-inline-start: auto; }
 .toggle {
   border: 1px solid var(--ls-card-border);
   background: transparent;
@@ -310,6 +323,55 @@ html:has(dialog[open]) { overflow: hidden; }
   cursor: pointer;
 }
 .toggle:hover { color: var(--ls-text); border-color: var(--ls-accent); }
+
+/*
+  This page as a code, hanging under the button that opens it.
+
+  The plaque is white in both themes, and that is not a theming slip: the thing
+  reading it is a camera, and a code on a dark card is one a phone has to work
+  for. The quiet zone is the padding around it - a code flush to an edge is a
+  code a camera may not find at all.
+
+  On a phone it is pinned across the top instead of anchored to the button: the
+  header wraps there, and a box hanging off a button near the right edge would
+  run off the screen.
+*/
+.page-qr { position: relative; display: flex; }
+.page-qr-box {
+  position: absolute;
+  top: calc(100% + 0.4rem);
+  right: 0;
+  z-index: 40;
+  width: 15rem;
+  padding: 0.75rem;
+  border: 1px solid var(--ls-card-border);
+  border-radius: 12px;
+  background: var(--ls-bg-2);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+}
+.page-qr-box[hidden] { display: none; }
+.page-qr-code { background: #fff; border-radius: 8px; padding: 0.5rem; }
+.page-qr-code svg { display: block; width: 100%; height: auto; }
+.page-qr-url {
+  margin: 0.6rem 0 0.35rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.66rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  color: var(--ls-text-faint);
+}
+.page-qr-box .hint { margin: 0; }
+
+@media (max-width: 30rem) {
+  .page-qr-box {
+    position: fixed;
+    inset-inline: 1rem;
+    top: 4.75rem;
+    width: auto;
+    max-width: 17rem;
+    margin-inline: auto;
+  }
+}
 
 .flags { display: flex; gap: 0.15rem; }
 /* Dimmed rather than hidden: both flags stay visible so the choice is legible

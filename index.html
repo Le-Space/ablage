@@ -130,6 +130,38 @@
             <button id="locale-de" class="flag" type="button" lang="de" aria-label="Deutsch">&#127465;&#127466;</button>
             <button id="locale-en" class="flag" type="button" lang="en" aria-label="English">&#127468;&#127463;</button>
           </div>
+          <!--
+            This page as a code, for carrying it to a phone that has not got it
+            yet. Le-Space's page-QR convention (landing, AGENTS.md), and the
+            same corner simple-todo keeps it in.
+
+            **Beside the pairing code, not instead of it.** That one is a
+            one-time offer for one other device; this one is "open this app over
+            there", and `page-qr.js` takes the one-time halves out of what it
+            draws. The box is `hidden` until it is asked for, so it never
+            competes with the code somebody is holding up.
+          -->
+          <div class="page-qr">
+            <button
+              id="page-qr-button"
+              class="icon-button"
+              type="button"
+              aria-expanded="false"
+              data-i18n-attr="title:pageQr.open, aria-label:pageQr.open"
+            ></button>
+            <div
+              id="page-qr-box"
+              class="page-qr-box"
+              role="dialog"
+              hidden
+              data-i18n-attr="aria-label:pageQr.dialog"
+            >
+              <!-- White in both themes: a camera reads this, not a reader. -->
+              <div id="page-qr-code" class="page-qr-code"></div>
+              <p id="page-qr-url" class="page-qr-url"></p>
+              <p class="hint quiet" data-i18n="pageQr.hint"></p>
+            </div>
+          </div>
         </div>
       </header>
       <!--

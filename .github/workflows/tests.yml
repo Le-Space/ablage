@@ -44,7 +44,7 @@ jobs:
       # Firefox simply is not where the runner looks, and every Firefox test
       # fails with an executable-not-found that reads like a broken container.
       # The step below turns that into a sentence.
-      image: mcr.microsoft.com/playwright:v1.62.1-noble
+      image: mcr.microsoft.com/playwright:v1.64.0-noble
     # Measured, not guessed: the four runs before this workflow existed took
     # 21, 22, 22 and 23 minutes for this job, and the suite has grown since.
     # Thirty left about seven minutes of headroom, which is thin enough that an

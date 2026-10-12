@@ -4,8 +4,8 @@
 export default {
   page: {
     title: 'ablage',
-    lede: 'Ein Ordner, der auf zwei Geräten derselbe bleibt. Kein Konto, nichts dazwischen.',
-    ledeRelay: 'Ein Ordner, der auf zwei Geräten derselbe bleibt. Kein Konto — ein Relay hilft den beiden, sich zu finden, und kann nicht mitlesen.'
+    lede: 'Ein Ordner, der auf zwei Geräten synchron bleibt. Kein Account, kein Server, nichts dazwischen. Ein QR-Code verbindet die beiden Geräte.',
+    ledeRelay: 'Ein Ordner, der auf zwei Geräten synchron bleibt. Kein Account, kein Server, der Ihre Dateien speichert. Wenn die Geräte irgendwo im Internet stehen, hilft ein Relay ihnen, sich zu finden. Das Relay kann nicht mitlesen.'
   },
   compact: {
     label: 'Kurzcode — ein Code statt einer Bilderfolge. Experimentell.',
@@ -233,12 +233,12 @@ export default {
       asking: 'Frage Aleph, welche Relays laufen…',
       probing: 'Probiere die genannten…'
     },
-    experimental: '<strong>Hochgradig experimentell — benutzen Sie es für nichts, dessen Verlust weh tut.</strong> Es ist eine lauffähige Demonstration, keine Sicherung: das Format kann sich ändern, und ein Ordner hier ist keine Kopie von irgendetwas.',
-    what: 'Dies ist ein Ordner, den zwei Ihrer Geräte teilen. Es gibt kein Konto, und keinen Server dazwischen, der Ihre Dateien hält.',
-    how: 'Zeigen Sie den Code auf diesem Bildschirm dem anderen Gerät, oder schicken Sie ihm den Link. Sobald beide verbunden sind, erscheint alles, was Sie in den Ordner legen, auf beiden.',
-    howRelay: 'Ein Relay stellt die beiden Geräte einander vor, mehr nicht. Beide rufen auf demselben Treffpunkt; danach erscheint jedes in der Liste des anderen, und eines fragt das andere. Das Relay sieht nie, was hinübergeht — es reicht eine Adresse weiter und tritt zur Seite.',
-    secure: 'Die Verbindung ist Ende zu Ende verschlüsselt. Niemand dazwischen kann mitlesen — kein Netzbetreiber, kein Gateway, und wir auch nicht.',
-    who: 'Beide Geräte müssen gleichzeitig offen sein. Die Zustellung, wenn sie es nicht sind, ist noch nicht gebaut — und der Ordner sagt das, statt so zu tun.'
+    experimental: '<strong>Hochgradig experimentell. Legen Sie hier nur Dateien ab, die Sie auch noch woanders haben.</strong> Die App läuft, aber sie ist keine Sicherung: Das Format kann sich ändern, und ein Ordner hier ersetzt keine Kopie.',
+    what: 'Das ist ein Ordner, der auf zwei Ihrer Geräte synchron bleibt. Es gibt keinen Account, und keinen Server, der Ihre Dateien speichert.',
+    how: 'Zeigen Sie dem anderen Gerät den QR-Code auf diesem Bildschirm, oder schicken Sie ihm den Link. Sobald beide verbunden sind, liegt jede Datei in beiden Ordnern.',
+    howRelay: 'Wenn die Geräte irgendwo im Internet stehen, hilft ein Relay ihnen, sich zu finden. Beide melden sich beim selben Relay an. Dann steht jedes in der Liste des anderen, und eines fragt das andere. Erreichen sich die beiden direkt, fällt das Relay aus dem Weg. Geht das nicht, trägt es alles. Mitlesen kann es trotzdem nicht.',
+    secure: 'Die Verbindung ist Ende zu Ende verschlüsselt. Niemand dazwischen kann mitlesen: nicht Ihr Internetanbieter, nicht ein Server auf dem Weg, und wir auch nicht.',
+    who: 'Beide Geräte müssen gleichzeitig geöffnet sein. Wenn das andere zu ist, wird nichts übertragen. Die App kann das noch nicht nachholen, und sie sagt es, statt es zu verschweigen.'
   },
   how: {
     heading: 'Woran das hängt',

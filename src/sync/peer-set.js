@@ -14,9 +14,21 @@
  * to drop the connection and hand somebody a QR code again.
  */
 
-export function peerSet () {
+/**
+ * @param {object} [options]
+ * @param {(count: number) => void} [options.onCountChange] called when the
+ *   number held changes - not when an entry is merely replaced. What it answers
+ *   is "is anybody here at all", and a reconnection that swaps one provider for
+ *   another leaves that answer alone.
+ */
+export function peerSet ({ onCountChange = () => {} } = {}) {
   /** @type {Map<string, { provider: any, send: (message: object) => unknown }>} */
   const held = new Map()
+
+  /** @param {number} before the size before the operation that just ran */
+  const noteCount = before => {
+    if (held.size !== before) onCountChange(held.size)
+  }
 
   return {
     get size () {
@@ -33,8 +45,11 @@ export function peerSet () {
 
     /** A reconnection replaces that peer rather than accumulating one per attempt. */
     add (peerId, provider, send) {
+      const before = held.size
+
       held.get(peerId)?.provider.destroy()
       held.set(peerId, { provider, send })
+      noteCount(before)
     },
 
     /**
@@ -49,8 +64,11 @@ export function peerSet () {
 
       if (entry == null) return false
 
+      const before = held.size
+
       entry.provider.destroy()
       held.delete(peerId)
+      noteCount(before)
       return true
     },
 
@@ -81,6 +99,7 @@ export function peerSet () {
      */
     switchFolder ({ tell, message, beforeRebuild, rebuild }) {
       const allowed = new Set(tell)
+      const before = held.size
 
       for (const peerId of allowed) {
         held.get(peerId)?.send(message)
@@ -99,6 +118,7 @@ export function peerSet () {
         held.set(peerId, { provider: rebuild(entry.send), send: entry.send })
       }
 
+      noteCount(before)
       return [...allowed].filter(peerId => held.has(peerId))
     },
 

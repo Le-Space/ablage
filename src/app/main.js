@@ -201,7 +201,10 @@ let peer = null
  * echo only back to the peer an update came from, so a change from A is
  * forwarded to B through this device and never returned to A.
  */
-const peers = peerSet()
+// The count is what decides whether the screen is held awake: a connection is
+// the thing a dozing phone would drop. `syncWakeLock` is a declaration below,
+// so it is in hand by the time anybody connects.
+const peers = peerSet({ onCountChange: () => syncWakeLock() })
 
 /** What this device decided to send to whom. Per peer - see `sharing.js`. */
 const shared = sharing({ key: scoped('ablage.sharing', shareId) })
@@ -1993,6 +1996,32 @@ dropEl.addEventListener('drop', async event => {
 const wakeLock = createWakeLock()
 
 /**
+ * Held while it would change something, not while the box is ticked.
+ *
+ * The box is a permission rather than a state: somebody granting it means "keep
+ * the screen on when it matters", and what matters is named in the sentence
+ * beside it. A code on display, because somebody is about to point a camera at
+ * it, and a device connected, because that is the connection a dozing phone
+ * drops. A page left open on a folder with nobody there is neither, and holding
+ * a lock through an afternoon of that spends a battery to prevent nothing.
+ *
+ * Both halves still have to be true, so unticking the box releases it at once -
+ * see `awake.js` for the remembered choice.
+ */
+function awakeNeeded () {
+  return awakeWanted() && (inviteBox.open || connected())
+}
+
+function syncWakeLock () {
+  wakeLock.sync(awakeNeeded()).catch(() => {})
+}
+
+// A `<dialog>` fires `close` and has no `open` event, so the attribute is what
+// there is to watch - and watching it means this follows the dialog however it
+// was opened, including from a test that has no second device to pair with.
+new MutationObserver(syncWakeLock).observe(inviteBox, { attributeFilter: ['open'] })
+
+/**
  * Both outcomes get a sentence, and only one of them is an offer.
  *
  * A browser without the API is told about rather than left with a checkbox that
@@ -2026,7 +2055,7 @@ function startAwake () {
   awakeWhyEl.dataset.i18n = wakeLock.supported ? 'awake.why' : 'awake.unsupported'
   awakeWhyEl.textContent = t(awakeWhyEl.dataset.i18n)
 
-  if (awakeEl.checked) wakeLock.sync(true).catch(() => {})
+  syncWakeLock()
 
   startFetchable()
   restoreInbox()
@@ -2034,15 +2063,14 @@ function startAwake () {
 }
 
 awakeEl.addEventListener('change', event => {
-  wakeLock.sync(applyAwakeChoice(event.target.checked)).catch(() => {})
+  applyAwakeChoice(event.target.checked)
+  syncWakeLock()
 })
 
 // The browser drops the lock whenever the page stops being visible, so coming
 // back has to ask again. Without this the toggle stays on and the screen sleeps
 // anyway, which is the worst of the three possible states.
-document.addEventListener('visibilitychange', () => {
-  wakeLock.sync(awakeWanted()).catch(() => {})
-})
+document.addEventListener('visibilitychange', syncWakeLock)
 
 // `wanted` rather than `held`: a headless browser exposes the API and refuses
 // every request, having no screen, so asserting on `held` would be asserting on

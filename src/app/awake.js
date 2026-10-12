@@ -2,9 +2,12 @@
  * Whether the screen is asked to stay awake, remembered.
  *
  * **Off by default**, unlike the waiting music. A wake lock is a promise about
- * somebody else's battery, and the music is bounded - it plays while a code is
- * on display and stops - where this holds for as long as the page is open. A
- * setting that flattens a phone is not one to switch on for people.
+ * somebody else's battery, so it is asked for rather than assumed.
+ *
+ * What this file holds is the *permission*, not the lock. `awakeNeeded` in
+ * `main.js` is what decides, and it is bounded the way the music is: the lock
+ * is held while a code is on display or a device is connected, and released in
+ * between. A page left open on a folder with nobody there asks for nothing.
  *
  * The other half of the reason it exists at all: a phone that dozes off drops
  * the connection it was syncing over, and the person watching sees a transfer

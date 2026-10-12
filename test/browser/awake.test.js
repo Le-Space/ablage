@@ -51,6 +51,31 @@ test('a ticked box on a quiet page holds nothing', async ({ page }) => {
   expect(await wanted(page)).toBe(false)
 })
 
+test('and a device a relay can call holds it, because that is when the question comes', async ({ page }) => {
+  // What the spec above does not cover, and it cost an evening on a real phone:
+  // the device being *asked* shows no code and is connected to nobody. Under
+  // "a code or a connection" it dozed off precisely while it waited, and the
+  // invitation arrived at a page that was no longer there.
+  //
+  // The relay is the one started beside this suite, so "reachable" here is a
+  // reservation that really happened rather than a flag somebody set.
+  test.setTimeout(180_000)
+
+  await page.addInitScript(() => localStorage.setItem('ablage.relay', 'true'))
+  await page.goto('/?intro=off')
+  await expect(page.locator('#awake')).toBeVisible({ timeout: 60_000 })
+
+  if (!await supported(page)) {
+    test.skip(true, 'dieser Browser hält den Bildschirm nicht wach')
+    return
+  }
+
+  await expect(page.locator('#reachable')).toHaveClass(/is-reachable/, { timeout: 120_000 })
+  await page.locator('#awake').check()
+
+  expect(await wanted(page)).toBe(true)
+})
+
 test('and the permission survives a reload, so the next code is covered', async ({ page }) => {
   await open(page)
 

@@ -598,6 +598,37 @@ html:has(dialog[open]) { overflow: hidden; }
   color: var(--ls-text-dim); font-size: 0.8rem; line-height: 1; padding: 0;
 }
 
+/*
+  A recording in the viewer: bars above, the browser's own player below.
+
+  The canvas has a height of its own because it has no content to be sized by -
+  an `<audio>` element is a bar, and a picture viewer sized to it would be a
+  dialog with a controls strip floating in the middle of it.
+
+  `color` is what the meter paints with: `sound.js` reads it off this element
+  with `getComputedStyle`, so both themes and any later change to the palette
+  arrive here without that file knowing anything about them.
+*/
+.preview-sound {
+  display: flex; flex-direction: column; gap: 0.9rem;
+  /*
+    Against the viewport, not against the dialog. A picture gives the dialog its
+    width; sound gives it none, so `100%` would be a percentage of whatever the
+    player happened to ask for - on a phone that was 222px of a 375px screen,
+    with the meter squeezed into the middle and room to spare on both sides.
+  */
+  width: min(34rem, 86vw); margin: auto; padding: 1rem;
+}
+.preview-sound[hidden] { display: none; }
+.preview-levels {
+  display: block; width: 100%; height: 7rem;
+  color: var(--ls-accent);
+  background: var(--ls-bg-2);
+  border: 1px solid var(--ls-card-border);
+  border-radius: 10px;
+}
+.preview-audio { width: 100%; }
+
 /* ---------- shares ---------- */
 
 /*

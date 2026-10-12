@@ -31,7 +31,8 @@ import { createIntroPolicy } from '@le-space/libp2p-webrtc-qr/elements'
 import { elementStrings, initialLocale, locale, setLocale, t, translateDocument } from './i18n.js'
 import { binIcon, fileIcon, folderIcon, mark, pencilIcon, qrGlyph } from './icons.js'
 import { startPageQr } from './page-qr.js'
-import { looksLikeImage, looksLikeMedia, looksLikeVideo, previews } from './previews.js'
+import { looksLikeAudio, looksLikeImage, looksLikeMedia, looksLikeVideo, previews } from './previews.js'
+import { soundLevels } from './sound.js'
 import { tree } from './tree.js'
 import { applyMusicChoice, musicWanted } from './music.js'
 import { multiaddr } from '@multiformats/multiaddr'
@@ -106,6 +107,9 @@ const musicWhyEl = $('music-why')
 const previewEl = $('preview')
 const previewImageEl = $('preview-image')
 const previewVideoEl = $('preview-video')
+const previewSoundEl = $('preview-sound')
+const previewAudioEl = $('preview-audio')
+const previewLevelsEl = $('preview-levels')
 const previewNameEl = $('preview-name')
 const folderDetailEl = $('folder-detail')
 const folderNoteEl = $('folder-note')
@@ -536,6 +540,20 @@ function report (error) {
 const thumbnails = previews()
 
 /**
+ * The bars beside the player.
+ *
+ * Started from `play` rather than when the file opens, because an `AudioContext`
+ * a browser has suspended is resumed by a gesture, and pressing play is the
+ * gesture. Stopped on `pause` and `ended` so a finished recording is not left
+ * with a meter twitching at silence.
+ */
+const levels = soundLevels({ audio: previewAudioEl, canvas: previewLevelsEl })
+
+previewAudioEl.addEventListener('play', () => levels.start())
+previewAudioEl.addEventListener('pause', () => levels.stop())
+previewAudioEl.addEventListener('ended', () => levels.stop())
+
+/**
  * Read a thumbnail only once its row is on screen.
  *
  * `render()` runs on every index change, so drawing a folder of photos would
@@ -594,29 +612,39 @@ async function showPreviewAt (position) {
 
   openPicture = position
 
-  // One element is shown and the other is emptied. Leaving a `src` on the
+  // One element is shown and the others are emptied. Leaving a `src` on a
   // hidden one means a video that goes on downloading behind a photo, and a
   // playing one that goes on talking after the page has turned.
-  const video = looksLikeVideo(path)
+  const kind = looksLikeVideo(path) ? 'video' : looksLikeAudio(path) ? 'sound' : 'picture'
 
   // Whichever element is about to be hidden must not be the one holding the
   // keyboard, or focus lands on `<body>` and the modal stops being modal.
-  const hiding = video ? previewImageEl : previewVideoEl
+  for (const element of [previewImageEl, previewVideoEl, previewSoundEl]) {
+    const keeps =
+      (kind === 'picture' && element === previewImageEl) ||
+      (kind === 'video' && element === previewVideoEl) ||
+      (kind === 'sound' && element === previewSoundEl)
 
-  if (hiding.contains(document.activeElement) || hiding === document.activeElement) {
-    previewEl.focus()
+    if (keeps) continue
+    if (element.contains(document.activeElement) || element === document.activeElement) previewEl.focus()
   }
 
-  previewImageEl.hidden = video
-  previewVideoEl.hidden = !video
+  previewImageEl.hidden = kind !== 'picture'
+  previewVideoEl.hidden = kind !== 'video'
+  previewSoundEl.hidden = kind !== 'sound'
 
-  if (video) {
-    previewImageEl.removeAttribute('src')
-    previewVideoEl.pause()
-    previewVideoEl.src = url
-  } else {
+  if (kind !== 'picture') previewImageEl.removeAttribute('src')
+  if (kind !== 'video') {
     previewVideoEl.pause()
     previewVideoEl.removeAttribute('src')
+  }
+  if (kind !== 'sound') quietSound()
+
+  if (kind === 'video') {
+    previewVideoEl.src = url
+  } else if (kind === 'sound') {
+    previewAudioEl.src = url
+  } else {
     previewImageEl.src = url
     previewImageEl.alt = path
   }
@@ -646,7 +674,22 @@ function hidePreview () {
   // still be heard for as long as it takes the browser to notice.
   previewVideoEl.pause()
   previewVideoEl.removeAttribute('src')
+  quietSound()
   openPicture = -1
+}
+
+/**
+ * Stop the recording and the bars with it.
+ *
+ * Paused *and* emptied, for the same reason as the video: an element that has
+ * merely lost its source can still be heard for as long as it takes the browser
+ * to notice. The meter is told separately because it runs on its own frames,
+ * which do not stop just because the sound did.
+ */
+function quietSound () {
+  previewAudioEl.pause()
+  previewAudioEl.removeAttribute('src')
+  levels.stop()
 }
 
 /**
@@ -689,7 +732,7 @@ previewEl.addEventListener('pointerdown', event => {
   // every video and the only way on was to close it. Reported from a phone.
   //
   // The controls sit along the bottom, so that is the strip that is spared.
-  if (event.target.closest?.('video') != null) {
+  if (event.target.closest?.('video, audio') != null) {
     const box = event.target.getBoundingClientRect()
 
     // Never more than a share of the element. A fixed 56px swallowed a video
@@ -730,7 +773,7 @@ previewEl.addEventListener('pointerup', event => {
 previewEl.addEventListener('click', event => {
   // Pressing play is not asking to leave. Every control a video has is a click
   // inside the element, and closing on it would make a video unplayable.
-  if (event.target.closest?.('video') != null) return
+  if (event.target.closest?.('video, audio') != null) return
 
   // The click that ends a swipe is not a tap. Without this, every swipe would
   // also close the picture it had just turned to.
@@ -766,7 +809,20 @@ document.addEventListener('keydown', event => {
   showPreviewAt(openPicture + (event.key === 'ArrowRight' ? 1 : -1))
 })
 
-previewEl.addEventListener('cancel', () => previewImageEl.removeAttribute('src'))
+/**
+ * Escape closes it, and closing it has to mean all of it.
+ *
+ * This cleared the picture and nothing else, which was invisible for as long as
+ * a picture was all the viewer held: a photo that keeps a `src` costs memory and
+ * says nothing. A video does not go quiet when its dialog does, and nor does a
+ * recording - the viewer disappears and the sound carries on, which on a phone
+ * is a file playing with nothing on screen to stop it.
+ *
+ * `hidePreview` is the one closing path, and this is now a way into it rather
+ * than a second, shorter version of it. Found by the sound specs; the video has
+ * had it all along.
+ */
+previewEl.addEventListener('cancel', () => hidePreview())
 
 /** Folders the person collapsed. Open is the default; closing is the choice. */
 const collapsed = new Set()
@@ -830,14 +886,14 @@ function attachThumbnail (li, node) {
  * to draw a list is how an app becomes the reason a phone gets warm. The mark
  * costs nothing and says the same thing - there is something to open here.
  */
-function attachPlayMark (li, node) {
+function attachPlayMark (li, node, glyph = '\u25B6') {
   if (index.get(node.path)?.cid == null) return
 
   const mark = document.createElement('button')
 
   mark.type = 'button'
   mark.className = 'thumb play-mark'
-  mark.textContent = '▶'
+  mark.textContent = glyph
   mark.title = node.name
   mark.addEventListener('click', event => {
     event.stopPropagation()
@@ -861,6 +917,11 @@ function fileRow (node) {
   // for a list. It gets a mark that says "this opens" instead - without it a
   // video is a row of text with no way into the viewer at all.
   if (looksLikeVideo(node.path)) attachPlayMark(li, node)
+  // The same reasoning, and sound has even less to draw: a recording has no
+  // frame to decode at all. Without the mark an mp3 is a row of text with no
+  // way into the viewer - which is how it was until somebody tapped one and
+  // nothing happened.
+  if (looksLikeAudio(node.path)) attachPlayMark(li, node, '\u266A')
   name.className = 'name'
   name.textContent = node.name
   size.className = 'size'

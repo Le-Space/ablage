@@ -153,7 +153,10 @@ export default {
     another: 'Choose another folder',
     resume: ({ name }) => `Use ${name} again`
   },
-  preview: { counted: ({ name, at, of }) => `${name} — ${at} of ${of}` },
+  preview: {
+    counted: ({ name, at, of }) => `${name} — ${at} of ${of}`,
+    sound: 'Play this recording'
+  },
   shares: {
     label: 'Share',
     manage: 'Shares…',

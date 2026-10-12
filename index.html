@@ -636,6 +636,22 @@
         -->
         <img id="preview-image" alt="" draggable="false" />
         <video id="preview-video" controls preload="metadata" hidden playsinline></video>
+
+        <!--
+          A recording, and something to look at while it plays.
+
+          The player is the browser's own: play, scrubber, volume, the keyboard,
+          and the lock-screen controls on a phone. The canvas beside it is the
+          part a browser does not give - any sign that sound is actually coming
+          out, which with the volume down is the difference between "playing"
+          and "broken". It is decoration in the strict sense, so it carries
+          `aria-hidden` and the player keeps the label.
+        -->
+        <div id="preview-sound" class="preview-sound" hidden>
+          <canvas id="preview-levels" class="preview-levels" aria-hidden="true"></canvas>
+          <audio id="preview-audio" class="preview-audio" controls preload="metadata"
+                 data-i18n-attr="aria-label:preview.sound"></audio>
+        </div>
         <p id="preview-name" class="preview-name"></p>
       </dialog>
 

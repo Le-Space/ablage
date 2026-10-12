@@ -30,31 +30,42 @@
  */
 
 const BAKED = [
-  // Read from the Aleph registration on 2026-08-29, not written by hand, and
-  // measured before being written down: identify names 13 protocols with
-  // `/libp2p/circuit/relay/0.2.0/hop` among them, and a reservation completes
-  // in **one second**.
+  // Read from the Aleph registration on 2026-10-12, not written by hand, and
+  // measured before being written down. Every one of the three answered a dial,
+  // named 448 protocols with `/libp2p/circuit/relay/0.2.0/hop` among them, and
+  // granted a reservation in **one to two seconds**.
   //
-  // **What the address this replaced teaches, and it is not the same lesson as
-  // last time.** `mosquito-sadness-before-search.2n6.me` was not unreachable -
-  // it answered every dial. Its identify response had grown past libp2p's
-  // 8192-byte default (10538 bytes, 109 of its 122 protocols one per open
-  // database), so clients dropped the whole message, never saw `hop`, and never
-  // reserved. A relay that works and cannot be recognised as one looks exactly
-  // like a relay that is down. That machine has since been deleted;
-  // orbitdb-relay 0.10.9 filters its announce list, and `MAX_IDENTIFY_BYTES` in
-  // `peer.js` is the half of the fix that lives here.
+  // In the order the registration gives them, which is also the order worth
+  // trying: `relayProbe` stops at the first address that answers, and port 443
+  // is the one that survives a restrictive mobile network.
   //
-  // **Why the `:443` route is not in this list.** The relay also has a 2n6
-  // proxy name, `job-blanket-biology-typical.2n6.me`, and port 443 is the one
-  // that survives a restrictive mobile network. The deploy verified it -
-  // `ok: true`, 237 ms - and it stopped working shortly afterwards: the name
-  // resolves to the proxy rather than to the relay, and the proxy presents `no
-  // peer certificate available` there. Baking an address whose TLS handshake
-  // fails is what cost a day in August; it is left out until it answers, and
-  // `discoverRelays` will offer it the moment the relay registers it.
-  '/dns4/65-108-233-158.k51qzi5uqu5dm9h9k158btp9sq2ijzbozhgef9wqz4apsdjdpwu6e9i7dgmpww.libp2p.direct/tcp/24007/tls/ws/p2p/12D3KooWSEfBQ6yJ19ebpoWvx1T5yWL3UtjkN1muJJ4djyTfPtsZ',
-  '/dns6/2a01-4f9-1a-ada6-3-7802-e859-f5f1.k51qzi5uqu5dm9h9k158btp9sq2ijzbozhgef9wqz4apsdjdpwu6e9i7dgmpww.libp2p.direct/tcp/9092/tls/ws/p2p/12D3KooWSEfBQ6yJ19ebpoWvx1T5yWL3UtjkN1muJJ4djyTfPtsZ'
+  // **What the list this replaced cost.** Its machine -
+  // `65-108-233-158…libp2p.direct`, peer `12D3KooWSEfBQ6yJ…` - had been deleted.
+  // A dial to it does not hang, it fails immediately, but `relayProbe` waits
+  // eight seconds per address before deciding that, and it works through them
+  // in order. So a cold start spent **sixteen seconds on two corpses** before
+  // `discoverRelays` was even asked - and during those sixteen seconds the app
+  // looks exactly like an app whose relay is down. Two devices that cannot find
+  // each other for a quarter of a minute are two devices nobody waits for.
+  //
+  // **The `:443` route is in the list now, and the reason it was not is worth
+  // keeping.** In August the 2n6 proxy name resolved to the proxy rather than to
+  // the relay and presented `no peer certificate available` on 443, so baking it
+  // meant baking a TLS handshake that fails. Today the same shape of address
+  // completes: `improve-empty-grass-tent.2n6.me` resolves to the proxy
+  // (46.247.131.199, not the relay's own 62.141.40.252), the handshake succeeds,
+  // and the reservation lands in 1.5 s. The proxy forwards to the relay's
+  // websocket port now - which is what `aleph-bootstrap` 0.9.7 and 0.9.8 were
+  // about, "the relay's websocket address points at a port that is open".
+  //
+  // **This list dies with the machine, by design.** Every VM deploy mints a new
+  // peer id and a new 2n6 name, so re-read it from the registration after one
+  // rather than trusting what is written here. `discoverRelays` is what keeps
+  // the app working in between; this list is only what keeps it from asking a
+  // third party on every start while the machine is still there.
+  '/dns4/improve-empty-grass-tent.2n6.me/tcp/443/tls/ws/p2p/12D3KooWL9UKRwGWE6GGxANhDZpJNyDphQcfBSApuXE1qTW5pkVh',
+  '/dns6/improve-empty-grass-tent.2n6.me/tcp/443/tls/ws/p2p/12D3KooWL9UKRwGWE6GGxANhDZpJNyDphQcfBSApuXE1qTW5pkVh',
+  '/dns4/62-141-40-252.k51qzi5uqu5dk0apg1nrbtzlpkb8er9b2tc8t6a7c4jtnhe8t71ooa3053ppl0.libp2p.direct/tcp/45841/tls/ws/p2p/12D3KooWL9UKRwGWE6GGxANhDZpJNyDphQcfBSApuXE1qTW5pkVh'
 ]
 
 /** The production registration, not the test rigs that share its profile. */

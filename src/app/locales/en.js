@@ -39,6 +39,7 @@ export default {
   link: {
     heading: 'This device and the other one',
     idle: 'Not connected yet.',
+    setup: 'Devices and connection',
     pairSummary: 'Pair by code, with nothing in between',
     invite: 'Show my code',
     scan: 'Scan their code',

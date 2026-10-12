@@ -83,6 +83,7 @@ const awakeEl = $('awake')
 const fetchableEl = $('fetchable')
 const fetchableWhyEl = $('fetchable-why')
 const reachableEl = $('reachable')
+const linkFoldEl = $('link-fold')
 const shareNameEl = $('share-name')
 const sharesEl = $('shares')
 const shareListEl = $('share-list')
@@ -208,7 +209,10 @@ let peer = null
 // The count is what decides whether the screen is held awake: a connection is
 // the thing a dozing phone would drop. `syncWakeLock` is a declaration below,
 // so it is in hand by the time anybody connects.
-const peers = peerSet({ onCountChange: () => syncWakeLock() })
+const peers = peerSet({ onCountChange: () => {
+  syncWakeLock()
+  foldTheSetupAway()
+} })
 
 /** What this device decided to send to whom. Per peer - see `sharing.js`. */
 const shared = sharing({ key: scoped('ablage.sharing', shareId) })
@@ -2128,6 +2132,29 @@ function waitingOnRelay () {
 
 function syncWakeLock () {
   wakeLock.sync(awakeNeeded()).catch(() => {})
+}
+
+/**
+ * Once two devices are talking, everything about getting them to talk folds up.
+ *
+ * **On the edges, not on every change.** Closed when the first device connects
+ * and opened when the last one leaves; a second device arriving does not close
+ * a fold somebody has just opened to add a third. In between the fold is
+ * theirs, which is the difference between an accordion and a thing that keeps
+ * shutting itself.
+ *
+ * Measured before it existed: connected, on a phone, this card was 710px and
+ * the file list began 1545px down - nearly two screens of answered questions
+ * between somebody and their folder.
+ */
+let wasConnected = false
+
+function foldTheSetupAway () {
+  const now = connected()
+
+  if (now !== wasConnected) linkFoldEl.open = !now
+
+  wasConnected = now
 }
 
 // A `<dialog>` fires `close` and has no `open` event, so the attribute is what

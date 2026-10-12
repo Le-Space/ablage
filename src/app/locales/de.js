@@ -36,6 +36,7 @@ export default {
   link: {
     heading: 'Dieses Gerät und das andere',
     idle: 'Noch nicht verbunden.',
+    setup: 'Geräte und Verbindung',
     pairSummary: 'Per Code koppeln, ohne irgendetwas dazwischen',
     invite: 'Meinen Code zeigen',
     scan: 'Code des anderen scannen',

@@ -214,6 +214,32 @@
         <p id="link-state" class="state is-idle" data-i18n="link.idle">Not connected yet.</p>
 
         <!--
+          **Everything about getting connected, folded away once it is.**
+
+          Measured on a phone before this existed: with a relay on and a device
+          connected, this card was 710px tall and the file list began 1545px
+          down - nearly two screens of scrolling past questions that had all
+          been answered, to reach the folder the app is for.
+
+          Every control in here is about *reaching* the other device: showing a
+          code, scanning one, the list of devices out there, whether this share
+          may be fetched over a relay, which peer this is and whether anybody
+          can call it. None of it is a thing to look at while two devices are
+          already syncing - and all of it has to stay one press away, because
+          "pair with a second device" is not a thing somebody does once.
+
+          `main.js` closes it when the first device connects and opens it again
+          when the last one goes. In between it is the person's: reopening it
+          while connected leaves it open.
+
+          The state line above stays outside, because that is the answer this
+          card exists to give. So does the screen-awake switch below it - see
+          the comment there, which is older than this fold and still right.
+        -->
+        <details id="link-fold" class="fold link-fold" open>
+          <summary data-i18n="link.setup">Devices and connection</summary>
+
+        <!--
           Both ship disabled and are enabled when the node is up.
 
           `peer` is null until `start()` resolves, and the handlers call it
@@ -397,6 +423,8 @@
           nothing at all, which is what this line is for.
         -->
         <p id="reachable" class="reachable" hidden></p>
+
+        </details>
 
         <!--
           Keeping the screen awake, where the connection is described.

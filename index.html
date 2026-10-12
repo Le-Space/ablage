@@ -204,14 +204,6 @@
       </section>
 
       <section class="card">
-        <h2 data-i18n="link.heading">This device and the other one</h2>
-
-        <!--
-          "Not connected yet" rather than "out of sync". Two devices that have
-          never met are not in disagreement, and saying so would make the first
-          question "why does it say pending".
-        -->
-        <p id="link-state" class="state is-idle" data-i18n="link.idle">Not connected yet.</p>
 
         <!--
           **Everything about getting connected, folded away once it is.**
@@ -237,7 +229,25 @@
           the comment there, which is older than this fold and still right.
         -->
         <details id="link-fold" class="fold link-fold" open>
-          <summary data-i18n="link.setup">Devices and connection</summary>
+          <!--
+            The card's head *is* the summary, which is why there is no `<h2>`
+            above it any more.
+            
+            There used to be both, and they said the same thing twice: a heading
+            "Dieses Gerät und das andere" and, four lines below it, a summary
+            "Geräte und Verbindung". Folding them together costs nothing and
+            saves the 27px that pushed the first file row past the window
+            thumbnails are read in - see
+            `the-first-file-is-on-screen.test.js`, which caught exactly that.
+
+            "Not connected yet" rather than "out of sync": two devices that have
+            never met are not in disagreement, and saying so would make the
+            first question "why does it say pending".
+          -->
+          <summary>
+            <span class="link-name" data-i18n="link.heading">This device and the other one</span>
+            <span id="link-state" class="state is-idle" data-i18n="link.idle">Not connected yet.</span>
+          </summary>
 
         <!--
           Both ship disabled and are enabled when the node is up.

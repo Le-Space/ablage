@@ -590,7 +590,23 @@ const whenVisible = new IntersectionObserver(entries => {
     whenVisible.unobserve(entry.target)
     entry.target.dispatchEvent(new CustomEvent('shown'))
   }
-}, { rootMargin: '200px' })
+  //
+  // **400px rather than 200.** The margin is how far below the fold a row may
+  // sit and still have its picture read. At 200 it had four pixels of slack:
+  // measured on a 1280x720 page with no relay, the first file row sat at 916
+  // against a limit of 920 - so the next line of text anybody added anywhere
+  // above the list broke six preview specs with "element not found", which is
+  // what `the-first-file-is-on-screen.test.js` exists to translate. It has now
+  // fired twice for that reason, in September and here.
+  //
+  // What the extra 200px costs: on a 720px viewport about four more rows are
+  // decoded on an unscrolled page - twenty-five instead of twenty-one. The
+  // argument above is about a folder of two hundred photos, and twenty-five of
+  // them is not that folder.
+  //
+  // What it does not fix is the page being tall enough for this to be close -
+  // that is #143, which has 322px of explanation above the list to account for.
+}, { rootMargin: '400px' })
 
 /**
  * Show it big.

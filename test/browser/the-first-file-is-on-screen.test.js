@@ -18,8 +18,16 @@ import { expect, test } from '@playwright/test'
  * than a hunt through six specs that never mention layout.
  */
 
-/** Must match `rootMargin` on `whenVisible` in main.js. */
-const LAZY_MARGIN_PX = 200
+/**
+ * Must match `rootMargin` on `whenVisible` in main.js.
+ *
+ * Raised from 200 when this fired a second time: the connection fold added a
+ * head and the first row went from 920 to 947 on a 720px page. The threshold it
+ * had crossed turned out to have four pixels of slack on `main` as well, which
+ * is not a budget anybody can build inside - the comment beside `rootMargin`
+ * has what the extra margin costs.
+ */
+const LAZY_MARGIN_PX = 400
 
 const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAEAAAAAwEAIAAAB+uTcLAAAAIGNIUk0AAHomAACAhAAA+gAAAIDoAAB1MAAA6mAAADqYAAAXcJy6UTwAAAAGYktHRP///////wlY99wAAAAHdElNRQfqCBYSJxoGDO3HAAAAJXRFWHRkYXRlOmNyZWF0ZQAyMDI2LTA4LTIyVDE4OjM5OjI2KzAwOjAwp17ZxAAAACV0RVh0ZGF0ZTptb2RpZnkAMjAyNi0wOC0yMlQxODozOToyNiswMDowMNYDYXgAAAAodEVYdGRhdGU6dGltZXN0YW1wADIwMjYtMDgtMjJUMTg6Mzk6MjYrMDA6MDCBFkCnAAAA30lEQVR42u3awQ3DIBBE0ZhMX6EPl2DJlI8PIOdAEf/AfxWshIYlEx/ve13n+REks5X+/dFj7CvDA0Bl3qXHA8CsBFR6jH25A2DuAFhmcweQMlp5TAAn4/YKIrmEYRmt9FR6jH2ZAFhGOzwAkAmAZdgFofwlDFtXUKXH2JcJgNkFwUwALNMuCGUCYKsL8gAwma08PkM5XkEwuyCYXRDMBMDcATAPALa6oEqPsS8TALMLgpkAmM9QmGUczP+EYe4AmF9HwzJbedwBHL8NhfkMhbmEYZZxMF9BMK8gmEsY9ge7gYDi1g/y2QAAAABJRU5ErkJggg=='
 

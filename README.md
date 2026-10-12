@@ -2,7 +2,7 @@
 
 **[Deutsch](README.de.md)** · English
 
-A folder on this device that stays the same as a folder on another device — files
+A folder on this device that stays in sync with a folder on another device — files
 added, changed and deleted — with **no account and nothing in the middle**.
 
 Two devices pair once by scanning a QR code off each other's screen. After that

@@ -2,8 +2,8 @@
 
 Deutsch · **[English](README.md)**
 
-Ein Ordner auf diesem Gerät, der derselbe bleibt wie ein Ordner auf einem
-anderen — hinzugefügte, geänderte und gelöschte Dateien — **ohne Konto und ohne
+Ein Ordner auf diesem Gerät, der mit einem Ordner auf einem anderen synchron
+bleibt — hinzugefügte, geänderte und gelöschte Dateien — **ohne Account und ohne
 irgendetwas dazwischen**.
 
 Zwei Geräte verbinden sich einmal, indem eines einen QR-Code vom Bildschirm des

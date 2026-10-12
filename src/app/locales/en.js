@@ -7,8 +7,8 @@
 export default {
   page: {
     title: 'ablage',
-    lede: 'A folder that stays the same on two devices. No account, nothing in the middle.',
-    ledeRelay: 'A folder that stays the same on two devices. No account — a relay helps the two find each other and cannot read what they send.'
+    lede: 'A folder that stays in sync on two devices. No account, no server, nothing in the middle. A QR code connects the two devices.',
+    ledeRelay: 'A folder that stays in sync on two devices. No account, and no server that keeps your files. When the devices are somewhere out on the internet, a relay helps them find each other. The relay cannot read what they send.'
   },
   compact: {
     label: 'Short code — one code instead of a sequence. Experimental.',
@@ -237,12 +237,12 @@ export default {
       asking: 'Asking Aleph which relays are up…',
       probing: 'Trying the ones it named…'
     },
-    experimental: '<strong>Highly experimental — do not use this for anything you cannot lose.</strong> It is a working demonstration, not a backup: the format may change, and a folder here is not a copy of anything.',
-    what: 'This is a folder shared between two of your devices. There is no account, and no server in the middle holding your files.',
-    how: 'Show the code on this screen to the other device, or send it the link. Once the two are connected, whatever you put in the folder appears on both.',
-    howRelay: 'A relay introduces the two devices to each other, and nothing else. Both call out on the same meeting place; each then appears in the other\u2019s list, and one asks the other to share. The relay never sees what crosses - it hands over an address and steps aside.',
-    secure: 'The connection is encrypted end to end. Nobody in between can read what crosses it — not a network operator, not a gateway, and not us.',
-    who: 'Both devices have to be open at the same time. Delivery when they are apart is not built yet, and the folder says so rather than pretending.'
+    experimental: '<strong>Highly experimental. Do not put anything here that you cannot lose.</strong> It works, but it is not a backup: the format may change, and a folder here does not replace a copy.',
+    what: 'This is a folder that stays in sync on two of your devices. There is no account, and no server that keeps your files.',
+    how: 'Show the QR code on this screen to the other device, or send it the link. Once the two are connected, every file sits in both folders.',
+    howRelay: 'When the devices are somewhere out on the internet, a relay helps them find each other. Both check in with the same relay. Each then shows up in the other\u2019s list, and one asks the other. If the two can reach each other directly, the relay drops out of the way. If they cannot, it carries everything. It still cannot read any of it.',
+    secure: 'The connection is encrypted end to end. Nobody in between can read it: not your internet provider, not a server along the way, and not us.',
+    who: 'Both devices have to be open at the same time. If the other one is closed, nothing travels. The app cannot catch up later yet, and it says so rather than pretending.'
   },
   how: {
     heading: 'How that holds up',

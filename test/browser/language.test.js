@@ -598,7 +598,7 @@ test.describe('which story the introduction tells', () => {
     await expect(page.locator('#intro-how-relay')).toBeHidden()
   })
 
-  test('and a meeting place, once somebody asks to be reached without one', async ({ page }) => {
+  test('and a relay, once somebody asks to be reached without one', async ({ page }) => {
     test.setTimeout(120_000)
     await open(page)
     await relayBox(page).check()
@@ -607,7 +607,7 @@ test.describe('which story the introduction tells', () => {
     // read about holding one up to a camera.
     await expect(page.locator('#intro-how-relay')).toBeVisible()
     await expect(page.locator('#intro-how-code')).toBeHidden()
-    await expect(page.locator('#intro-how-relay')).toContainText(/introduces the two devices|never sees what crosses/i)
+    await expect(page.locator('#intro-how-relay')).toContainText(/a relay helps them find each other|cannot read any of it/i)
   })
 
   test('and back again when it is unticked', async ({ page }) => {

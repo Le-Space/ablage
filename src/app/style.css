@@ -768,6 +768,15 @@ html:has(dialog[open]) { overflow: hidden; }
 /* Theirs, and it may be a pasted paragraph with a very long word in it. */
 .inbox-text { margin: 0; overflow-wrap: anywhere; white-space: pre-wrap; }
 
+/*
+  The connection card's head is its fold's summary: the name of the card and the
+  state line, with the triangle beside them. One head rather than a heading and
+  a summary saying the same thing - and 27px lighter, which is what the first
+  file row needed to stay inside the window its thumbnail is read in.
+*/
+.link-fold > summary { display: flex; align-items: baseline; gap: 0.5rem; flex-wrap: wrap; cursor: pointer; }
+.link-fold > summary .link-name { font-weight: 600; }
+.link-fold > summary .state { margin: 0; }
 /* ---------- four ways to support this ---------- */
 
 /*

@@ -72,3 +72,60 @@ test('every key the app asks for has text in both languages', () => {
   assert.ok(keys.size > 100, `only ${keys.size} keys found - the scan is not reading the source`)
   assert.deepEqual(missing, [], `${keys.size} keys checked`)
 })
+
+/**
+ * No key written twice in the same block.
+ *
+ * A duplicate in an object literal is legal JavaScript: the later one wins and
+ * nothing anywhere complains. The check above cannot see it either - every
+ * `data-i18n` still resolves to *a* string, just not the one somebody wrote.
+ *
+ * Found the hard way. A new `link.fold` was added for the connection fold,
+ * `link.fold` already existed for "Oder als Link senden" twelve lines below,
+ * and the new summary came out carrying the old sentence. On screen that is a
+ * label that makes no sense in its place, which is the kind of thing a reader
+ * blames themselves for.
+ *
+ * Read off the source rather than the parsed object, because by the time it is
+ * parsed the evidence is gone.
+ */
+test('no catalogue writes the same key twice in one block', async () => {
+  for (const file of ['src/app/locales/de.js', 'src/app/locales/en.js']) {
+    const lines = readFileSync(join(root, file), 'utf8').split('\n')
+    /** @type {Array<{ indent: number, keys: Map<string, number> }>} */
+    const open = []
+    const twice = []
+
+    lines.forEach((line, i) => {
+      const key = line.match(/^(\s*)([A-Za-z_$][\w$]*)\s*:/)
+
+      if (key == null) {
+        // A block ends where a line closes one at a shallower indent.
+        const shut = line.match(/^(\s*)[}\])]/)
+
+        if (shut != null) {
+          while (open.length > 0 && open[open.length - 1].indent >= shut[1].length) open.pop()
+        }
+
+        return
+      }
+
+      const indent = key[1].length
+
+      while (open.length > 0 && open[open.length - 1].indent > indent) open.pop()
+
+      if (open.length === 0 || open[open.length - 1].indent < indent) {
+        open.push({ indent, keys: new Map() })
+      }
+
+      const here = open[open.length - 1].keys
+      const before = here.get(key[2])
+
+      if (before != null) twice.push(`${file}:${i + 1} ${key[2]} — also at line ${before}`)
+
+      here.set(key[2], i + 1)
+    })
+
+    assert.deepEqual(twice, [], twice.join('\n'))
+  }
+})

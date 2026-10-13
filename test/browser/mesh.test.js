@@ -346,6 +346,26 @@ test.describe('asking a device in the list to share', () => {
       await b.page.locator('#admit-yes').click()
       await expect(b.page.locator('#link-state')).toHaveClass(/is-connected/, { timeout: 30_000 })
 
+      // **And then the setup folds away, on both sides.**
+      //
+      // Everything in that fold is about *reaching* the other device, and both
+      // of them have. Measured on a phone-sized screen before it folded: the
+      // card was 710px and the file list began 1545px down - nearly two screens
+      // of answered questions between somebody and their folder.
+      //
+      // Asserted on both, because the two arrive at "connected" by different
+      // routes: one pressed the button, the other answered a dialog.
+      await expect(a.page.locator('#link-fold')).not.toHaveAttribute('open', '', { timeout: 30_000 })
+      await expect(b.page.locator('#link-fold')).not.toHaveAttribute('open', '', { timeout: 30_000 })
+
+      // Folded, not gone: pairing a third device is one press away, and the
+      // state line outside the fold still says what is going on.
+      await expect(b.page.locator('#link-fold > summary')).toBeVisible()
+      await expect(b.page.locator('#link-state')).toBeVisible()
+
+      await b.page.locator('#link-fold > summary').click()
+      await expect(b.page.locator('#link-fold')).toHaveAttribute('open', '')
+
       expect(a.errors).toEqual([])
       expect(b.errors).toEqual([])
     } finally {

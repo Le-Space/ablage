@@ -83,6 +83,7 @@ const awakeEl = $('awake')
 const fetchableEl = $('fetchable')
 const fetchableWhyEl = $('fetchable-why')
 const reachableEl = $('reachable')
+const linkFoldEl = $('link-fold')
 const shareNameEl = $('share-name')
 const sharesEl = $('shares')
 const shareListEl = $('share-list')
@@ -208,7 +209,10 @@ let peer = null
 // The count is what decides whether the screen is held awake: a connection is
 // the thing a dozing phone would drop. `syncWakeLock` is a declaration below,
 // so it is in hand by the time anybody connects.
-const peers = peerSet({ onCountChange: () => syncWakeLock() })
+const peers = peerSet({ onCountChange: () => {
+  syncWakeLock()
+  foldTheSetupAway()
+} })
 
 /** What this device decided to send to whom. Per peer - see `sharing.js`. */
 const shared = sharing({ key: scoped('ablage.sharing', shareId) })
@@ -586,7 +590,23 @@ const whenVisible = new IntersectionObserver(entries => {
     whenVisible.unobserve(entry.target)
     entry.target.dispatchEvent(new CustomEvent('shown'))
   }
-}, { rootMargin: '200px' })
+  //
+  // **400px rather than 200.** The margin is how far below the fold a row may
+  // sit and still have its picture read. At 200 it had four pixels of slack:
+  // measured on a 1280x720 page with no relay, the first file row sat at 916
+  // against a limit of 920 - so the next line of text anybody added anywhere
+  // above the list broke six preview specs with "element not found", which is
+  // what `the-first-file-is-on-screen.test.js` exists to translate. It has now
+  // fired twice for that reason, in September and here.
+  //
+  // What the extra 200px costs: on a 720px viewport about four more rows are
+  // decoded on an unscrolled page - twenty-five instead of twenty-one. The
+  // argument above is about a folder of two hundred photos, and twenty-five of
+  // them is not that folder.
+  //
+  // What it does not fix is the page being tall enough for this to be close -
+  // that is #143, which has 322px of explanation above the list to account for.
+}, { rootMargin: '400px' })
 
 /**
  * Show it big.
@@ -2128,6 +2148,29 @@ function waitingOnRelay () {
 
 function syncWakeLock () {
   wakeLock.sync(awakeNeeded()).catch(() => {})
+}
+
+/**
+ * Once two devices are talking, everything about getting them to talk folds up.
+ *
+ * **On the edges, not on every change.** Closed when the first device connects
+ * and opened when the last one leaves; a second device arriving does not close
+ * a fold somebody has just opened to add a third. In between the fold is
+ * theirs, which is the difference between an accordion and a thing that keeps
+ * shutting itself.
+ *
+ * Measured before it existed: connected, on a phone, this card was 710px and
+ * the file list began 1545px down - nearly two screens of answered questions
+ * between somebody and their folder.
+ */
+let wasConnected = false
+
+function foldTheSetupAway () {
+  const now = connected()
+
+  if (now !== wasConnected) linkFoldEl.open = !now
+
+  wasConnected = now
 }
 
 // A `<dialog>` fires `close` and has no `open` event, so the attribute is what

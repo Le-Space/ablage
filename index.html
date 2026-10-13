@@ -708,9 +708,40 @@
           · <a href="https://github.com/Le-Space/ablage/commit/__ABLAGE_COMMIT__" target="_blank" rel="noopener noreferrer"><code>__ABLAGE_COMMIT__</code></a>
           · <time datetime="__ABLAGE_BUILD_ISO__">__ABLAGE_BUILD_TIME__</time>
         </span>
+        <!--
+          "Unterstützen" beside the source link, the way the landing page does
+          it. A heart rather than a word alone, because this is the one control
+          down here that is not about the app at all.
+        -->
+        <button id="donate-open" class="foot-link foot-button" type="button" data-i18n="give.open">Support this</button>
         <button id="privacy-open" class="foot-link foot-button" type="button" data-i18n="foot.privacy">Privacy</button>
         <a class="foot-link" href="https://le-space.de" target="_blank" rel="noopener noreferrer" data-i18n="foot.legal">Imprint &amp; privacy</a>
       </footer>
+
+      <!--
+        Four ways to support this, and none of them a platform.
+
+        Ported from Le-Space/landing's `DonateModal.svelte`, which is Svelte and
+        could not come over as it stands. The addresses came over character for
+        character, read out of that file rather than retyped - they are the one
+        kind of string in this app where a mistake cannot be corrected
+        afterwards, and `test/donate.test.js` recomputes the two checksums that
+        can be recomputed without a dependency.
+
+        Nothing in here is fetched: the marks are drawn inline. On the landing
+        page that is good manners; here it is the promise in AGENTS.md, that a
+        start without the relay choice makes no outbound call at all.
+      -->
+      <dialog id="donate" class="modal donate">
+        <h2 data-i18n="give.title">Support this work</h2>
+        <p class="hint" data-i18n="give.why"></p>
+        <ul id="donate-list" class="give-list"></ul>
+        <p class="hint quiet" data-i18n="give.checked"></p>
+        <div class="donate-foot">
+          <a class="foot-link" href="https://github.com/sponsors/NiKrause" target="_blank" rel="noopener noreferrer" data-i18n="give.sponsor">Sponsor on GitHub</a>
+          <button id="donate-close" type="button" data-i18n="give.close">Close</button>
+        </div>
+      </dialog>
 
       <!--
         What leaves this device, and what does not.

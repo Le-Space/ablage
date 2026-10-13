@@ -252,6 +252,17 @@ export default {
     secure: 'The connection is encrypted end to end. Nobody in between can read it: not your internet provider, not a server along the way, and not us.',
     who: 'Both devices have to be open at the same time. If the other one is closed, nothing travels. The app cannot catch up later yet, and it says so rather than pretending.'
   },
+  give: {
+    open: 'Support this',
+    title: 'Support this work',
+    why: 'Behind it are man-years of work, not evenings: laptops and phones to test on, servers, travel to conferences, years of design and debugging. None of it is funded and none of it is for sale — the code is open and stays that way.',
+    copy: 'Copy',
+    copied: 'Copied',
+    close: 'Close',
+    sponsor: 'Sponsor on GitHub',
+    bank: 'Le Space UG (Nico Krause) · GLS Bank Bochum',
+    checked: 'Each address was checked against its own checksum: bech32 for Bitcoin, EIP-55 for Ethereum, Keccak-256 for Monero, mod-97 for the IBAN.'
+  },
   how: {
     heading: 'How that holds up',
     dtls: 'The encryption is DTLS, the same layer a browser uses for any WebRTC connection. It is not something added on top and it cannot be switched off.',
